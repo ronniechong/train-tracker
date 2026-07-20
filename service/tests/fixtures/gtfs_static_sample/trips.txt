@@ -1,0 +1,5 @@
+route_id,service_id,trip_id,trip_headsign,direction_id
+2-PKM,WEEKDAY,WEEKDAY_TRIP_1,Pakenham,0
+2-PKM,WEEKDAY,WEEKDAY_TRIP_2,City,1
+2-CRB,WEEKEND,WEEKEND_TRIP_1,Craigieburn,0
+2-CRB,WEEKEND,WEEKEND_TRIP_2,City,1
