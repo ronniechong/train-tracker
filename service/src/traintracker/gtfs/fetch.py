@@ -11,6 +11,15 @@ outer archive, so it's extracted before parsing or storing — storing the
 full 270MB nightly for 60 days of retention would be ~16GB vs. ~1.2GB for
 just the Metro Train slice.
 
+Unlike the realtime feeds (M1 found no conditional-GET support at all), this
+static endpoint sends real `ETag`/`Last-Modified` headers, and the site says
+the content itself only changes weekly. A HEAD request costs ~0.25s vs. a
+multi-second 270MB GET, so the job checks the ETag first and only downloads
+when it's actually different from the last one seen — a service_date still
+gets a pin every day (one row per service day is required regardless of
+whether the underlying content changed), it just reuses the already-stored
+digest on the ~6 days out of 7 where nothing changed.
+
 Side note (not this milestone's concern): the current live download includes
 `shapes.txt`, which M1's captured reference snapshot did not — the earlier
 "no shapes.txt, straight-line rendering" note in CLAUDE.md may be worth
@@ -20,9 +29,10 @@ revisiting at M4.
 from __future__ import annotations
 
 import io
+import json
 import os
 import zipfile
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
 
@@ -56,6 +66,15 @@ def download_static_zip(url: str, timeout: float = 120.0) -> bytes:
     return response.content
 
 
+def fetch_etag(url: str, timeout: float = 15.0) -> str | None:
+    """Cheap HEAD request to check whether the remote content has changed,
+    without pulling the 270MB body. Returns None if the server doesn't send
+    an ETag at all (in which case the caller can't skip and must download)."""
+    response = httpx.head(url, timeout=timeout, follow_redirects=True)
+    response.raise_for_status()
+    return response.headers.get("etag")
+
+
 def extract_mode_zip(outer_zip_bytes: bytes, mode: str = METRO_TRAIN_MODE) -> bytes:
     """Pull one mode's `google_transit.zip` out of the multi-modal outer
     archive without touching the other modes' data."""
@@ -70,10 +89,34 @@ def extract_mode_zip(outer_zip_bytes: bytes, mode: str = METRO_TRAIN_MODE) -> by
 
 
 @dataclass(frozen=True)
+class FetchCacheEntry:
+    etag: str
+    digest: str
+
+
+class FetchCache:
+    """Remembers the last ETag we saw and which digest it corresponds to,
+    so the job can skip a 270MB re-download when nothing changed."""
+
+    def __init__(self, path: Path):
+        self._path = path
+
+    def load(self) -> FetchCacheEntry | None:
+        if not self._path.exists():
+            return None
+        return FetchCacheEntry(**json.loads(self._path.read_text()))
+
+    def save(self, entry: FetchCacheEntry) -> None:
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._path.write_text(json.dumps(asdict(entry), indent=2))
+
+
+@dataclass(frozen=True)
 class RefreshResult:
     snapshot_digest: str
     pin_result: PinResult
     stored_path: Path
+    downloaded: bool  # False when skipped via a matching ETag
 
 
 def store_snapshot(raw_zip: bytes, digest: str, store_dir: Path) -> Path:
@@ -90,24 +133,49 @@ def refresh_and_pin(
     service_date: date,
     store_dir: Path,
     manifest_path: Path,
+    cache_path: Path,
     url: str | None = None,
     mode: str = METRO_TRAIN_MODE,
 ) -> RefreshResult:
-    """The nightly job: fetch the current multi-modal static feed, extract
-    the target mode's slice, and pin it to `service_date` if that date has
-    no pin yet (idempotent — a second call for the same service_date,
-    whether from a re-run or a race with another nightly invocation, is a
-    no-op that returns the original pin)."""
-    outer = download_static_zip(url or static_gtfs_url())
-    inner = extract_mode_zip(outer, mode)
-    snapshot = StaticSnapshot.from_zip_bytes(inner)
-    stored_path = store_snapshot(inner, snapshot.digest, store_dir)
+    """The nightly job: check whether the static feed actually changed
+    (cheap HEAD + ETag compare), download + extract + parse only if it did,
+    then pin the result to `service_date` if that date has no pin yet
+    (idempotent — a second call for the same service_date, whether from a
+    re-run or a race with another nightly invocation, is a no-op that
+    returns the original pin)."""
+    resolved_url = url or static_gtfs_url()
+    cache = FetchCache(cache_path)
+    cached = cache.load()
+
+    remote_etag = fetch_etag(resolved_url)
+    reused_path = store_dir / f"{cached.digest}.zip" if cached else None
+    can_skip_download = (
+        cached is not None
+        and remote_etag is not None
+        and remote_etag == cached.etag
+        and reused_path.exists()
+    )
+
+    if can_skip_download:
+        digest = cached.digest
+        stored_path = reused_path
+        downloaded = False
+    else:
+        outer = download_static_zip(resolved_url)
+        inner = extract_mode_zip(outer, mode)
+        snapshot = StaticSnapshot.from_zip_bytes(inner)
+        digest = snapshot.digest
+        stored_path = store_snapshot(inner, digest, store_dir)
+        downloaded = True
+        if remote_etag is not None:
+            cache.save(FetchCacheEntry(etag=remote_etag, digest=digest))
 
     manifest = PinManifest(manifest_path)
-    pin_result = manifest.pin(service_date, snapshot)
+    pin_result = manifest.pin_digest(service_date, digest)
 
     return RefreshResult(
-        snapshot_digest=snapshot.digest,
+        snapshot_digest=digest,
         pin_result=pin_result,
         stored_path=stored_path,
+        downloaded=downloaded,
     )

@@ -55,6 +55,12 @@ class PinManifest:
         return self._load().get(service_date.isoformat())
 
     def pin(self, service_date: date, snapshot: StaticSnapshot) -> PinResult:
+        return self.pin_digest(service_date, snapshot.digest)
+
+    def pin_digest(self, service_date: date, digest: str) -> PinResult:
+        """Pin by digest directly, without needing a parsed `StaticSnapshot`
+        — lets the fetch job pin today's service_date to an already-known
+        digest when the remote content hasn't changed, with no re-parse."""
         pins = self._load()
         key = service_date.isoformat()
         existing = pins.get(key)
@@ -63,7 +69,7 @@ class PinManifest:
 
         new_pin = Pin(
             service_date=key,
-            digest=snapshot.digest,
+            digest=digest,
             pinned_at=datetime.now(timezone.utc).isoformat(),
         )
         pins[key] = new_pin
