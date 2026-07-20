@@ -1,0 +1,64 @@
+{
+  "fetch_timestamp": "2026-07-17T04:52:05.661019+00:00",
+  "fetch_latency_ms": 263.7,
+  "payload_bytes": 83619,
+  "response_headers": {
+    "Cache-Control": "no-store, no-cache"
+  },
+  "feed": {
+    "header": {
+      "gtfs_realtime_version": "2.0",
+      "incrementality": "FULL_DATASET",
+      "timestamp": "1784263917"
+    },
+    "entity": [
+      {
+        "id": "02-PKM--55-T6-C063|20260717",
+        "trip_update": {
+          "trip": {
+            "trip_id": "02-PKM--55-T6-C063",
+            "start_time": "13:35:00",
+            "start_date": "20260717",
+            "schedule_relationship": "SCHEDULED",
+            "route_id": "aus:vic:vic-02-PKM:"
+          },
+          "stop_time_update": [
+            {
+              "stop_sequence": 24,
+              "arrival": {
+                "delay": 180,
+                "time": "1784263740"
+              },
+              "stop_id": "26506",
+              "schedule_relationship": "SCHEDULED"
+            }
+          ]
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4912|20260717",
+        "trip_update": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4912",
+            "start_time": "13:37:00",
+            "start_date": "20260717",
+            "schedule_relationship": "SCHEDULED",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "stop_time_update": [
+            {
+              "stop_sequence": 32,
+              "arrival": {
+                "delay": 0,
+                "time": "1784263860"
+              },
+              "stop_id": "11217",
+              "schedule_relationship": "SCHEDULED"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "_note": "trimmed to 2 of 210 entities for readability"
+}

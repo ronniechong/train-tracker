@@ -1,0 +1,1342 @@
+{
+  "fetch_timestamp": "2026-07-17T04:52:05.661092+00:00",
+  "fetch_latency_ms": 116.92,
+  "payload_bytes": 15322,
+  "response_headers": {
+    "Age": "65",
+    "Cache-Control": "public, max-age=90, s-maxage=90"
+  },
+  "feed": {
+    "header": {
+      "gtfs_realtime_version": "2.0",
+      "incrementality": "FULL_DATASET",
+      "timestamp": "1784263859"
+    },
+    "entity": [
+      {
+        "id": "c23c2fe1-a204-56d0-9298-ec9d87bff8a3",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1776369600",
+              "end": "1784296740"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-FKN:",
+              "stop_id": "vic:rail:SEA",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-FKN:",
+              "stop_id": "vic:rail:SEA",
+              "direction_id": 0
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Seaford Station car space closures",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "Friday 17 April to mid July Up to 55 car spaces in the station car park are temporarily closed, due to project\u00a0works. For your safety, please follow any signage and instructions in place during this time. Monday 13 July to Friday 17 July Up to 3 accessible car spaces are temporarily closed, due to project works. Passengers requiring accessible parking are advised to use alternative accessible parking located in the same car park. For your safety, please observe any signage and instructions in place during this time.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "c9597c03-cec8-5878-a4a3-12f7d2e1bb2f",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1781532000",
+              "end": "1784296740"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-LIL:",
+              "stop_id": "vic:rail:RWE",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-LIL:",
+              "stop_id": "vic:rail:RWE",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-LIL-R:",
+              "stop_id": "vic:rail:RWE",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-LIL-R:",
+              "stop_id": "vic:rail:RWE",
+              "direction_id": 1
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Ringwood East Station carpark closure",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "Tuesday 16 June to Friday 17 July The entire North carpark at Ringwood East Station is closed from Tuesday 16 June to Friday 17 July, due to project works.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "3d58aafd-5c35-50cb-a630-005d0268a1e9",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1783864800",
+              "end": "1784296740"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-FKN:",
+              "stop_id": "vic:rail:MEN",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-FKN:",
+              "stop_id": "vic:rail:MEN",
+              "direction_id": 0
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Mentone Station car space closure",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "Monday 13 July to Friday 17 July Due to project works, approximately 10 car spaces at Mentone Station off Balcombe Road will be closed. For your safety, please follow any signage and instructions in place during this time.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "fd61db55-a5c0-55f3-a3b8-08e28e687d77",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1784284200",
+              "end": "1784469540"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:HDB",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:ROS",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:MCD",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:WAT",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:GRN",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:HDB",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:ROS",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:MCD",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:WAT",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:GRN",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:HDB",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:ROS",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:MCD",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:WAT",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:GRN",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:HDB",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:ROS",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:MCD",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:WAT",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:GRN",
+              "direction_id": 0
+            }
+          ],
+          "cause": "CONSTRUCTION",
+          "effect": "MODIFIED_SERVICE",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Buses replace trains between Heidelberg to Greensborough",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "8.30pm Friday 17 July to last service Sunday 19 July",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "258f7b95-1cb7-50c1-bff4-7f0a7b380b6a",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1784149200",
+              "end": "1784790000"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-BEG:",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-BEG:",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-LIL:",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-LIL:",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-BEG-R:",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-LIL-R:",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-LIL-R:",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-BEG-R:",
+              "direction_id": 1
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Canterbury Station carpark closure",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "7am Thursday 16 July to 5pm Thursday 23 July Up to 10 car spaces in the Canterbury Station carpark are closed, due to maintenance works. For your safety, please observe any signage and instructions in place during this time.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "d842fdbc-976c-5e17-94a8-22295b3ea87d",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1783886400",
+              "end": "1784876400"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-CGB:",
+              "stop_id": "vic:rail:ESD",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-CGB:",
+              "stop_id": "vic:rail:ESD",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-CGB-R:",
+              "stop_id": "vic:rail:ESD",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-CGB-R:",
+              "stop_id": "vic:rail:ESD",
+              "direction_id": 1
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Essendon Station car space closures",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "6am Monday 13 July to 5pm Friday 24 July 10 car spaces in the Russell Street car park will close due to project works.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "c920bd31-a14a-576e-abfd-e5cb9ff9f408",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1781445600",
+              "end": "1785506340"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-GWY:",
+              "stop_id": "vic:rail:HOL",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-GWY:",
+              "stop_id": "vic:rail:HOL",
+              "direction_id": 0
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Holmesglen Station car space closures",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "Monday 15 June to late July From Monday 15 June to late July, up to 35 car spaces in the Argyll Street car park are temporarily closed while security fencing works take place.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "adb2a1f3-238f-5a8c-b4b1-eacaed566f3b",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1782655200",
+              "end": "1785506340"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-BEG:",
+              "stop_id": "vic:rail:BBN",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-BEG:",
+              "stop_id": "vic:rail:BBN",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-LIL:",
+              "stop_id": "vic:rail:BBN",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-LIL:",
+              "stop_id": "vic:rail:BBN",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-BEG-R:",
+              "stop_id": "vic:rail:BBN",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-LIL-R:",
+              "stop_id": "vic:rail:BBN",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-LIL-R:",
+              "stop_id": "vic:rail:BBN",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-BEG-R:",
+              "stop_id": "vic:rail:BBN",
+              "direction_id": 1
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Blackburn Station bike parking works",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "Monday 29 June to late July From Monday 29 June to late July, 12 bicycle parking hoops are temporarily closed due to project works. Alternative bicycle parking is located nearby and in the secure Parkiteer facility. There is also a Parkiteer available at Nunawading Station. The timing of these works may change depending on weather or unavoidable circumstances.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "bda91e98-98c6-5ff1-9046-c5840ba86caa",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1778247060",
+              "end": "1785765540"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-BEG:",
+              "stop_id": "vic:rail:BOR",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-BEG:",
+              "stop_id": "vic:rail:BOR",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-BEG-R:",
+              "stop_id": "vic:rail:BOR",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-BEG-R:",
+              "stop_id": "vic:rail:BOR",
+              "direction_id": 1
+            }
+          ],
+          "cause": "CONSTRUCTION",
+          "effect": "MODIFIED_SERVICE",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Trains will not stop at Boronia Station",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "11.30pm Friday 8 May to last service Monday 3 August Trains will not stop at Boronia Station from 11.30pm Friday 8 May to last service Monday 3 August. A shuttle bus will operate between Bayswater, Boronia and Ferntree Gully stations to connect passengers to train services. Trains are back at Boronia Station from Tuesday 4 August.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "7816d6d0-42d8-5e55-bdb6-b2987f53dab2",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1740762000",
+              "end": "1786111140"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-FKN:",
+              "stop_id": "vic:rail:MOR",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-FKN:",
+              "stop_id": "vic:rail:MOR",
+              "direction_id": 0
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Parkiteer closed at Mordialloc Station",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "Until late 2026 The Parkiteer cage is closed at Mordialloc Station. Please use alternative secure bicycle parking at Parkdale or Edithvale stations.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "a92e8a8a-89c7-51d5-b9e2-cd7bd013f7e7",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1784469600",
+              "end": "1786802340"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-MDD:",
+              "stop_id": "vic:rail:MDD",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-MDD:",
+              "stop_id": "vic:rail:MDD",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-MDD-R:",
+              "stop_id": "vic:rail:MDD",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-MDD-R:",
+              "stop_id": "vic:rail:MDD",
+              "direction_id": 0
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Mernda Station pedestrian detours",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "Monday 20 July to mid-August 2026 Pedestrian detours will be in place near the Mernda Station entrance from Monday 20 July to mid-August 2026, while we install new fencing to improve safety. These works will update the existing pedestrian crossing between the station and shopping precinct with new fencing, line marking, tactile ground surface indicators and signage. What to expect:  pedestrian detours at times traffic management or staff may be in place near the crossing short-term noise from machinery while fencing is installed temporary fencing or exclusion zones around work areas.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "39661507-5a25-5ba5-af26-50297704acd6",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1783260000",
+              "end": "1788184740"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:GRN",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:GRN",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:GRN",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:GRN",
+              "direction_id": 0
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Greensborough Station car park closure",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "Monday 6 July to late August Due to project works, approximately 15 car spaces at Greensborough Station on Poulter Avenue will be closed. For your safety, please follow any signage and instructions in place during this time.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "199eebeb-dc79-51ab-b52d-1f51a5406eed",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1770210000",
+              "end": "1789480740"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-WER-R:",
+              "stop_id": "vic:rail:WLD",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-WER-R:",
+              "stop_id": "vic:rail:WLD",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-WER:",
+              "stop_id": "vic:rail:WLD",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-WER:",
+              "stop_id": "vic:rail:WLD",
+              "direction_id": 0
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Williams Landing car space closures",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "Thursday 5 February to early-September 2026 Approximately 12 car spaces will be temporarily closed in the Wallace Avenue commuter car park for project works to install a new lift and secure bike storage facilities. For your safety, please follow signage and instructions in place during this time. The timing of these works may change depending on weather or unavoidable circumstances. Find out more about the Williams Landing Station improvements.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "1a8e0925-f433-53ef-b2f7-087670babdc4",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1779300000",
+              "end": "1790431140"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-FKN:",
+              "stop_id": "vic:rail:MOR",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-FKN:",
+              "stop_id": "vic:rail:MOR",
+              "direction_id": 0
+            }
+          ],
+          "cause": "CONSTRUCTION",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Mordialloc Station opening",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "First service Thursday 21 May From Thursday 21 May, your new station facilities include:  Lift and stair access to the new platforms, with entrances at each end of the station. A passenger waiting room, seating and toilets. A new ticketing office and myki machines. A section of car parking, including two accessible car spaces.  Finishing works will continue until late 2026.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "05eae436-acce-5b92-bd32-bb31881810b6",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1778446800",
+              "end": "1790755200"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-SUY-R:",
+              "stop_id": "vic:rail:SUN",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-SUY-R:",
+              "stop_id": "vic:rail:SUN",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-SUY:",
+              "stop_id": "vic:rail:SUN",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-SUY:",
+              "stop_id": "vic:rail:SUN",
+              "direction_id": 1
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Sunshine Station car space closure",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "Monday 11 May to September 2026 To complete underground service relocation works as part of Melbourne Airport Rail Stage 1: West Footscray to Albion Rail Upgrade, 65 car spaces will be closed in the Sun Crescent car park from Monday 11 May to September 2026. Alternative parking is available near Tottenham Station, enter via Rupert Street. Accessible car spaces remain available.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "69ff16e1-9492-5ab2-bea5-8bff628b84c6",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1769889600",
+              "end": "1798700400"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-SUY-R:",
+              "stop_id": "vic:rail:ALB",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-SUY-R:",
+              "stop_id": "vic:rail:ALB",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-SUY:",
+              "stop_id": "vic:rail:ALB",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-SUY:",
+              "stop_id": "vic:rail:ALB",
+              "direction_id": 1
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Albion Station car park",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "Monday 2 February to late 2026 A new Albion Station will be built as part of Stage 1 of Melbourne Airport Rail and the Sunshine Superhub project. In order to complete major underground service relocation works, Albion Station car park will be closed. Alternative parking will be available at Tottenham Station on Rupert Street. Albion Station, access to platforms and drop off and pick up zones remain open during this time. Accessible car spaces Eight accessible car spaces at Albion Station will remain open. Shared use path closure A section of the shared use path will be closed at the southern end of the car park. Pedestrian and cyclist detours will be in place during this time.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "bc0059c3-ec55-59dc-8104-b6b300ce1ad8",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1779976800",
+              "end": "1798721940"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-GWY:",
+              "stop_id": "vic:rail:GWY",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-GWY:",
+              "stop_id": "vic:rail:GWY",
+              "direction_id": 0
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Glen Waverley Station car space closures",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "Friday 29 May to late 2026 Up to 55 car spaces will be temporarily closed in the Coleman Parade commuter car park due to Suburban Rail Loop project works. Alternative parking is available in the new Myrtle Street car park. For your safety, please follow signage and instructions in place during this time. Find out more about the Suburban Rail Loop.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "ed65b5f6-7460-5fef-9af2-7aca8ffd9e1a",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1781035200",
+              "end": "1804078740"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:MCD",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:MCD",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:MCD",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:MCD",
+              "direction_id": 0
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Macleod Station car space closures",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "Wednesday 10 June until early March 2027 19 car spaces in the station car park are closed, due to project works. Alternative on-street parking is available on Somers Avenue. For your safety, please follow signage in place during this time. Monday 6 July 2026 to Monday 20 July 2026 Up to 49 car spaces in the station car park are closed, due to project works. Alternative on-street parking is available on Somers Avenue. 4 accessible car spaces are temporarily closed, due to project works. Alternative accessible car spaces remain available in the Birdwood Avenue car park. For your safety, please follow signage in place during this time.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "2061fe23-a74f-50f9-a3e2-aeede854081b",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1782842400",
+              "end": "1827579540"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-SUY-R:",
+              "stop_id": "vic:rail:TOT",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-SUY-R:",
+              "stop_id": "vic:rail:TOT",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-SUY:",
+              "stop_id": "vic:rail:TOT",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-SUY:",
+              "stop_id": "vic:rail:TOT",
+              "direction_id": 1
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Tottenham Station car park",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "From Wednesday 1 July 2026 As part of Melbourne Airport Rail Stage 1, we\u2019re delivering six kilometres of major rail upgrades from West Footscray to Albion. In order to complete site investigation works, approximately 120 car spaces will be closed in the Tottenham Station temporary carpark. Alternative and accessible car spaces will remain open.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "10955b17-724e-5d66-b5f6-0c116e59f89a",
+        "alert": {
+          "active_period": [
+            {
+              "start": "1712170800",
+              "end": "1830322800"
+            }
+          ],
+          "informed_entity": [
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:WAT",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE:",
+              "stop_id": "vic:rail:WAT",
+              "direction_id": 0
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:WAT",
+              "direction_id": 1
+            },
+            {
+              "agency_id": "1",
+              "route_id": "aus:vic:vic-02-HBE-R:",
+              "stop_id": "vic:rail:WAT",
+              "direction_id": 0
+            }
+          ],
+          "cause": "OTHER_CAUSE",
+          "effect": "OTHER_EFFECT",
+          "url": {
+            "translation": [
+              {
+                "text": "https://transport.vic.gov.au/disruptions/disruptions-information",
+                "language": "en"
+              }
+            ]
+          },
+          "header_text": {
+            "translation": [
+              {
+                "text": "Planned work: Watsonia Station car park changes",
+                "language": "en"
+              }
+            ]
+          },
+          "description_text": {
+            "translation": [
+              {
+                "text": "From April 2024 to 2028 The Watsonia Station car park has been closed since April 2024. From October 2025, there will be changes for pedestrians, cars, and buses accessing Watsonia Station as part of ongoing works for M80 Ring Road Completion.  new DDA-compliant paths and upgraded crossings to improve safety and accessibility for pedestrians. one-way entrance from Greensborough Highway northbound and a new signalised intersection for exiting vehicles. relocated bus stop and streamlined loop to support service reliability and reduce congestion.  These changes will be in place until a new Watsonia Station car park is built later in the project. We\u2019re planning our work in the station precinct to minimise disruptions.  no changes to the pedestrian overpass or station platform access. maintaining accessible parking and drop-off and pick-up areas near the station entrance. providing more than 500 parking spaces at the nearby Watsonia Station commuter car park.",
+                "language": "en"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,2695 @@
+{
+  "fetch_timestamp": "2026-07-17T04:52:05.660847+00:00",
+  "fetch_latency_ms": 247.88,
+  "payload_bytes": 18687,
+  "response_headers": {},
+  "feed": {
+    "header": {
+      "gtfs_realtime_version": "2.0",
+      "incrementality": "FULL_DATASET",
+      "timestamp": "1784263909"
+    },
+    "entity": [
+      {
+        "id": "02-MDD--55-T6-1699",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-MDD--55-T6-1699",
+            "start_time": "14:09:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-MDD:"
+          },
+          "position": {
+            "latitude": -37.68538,
+            "longitude": 145.0132,
+            "bearing": 6.283412
+          },
+          "timestamp": "1784263891",
+          "vehicle": {
+            "id": "1384T-1434T-167M-168M-267M-268M"
+          }
+        }
+      },
+      {
+        "id": "02-PKM--55-T6-C078",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-PKM--55-T6-C078",
+            "start_time": "13:31:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-PKM:"
+          },
+          "position": {
+            "latitude": -37.816563,
+            "longitude": 144.96698,
+            "bearing": -22.394747
+          },
+          "timestamp": "1784263334",
+          "vehicle": {
+            "id": "9013M-9913M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4916",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4916",
+            "start_time": "13:57:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -37.847584,
+            "longitude": 145.00957,
+            "bearing": -64.32071
+          },
+          "timestamp": "1784263896",
+          "vehicle": {
+            "id": "2527T-2565T-753M-754M-829M-830M"
+          }
+        }
+      },
+      {
+        "id": "02-SHM--55-T6-X089",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SHM--55-T6-X089",
+            "start_time": "14:36:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SHM:"
+          },
+          "position": {
+            "latitude": -37.87648,
+            "longitude": 144.99553,
+            "bearing": 157.25507
+          },
+          "timestamp": "1784263903",
+          "vehicle": {
+            "id": "2545T-2551T-789M-790M-801M-802M"
+          }
+        }
+      },
+      {
+        "id": "02-CGB--55-T6-5811",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CGB--55-T6-5811",
+            "start_time": "14:33:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CGB:"
+          },
+          "position": {
+            "latitude": -37.774387,
+            "longitude": 144.9213,
+            "bearing": -20.130615
+          },
+          "timestamp": "1784263887",
+          "vehicle": {
+            "id": "1045T-1111T-335M-387M-521M-522M"
+          }
+        }
+      },
+      {
+        "id": "02-SUY--55-T6-Z465",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SUY--55-T6-Z465",
+            "start_time": "14:24:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SUY:"
+          },
+          "position": {
+            "latitude": -37.759636,
+            "longitude": 144.81097,
+            "bearing": -32.26563
+          },
+          "timestamp": "1784263888",
+          "vehicle": {
+            "id": "9032M-9932M"
+          }
+        }
+      },
+      {
+        "id": "02-UFD--55-T6-5609",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-UFD--55-T6-5609",
+            "start_time": "14:03:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-UFD:"
+          },
+          "position": {
+            "latitude": -37.6651,
+            "longitude": 144.9464,
+            "bearing": -18.617683
+          },
+          "timestamp": "1784263273",
+          "vehicle": {
+            "id": "1150T-1151T-599M-600M-601M-602M"
+          }
+        }
+      },
+      {
+        "id": "02-SHM--55-T6-X087",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SHM--55-T6-X087",
+            "start_time": "14:21:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SHM:"
+          },
+          "position": {
+            "latitude": -37.950706,
+            "longitude": 145.00443,
+            "bearing": 187.28069
+          },
+          "timestamp": "1784263863",
+          "vehicle": {
+            "id": "2512T-2570T-723M-724M-839M-840M"
+          }
+        }
+      },
+      {
+        "id": "02-WIL--55-T6-6357",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WIL--55-T6-6357",
+            "start_time": "14:10:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WIL:"
+          },
+          "position": {
+            "latitude": -37.86786,
+            "longitude": 144.90561,
+            "bearing": 111.625046
+          },
+          "timestamp": "1784263276",
+          "vehicle": {
+            "id": "2503T-2559T-705M-706M-817M-818M"
+          }
+        }
+      },
+      {
+        "id": "02-SUY--55-T6-Z460",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SUY--55-T6-Z460",
+            "start_time": "14:48:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SUY:"
+          },
+          "position": {
+            "latitude": -37.729927,
+            "longitude": 144.79395,
+            "bearing": 164.67172
+          },
+          "timestamp": "1784263859",
+          "vehicle": {
+            "id": "9047M-9947M"
+          }
+        }
+      },
+      {
+        "id": "02-PKM--55-T6-C065",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-PKM--55-T6-C065",
+            "start_time": "13:55:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-PKM:"
+          },
+          "position": {
+            "latitude": -38.047295,
+            "longitude": 145.35583,
+            "bearing": 112.52975
+          },
+          "timestamp": "1784263897",
+          "vehicle": {
+            "id": "9046M-9946M"
+          }
+        }
+      },
+      {
+        "id": "02-WIL--55-T6-6358",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WIL--55-T6-6358",
+            "start_time": "14:30:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WIL:"
+          },
+          "position": {
+            "latitude": -37.805637,
+            "longitude": 144.94063,
+            "bearing": 146.82478
+          },
+          "timestamp": "1784263853",
+          "vehicle": {
+            "id": "1059T-1098T-417M-418M-495M-496M"
+          }
+        }
+      },
+      {
+        "id": "02-MDD--55-T6-1104",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-MDD--55-T6-1104",
+            "start_time": "14:46:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-MDD:"
+          },
+          "position": {
+            "latitude": -37.64278,
+            "longitude": 145.09358,
+            "bearing": 207.81847
+          },
+          "timestamp": "1784263857",
+          "vehicle": {
+            "id": "1632T-1686T-863M-864M-971M-972M"
+          }
+        }
+      },
+      {
+        "id": "02-CBE--55-T6-C467",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CBE--55-T6-C467",
+            "start_time": "14:25:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CBE:"
+          },
+          "position": {
+            "latitude": -37.925053,
+            "longitude": 145.12132,
+            "bearing": 132.65404
+          },
+          "timestamp": "1784263900",
+          "vehicle": {
+            "id": "9016M-9916M"
+          }
+        }
+      },
+      {
+        "id": "02-HBE--55-T6-1887",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-HBE--55-T6-1887",
+            "start_time": "14:19:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-HBE:"
+          },
+          "position": {
+            "latitude": -37.763405,
+            "longitude": 145.05423,
+            "bearing": 43.011505
+          },
+          "timestamp": "1784263899",
+          "vehicle": {
+            "id": "119M-120M-1347T-1360T-93M-94M"
+          }
+        }
+      },
+      {
+        "id": "02-HBE--55-T6-1296",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-HBE--55-T6-1296",
+            "start_time": "14:00:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-HBE:"
+          },
+          "position": {
+            "latitude": -37.779213,
+            "longitude": 145.0073,
+            "bearing": 268.64716
+          },
+          "timestamp": "1784263903",
+          "vehicle": {
+            "id": "1405T-1630T-209M-210M-859M-860M"
+          }
+        }
+      },
+      {
+        "id": "02-MDD--55-T6-1094",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-MDD--55-T6-1094",
+            "start_time": "14:04:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-MDD:"
+          },
+          "position": {
+            "latitude": -37.813606,
+            "longitude": 144.99197,
+            "bearing": 187.35995
+          },
+          "timestamp": "1784263900",
+          "vehicle": {
+            "id": "1343T-1690T-85M-86M-979M-980M"
+          }
+        }
+      },
+      {
+        "id": "02-CGB--55-T6-5220",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CGB--55-T6-5220",
+            "start_time": "14:55:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CGB:"
+          },
+          "position": {
+            "latitude": -37.60225,
+            "longitude": 144.94318,
+            "bearing": 17.735466
+          },
+          "timestamp": "1784263187",
+          "vehicle": {
+            "id": "2504T-2514T-707M-708M-727M-728M"
+          }
+        }
+      },
+      {
+        "id": "02-SHM--55-T6-X098",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SHM--55-T6-X098",
+            "start_time": "15:01:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SHM:"
+          },
+          "position": {
+            "latitude": -37.950706,
+            "longitude": 145.00443,
+            "bearing": 187.28069
+          },
+          "timestamp": "1784263863",
+          "vehicle": {
+            "id": "2512T-2570T-723M-724M-839M-840M"
+          }
+        }
+      },
+      {
+        "id": "02-HBE--55-T6-1885",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-HBE--55-T6-1885",
+            "start_time": "13:59:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-HBE:"
+          },
+          "position": {
+            "latitude": -37.716393,
+            "longitude": 145.13951,
+            "bearing": 119.64723
+          },
+          "timestamp": "1784263891",
+          "vehicle": {
+            "id": "1328T-1425T-249M-250M-55M-56M"
+          }
+        }
+      },
+      {
+        "id": "02-PKM--55-T6-C084",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-PKM--55-T6-C084",
+            "start_time": "14:31:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-PKM:"
+          },
+          "position": {
+            "latitude": -38.027874,
+            "longitude": 145.30388,
+            "bearing": -59.60265
+          },
+          "timestamp": "1784263841",
+          "vehicle": {
+            "id": "9003M-9903M"
+          }
+        }
+      },
+      {
+        "id": "02-MDD--55-T6-1108",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-MDD--55-T6-1108",
+            "start_time": "15:06:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-MDD:"
+          },
+          "position": {
+            "latitude": -37.602615,
+            "longitude": 145.10089,
+            "bearing": 188.84154
+          },
+          "timestamp": "1784263856",
+          "vehicle": {
+            "id": "1303T-1678T-5M-6M-955M-956M"
+          }
+        }
+      },
+      {
+        "id": "02-SUY--55-T6-Z467",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SUY--55-T6-Z467",
+            "start_time": "14:44:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SUY:"
+          },
+          "position": {
+            "latitude": -37.801456,
+            "longitude": 144.9403,
+            "bearing": 259.2525
+          },
+          "timestamp": "1784263856",
+          "vehicle": {
+            "id": "9013M-9913M"
+          }
+        }
+      },
+      {
+        "id": "02-HBE--55-T6-1304",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-HBE--55-T6-1304",
+            "start_time": "14:40:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-HBE:"
+          },
+          "position": {
+            "latitude": -37.695797,
+            "longitude": 145.15228,
+            "bearing": 184.46716
+          },
+          "timestamp": "1784263902",
+          "vehicle": {
+            "id": "1379T-1410T-157M-158M-219M-220M"
+          }
+        }
+      },
+      {
+        "id": "02-BEG--55-T6-3607",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-BEG--55-T6-3607",
+            "start_time": "14:45:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-BEG:"
+          },
+          "position": {
+            "latitude": -37.811543,
+            "longitude": 144.9567,
+            "bearing": 69.085434
+          },
+          "timestamp": "1784263880",
+          "vehicle": {
+            "id": "1308T-15M-16M"
+          }
+        }
+      },
+      {
+        "id": "02-SHM--55-T6-X096",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SHM--55-T6-X096",
+            "start_time": "14:46:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SHM:"
+          },
+          "position": {
+            "latitude": -37.925644,
+            "longitude": 144.98947,
+            "bearing": 17.74467
+          },
+          "timestamp": "1784263891",
+          "vehicle": {
+            "id": "2521T-2536T-741M-742M-771M-772M"
+          }
+        }
+      },
+      {
+        "id": "02-PKM--55-T6-C080",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-PKM--55-T6-C080",
+            "start_time": "13:51:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-PKM:"
+          },
+          "position": {
+            "latitude": -37.874146,
+            "longitude": 145.03824,
+            "bearing": -43.901352
+          },
+          "timestamp": "1784263900",
+          "vehicle": {
+            "id": "9068M-9968M"
+          }
+        }
+      },
+      {
+        "id": "02-GWY--55-T6-2609",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-GWY--55-T6-2609",
+            "start_time": "14:10:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-GWY:"
+          },
+          "position": {
+            "latitude": -37.87675,
+            "longitude": 145.15213,
+            "bearing": 107.74843
+          },
+          "timestamp": "1784263887",
+          "vehicle": {
+            "id": "1385T-1673T-169M-170M-945M-946M"
+          }
+        }
+      },
+      {
+        "id": "02-MDD--55-T6-1098",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-MDD--55-T6-1098",
+            "start_time": "14:23:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-MDD:"
+          },
+          "position": {
+            "latitude": -37.740707,
+            "longitude": 145.00023,
+            "bearing": 188.80865
+          },
+          "timestamp": "1784263901",
+          "vehicle": {
+            "id": "1307T-1348T-13M-14M-95M-96M"
+          }
+        }
+      },
+      {
+        "id": "02-GWY--55-T6-2613",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-GWY--55-T6-2613",
+            "start_time": "14:40:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-GWY:"
+          },
+          "position": {
+            "latitude": -37.81293,
+            "longitude": 144.97403,
+            "bearing": 157.86227
+          },
+          "timestamp": "1784263898",
+          "vehicle": {
+            "id": "1689T-977M-978M"
+          }
+        }
+      },
+      {
+        "id": "02-GWY--55-T6-2086",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-GWY--55-T6-2086",
+            "start_time": "14:17:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-GWY:"
+          },
+          "position": {
+            "latitude": -37.81796,
+            "longitude": 144.9676,
+            "bearing": 248.9625
+          },
+          "timestamp": "1784263827",
+          "vehicle": {
+            "id": "1374T-1404T-147M-148M-207M-208M"
+          }
+        }
+      },
+      {
+        "id": "02-CBE--55-T6-C482",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CBE--55-T6-C482",
+            "start_time": "14:17:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CBE:"
+          },
+          "position": {
+            "latitude": -37.926414,
+            "longitude": 145.12291,
+            "bearing": -51.035873
+          },
+          "timestamp": "1784263874",
+          "vehicle": {
+            "id": "9051M-9951M"
+          }
+        }
+      },
+      {
+        "id": "02-LIL--55-T6-3807",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-LIL--55-T6-3807",
+            "start_time": "14:30:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-LIL:"
+          },
+          "position": {
+            "latitude": -37.82655,
+            "longitude": 145.05739,
+            "bearing": 90.0
+          },
+          "timestamp": "1784263891",
+          "vehicle": {
+            "id": "1444T-287M-288M"
+          }
+        }
+      },
+      {
+        "id": "02-SUY--55-T6-Z078",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SUY--55-T6-Z078",
+            "start_time": "14:45:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SUY:"
+          },
+          "position": {
+            "latitude": -37.636143,
+            "longitude": 144.72327,
+            "bearing": 147.33553
+          },
+          "timestamp": "1784263877",
+          "vehicle": {
+            "id": "9042M-9942M"
+          }
+        }
+      },
+      {
+        "id": "02-WIL--55-T6-6361",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WIL--55-T6-6361",
+            "start_time": "14:50:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WIL:"
+          },
+          "position": {
+            "latitude": -37.819626,
+            "longitude": 144.96208,
+            "bearing": 258.1718
+          },
+          "timestamp": "1784263894",
+          "vehicle": {
+            "id": "2537T-2540T-773M-774M-779M-780M"
+          }
+        }
+      },
+      {
+        "id": "02-UFD--55-T6-5014",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-UFD--55-T6-5014",
+            "start_time": "14:32:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-UFD:"
+          },
+          "position": {
+            "latitude": -37.777023,
+            "longitude": 144.9583,
+            "bearing": 188.70367
+          },
+          "timestamp": "1784263897",
+          "vehicle": {
+            "id": "2515T-2556T-729M-730M-811M-812M"
+          }
+        }
+      },
+      {
+        "id": "02-UFD--55-T6-5012",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-UFD--55-T6-5012",
+            "start_time": "14:12:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-UFD:"
+          },
+          "position": {
+            "latitude": -37.81832,
+            "longitude": 144.96674,
+            "bearing": 69.34787
+          },
+          "timestamp": "1784263741",
+          "vehicle": {
+            "id": "1134T-1181T-567M-568M-611M-662M"
+          }
+        }
+      },
+      {
+        "id": "02-LIL--55-T6-2204",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-LIL--55-T6-2204",
+            "start_time": "14:39:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-LIL:"
+          },
+          "position": {
+            "latitude": -37.826607,
+            "longitude": 144.99794,
+            "bearing": -83.269516
+          },
+          "timestamp": "1784263898",
+          "vehicle": {
+            "id": "1634T-1670T-867M-868M-939M-940M"
+          }
+        }
+      },
+      {
+        "id": "02-CBE--55-T6-C484",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CBE--55-T6-C484",
+            "start_time": "14:36:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CBE:"
+          },
+          "position": {
+            "latitude": -37.98992,
+            "longitude": 145.20947,
+            "bearing": -60.86744
+          },
+          "timestamp": "1784263876",
+          "vehicle": {
+            "id": "9021M-9921M"
+          }
+        }
+      },
+      {
+        "id": "02-ALM--55-T6-2805",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-ALM--55-T6-2805",
+            "start_time": "14:53:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-ALM:"
+          },
+          "position": {
+            "latitude": -37.818024,
+            "longitude": 144.96686,
+            "bearing": 248.96492
+          },
+          "timestamp": "1784263629",
+          "vehicle": {
+            "id": "1661T-921M-922M"
+          }
+        }
+      },
+      {
+        "id": "02-SUY--55-T6-Z080",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SUY--55-T6-Z080",
+            "start_time": "15:06:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SUY:"
+          },
+          "position": {
+            "latitude": -37.578968,
+            "longitude": 144.72804,
+            "bearing": 28.508142
+          },
+          "timestamp": "1784263437",
+          "vehicle": {
+            "id": "9053M-9953M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4922",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4922",
+            "start_time": "14:27:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -37.984627,
+            "longitude": 145.06706,
+            "bearing": -30.559141
+          },
+          "timestamp": "1784263899",
+          "vehicle": {
+            "id": "2511T-2558T-721M-722M-815M-816M"
+          }
+        }
+      },
+      {
+        "id": "02-CGB--55-T6-5214",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CGB--55-T6-5214",
+            "start_time": "14:35:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CGB:"
+          },
+          "position": {
+            "latitude": -37.716946,
+            "longitude": 144.92119,
+            "bearing": 164.46666
+          },
+          "timestamp": "1784263852",
+          "vehicle": {
+            "id": "2516T-2522T-731M-732M-743M-744M"
+          }
+        }
+      },
+      {
+        "id": "02-PKM--55-T6-C069",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-PKM--55-T6-C069",
+            "start_time": "14:35:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-PKM:"
+          },
+          "position": {
+            "latitude": -37.881027,
+            "longitude": 145.04778,
+            "bearing": 125.09036
+          },
+          "timestamp": "1784263897",
+          "vehicle": {
+            "id": "9048M-9948M"
+          }
+        }
+      },
+      {
+        "id": "02-UFD--55-T6-5613",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-UFD--55-T6-5613",
+            "start_time": "14:43:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-UFD:"
+          },
+          "position": {
+            "latitude": -37.81166,
+            "longitude": 144.95697,
+            "bearing": 248.95422
+          },
+          "timestamp": "1784263855",
+          "vehicle": {
+            "id": "1154T-1184T-607M-608M-667M-668M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4429",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4429",
+            "start_time": "14:54:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -37.818382,
+            "longitude": 144.9668,
+            "bearing": 68.80487
+          },
+          "timestamp": "1784263830",
+          "vehicle": {
+            "id": "1146T-1171T-591M-592M-642M-673M"
+          }
+        }
+      },
+      {
+        "id": "02-CBE--55-T6-C494",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CBE--55-T6-C494",
+            "start_time": "15:24:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CBE:"
+          },
+          "position": {
+            "latitude": -38.097683,
+            "longitude": 145.27832,
+            "bearing": 0.0
+          },
+          "timestamp": "1784263727",
+          "vehicle": {
+            "id": "9040M-9940M"
+          }
+        }
+      },
+      {
+        "id": "02-CBE--55-T6-C469",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CBE--55-T6-C469",
+            "start_time": "14:45:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CBE:"
+          },
+          "position": {
+            "latitude": -37.847473,
+            "longitude": 145.00963,
+            "bearing": 118.670685
+          },
+          "timestamp": "1784263903",
+          "vehicle": {
+            "id": "9061M-9961M"
+          }
+        }
+      },
+      {
+        "id": "02-LIL--55-T6-3210",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-LIL--55-T6-3210",
+            "start_time": "14:39:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-LIL:"
+          },
+          "position": {
+            "latitude": -37.81185,
+            "longitude": 145.2504,
+            "bearing": 248.72261
+          },
+          "timestamp": "1784263859",
+          "vehicle": {
+            "id": "1644T-1657T-887M-888M-913M-914M"
+          }
+        }
+      },
+      {
+        "id": "02-CBE--55-T6-C480",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CBE--55-T6-C480",
+            "start_time": "13:57:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CBE:"
+          },
+          "position": {
+            "latitude": -37.833714,
+            "longitude": 144.9733,
+            "bearing": -41.06913
+          },
+          "timestamp": "1784263897",
+          "vehicle": {
+            "id": "9024M-9924M"
+          }
+        }
+      },
+      {
+        "id": "02-LIL--55-T6-3208",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-LIL--55-T6-3208",
+            "start_time": "14:09:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-LIL:"
+          },
+          "position": {
+            "latitude": -37.825962,
+            "longitude": 145.06783,
+            "bearing": 255.52971
+          },
+          "timestamp": "1784263877",
+          "vehicle": {
+            "id": "1401T-1652T-201M-202M-903M-904M"
+          }
+        }
+      },
+      {
+        "id": "02-CGB--55-T6-5210",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CGB--55-T6-5210",
+            "start_time": "13:55:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CGB:"
+          },
+          "position": {
+            "latitude": -37.81832,
+            "longitude": 144.96674,
+            "bearing": 69.34787
+          },
+          "timestamp": "1784263360",
+          "vehicle": {
+            "id": "1154T-1184T-607M-608M-667M-668M"
+          }
+        }
+      },
+      {
+        "id": "02-SUY--55-T6-Z065",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SUY--55-T6-Z065",
+            "start_time": "13:54:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SUY:"
+          },
+          "position": {
+            "latitude": -37.578968,
+            "longitude": 144.72804,
+            "bearing": 28.508142
+          },
+          "timestamp": "1784263437",
+          "vehicle": {
+            "id": "9053M-9953M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4928",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4928",
+            "start_time": "14:57:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -38.143192,
+            "longitude": 145.12576,
+            "bearing": 0.0
+          },
+          "timestamp": "1784263515",
+          "vehicle": {
+            "id": "115M-116M-1358T-1441T-281M-282M"
+          }
+        }
+      },
+      {
+        "id": "02-CBE--55-T6-C488",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CBE--55-T6-C488",
+            "start_time": "14:56:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CBE:"
+          },
+          "position": {
+            "latitude": -38.09969,
+            "longitude": 145.28055,
+            "bearing": 0.0
+          },
+          "timestamp": "1784263681",
+          "vehicle": {
+            "id": "9041M-9941M"
+          }
+        }
+      },
+      {
+        "id": "02-GWY--55-T6-2611",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-GWY--55-T6-2611",
+            "start_time": "14:25:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-GWY:"
+          },
+          "position": {
+            "latitude": -37.85244,
+            "longitude": 145.04973,
+            "bearing": 111.71938
+          },
+          "timestamp": "1784263897",
+          "vehicle": {
+            "id": "1337T-1417T-233M-234M-73M-74M"
+          }
+        }
+      },
+      {
+        "id": "02-MDD--55-T6-1701",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-MDD--55-T6-1701",
+            "start_time": "14:29:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-MDD:"
+          },
+          "position": {
+            "latitude": -37.7838,
+            "longitude": 144.99321,
+            "bearing": -50.142467
+          },
+          "timestamp": "1784263871",
+          "vehicle": {
+            "id": "1372T-1397T-143M-144M-193M-194M"
+          }
+        }
+      },
+      {
+        "id": "02-WIL--55-T6-6360",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WIL--55-T6-6360",
+            "start_time": "14:50:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WIL:"
+          },
+          "position": {
+            "latitude": -37.865158,
+            "longitude": 144.89731,
+            "bearing": -68.472916
+          },
+          "timestamp": "1784263890",
+          "vehicle": {
+            "id": "2503T-2559T-705M-706M-817M-818M"
+          }
+        }
+      },
+      {
+        "id": "02-SHM--55-T6-X094",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SHM--55-T6-X094",
+            "start_time": "14:30:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SHM:"
+          },
+          "position": {
+            "latitude": -37.847694,
+            "longitude": 144.99019,
+            "bearing": 7.916767
+          },
+          "timestamp": "1784263868",
+          "vehicle": {
+            "id": "2525T-2543T-749M-750M-785M-786M"
+          }
+        }
+      },
+      {
+        "id": "02-CBE--55-T6-C463",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CBE--55-T6-C463",
+            "start_time": "13:45:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CBE:"
+          },
+          "position": {
+            "latitude": -38.097942,
+            "longitude": 145.27809,
+            "bearing": 133.08592
+          },
+          "timestamp": "1784263489",
+          "vehicle": {
+            "id": "9041M-9941M"
+          }
+        }
+      },
+      {
+        "id": "02-BEG--55-T6-3008",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-BEG--55-T6-3008",
+            "start_time": "14:17:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-BEG:"
+          },
+          "position": {
+            "latitude": -37.820553,
+            "longitude": 145.14124,
+            "bearing": 236.77637
+          },
+          "timestamp": "1784263902",
+          "vehicle": {
+            "id": "1318T-1639T-35M-36M-877M-878M"
+          }
+        }
+      },
+      {
+        "id": "02-WER--55-T6-6256",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WER--55-T6-6256",
+            "start_time": "14:50:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WER:"
+          },
+          "position": {
+            "latitude": -37.861538,
+            "longitude": 144.78543,
+            "bearing": 98.29114
+          },
+          "timestamp": "1784263901",
+          "vehicle": {
+            "id": "2563T-2568T-825M-826M-835M-836M"
+          }
+        }
+      },
+      {
+        "id": "02-WER--55-T6-6472",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WER--55-T6-6472",
+            "start_time": "14:12:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WER:"
+          },
+          "position": {
+            "latitude": -37.818546,
+            "longitude": 144.96681,
+            "bearing": 72.51422
+          },
+          "timestamp": "1784263894",
+          "vehicle": {
+            "id": "2548T-2567T-795M-796M-833M-834M"
+          }
+        }
+      },
+      {
+        "id": "02-CGB--55-T6-5809",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CGB--55-T6-5809",
+            "start_time": "14:13:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CGB:"
+          },
+          "position": {
+            "latitude": -37.661507,
+            "longitude": 144.92593,
+            "bearing": 7.7146893
+          },
+          "timestamp": "1784263899",
+          "vehicle": {
+            "id": "2517T-2546T-733M-734M-791M-792M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4423",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4423",
+            "start_time": "14:24:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -37.91809,
+            "longitude": 145.03693,
+            "bearing": 188.49948
+          },
+          "timestamp": "1784263893",
+          "vehicle": {
+            "id": "1419T-1626T-237M-238M-851M-852M"
+          }
+        }
+      },
+      {
+        "id": "vic:02CGB:_:R:vpt._Craigieburn_5216_20260717",
+        "vehicle": {
+          "trip": {
+            "trip_id": "vic:02CGB:_:R:vpt._Craigieburn_5216_20260717",
+            "start_time": "15:17:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CGB:"
+          },
+          "position": {
+            "latitude": -37.62823,
+            "longitude": 144.9375,
+            "bearing": 187.87003
+          },
+          "timestamp": "1784263901",
+          "vehicle": {
+            "id": "2513T-2530T-725M-726M-759M-760M"
+          }
+        }
+      },
+      {
+        "id": "02-SUY--55-T6-Z069",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SUY--55-T6-Z069",
+            "start_time": "14:34:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SUY:"
+          },
+          "position": {
+            "latitude": -37.800907,
+            "longitude": 144.87642,
+            "bearing": -83.48887
+          },
+          "timestamp": "1784263901",
+          "vehicle": {
+            "id": "9039M-9939M"
+          }
+        }
+      },
+      {
+        "id": "02-SUY--55-T6-Z074",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SUY--55-T6-Z074",
+            "start_time": "14:06:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SUY:"
+          },
+          "position": {
+            "latitude": -37.799873,
+            "longitude": 144.95946,
+            "bearing": 97.23648
+          },
+          "timestamp": "1784263744",
+          "vehicle": {
+            "id": "9064M-9964M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4421",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4421",
+            "start_time": "14:14:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -37.967426,
+            "longitude": 145.05511,
+            "bearing": 149.59932
+          },
+          "timestamp": "1784263897",
+          "vehicle": {
+            "id": "1066T-1124T-431M-432M-547M-548M"
+          }
+        }
+      },
+      {
+        "id": "02-HBE--55-T6-1294",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-HBE--55-T6-1294",
+            "start_time": "14:01:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-HBE:"
+          },
+          "position": {
+            "latitude": -37.817966,
+            "longitude": 144.96683,
+            "bearing": 248.80325
+          },
+          "timestamp": "1784263518",
+          "vehicle": {
+            "id": "1325T-1377T-153M-154M-49M-50M"
+          }
+        }
+      },
+      {
+        "id": "02-WER--55-T6-6254",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WER--55-T6-6254",
+            "start_time": "14:30:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WER:"
+          },
+          "position": {
+            "latitude": -37.824436,
+            "longitude": 144.8875,
+            "bearing": 10.217453
+          },
+          "timestamp": "1784263898",
+          "vehicle": {
+            "id": "1036T-1093T-371M-372M-485M-486M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4918",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4918",
+            "start_time": "14:07:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -37.884243,
+            "longitude": 145.0454,
+            "bearing": 31.878529
+          },
+          "timestamp": "1784263902",
+          "vehicle": {
+            "id": "109M-110M-1355T-1390T-179M-180M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4425",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4425",
+            "start_time": "14:34:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -37.875416,
+            "longitude": 145.03958,
+            "bearing": 135.45833
+          },
+          "timestamp": "1784263896",
+          "vehicle": {
+            "id": "1412T-1676T-223M-224M-951M-952M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4930",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4930",
+            "start_time": "15:07:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -38.138668,
+            "longitude": 145.12802,
+            "bearing": 198.13948
+          },
+          "timestamp": "1784263861",
+          "vehicle": {
+            "id": "1047T-1126T-391M-392M-518M-551M"
+          }
+        }
+      },
+      {
+        "id": "vic:02BEG:_:H:vpt._Belgrave_3445_20260717",
+        "vehicle": {
+          "trip": {
+            "trip_id": "vic:02BEG:_:H:vpt._Belgrave_3445_20260717",
+            "start_time": "14:59:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-BEG:"
+          },
+          "position": {
+            "latitude": -37.818165,
+            "longitude": 144.96689,
+            "bearing": 68.80487
+          },
+          "timestamp": "1784263833",
+          "vehicle": {
+            "id": "1374T-1404T-147M-148M-207M-208M"
+          }
+        }
+      },
+      {
+        "id": "02-SUY--55-T6-Z463",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SUY--55-T6-Z463",
+            "start_time": "14:04:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SUY:"
+          },
+          "position": {
+            "latitude": -37.69692,
+            "longitude": 144.77081,
+            "bearing": 0.0
+          },
+          "timestamp": "1784263771",
+          "vehicle": {
+            "id": "9052M-9952M"
+          }
+        }
+      },
+      {
+        "id": "02-ALM--55-T6-2348",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-ALM--55-T6-2348",
+            "start_time": "14:23:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-ALM:"
+          },
+          "position": {
+            "latitude": -37.82595,
+            "longitude": 145.05515,
+            "bearing": 123.7905
+          },
+          "timestamp": "1784263527",
+          "vehicle": {
+            "id": "1636T-871M-872M"
+          }
+        }
+      },
+      {
+        "id": "02-WER--55-T6-6252",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WER--55-T6-6252",
+            "start_time": "14:10:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WER:"
+          },
+          "position": {
+            "latitude": -37.81881,
+            "longitude": 144.96646,
+            "bearing": 75.16309
+          },
+          "timestamp": "1784263722",
+          "vehicle": {
+            "id": "1135T-1169T-570M-637M-638M-661M"
+          }
+        }
+      },
+      {
+        "id": "02-SUY--55-T6-Z456",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SUY--55-T6-Z456",
+            "start_time": "14:08:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SUY:"
+          },
+          "position": {
+            "latitude": -37.816357,
+            "longitude": 144.96703,
+            "bearing": 158.80916
+          },
+          "timestamp": "1784263420",
+          "vehicle": {
+            "id": "9061M-9961M"
+          }
+        }
+      },
+      {
+        "id": "02-STY--55-T6-8511",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-STY--55-T6-8511",
+            "start_time": "14:35:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-STY:"
+          },
+          "position": {
+            "latitude": -38.166016,
+            "longitude": 145.1674,
+            "bearing": 1.5807719
+          },
+          "timestamp": "1784263230",
+          "vehicle": {
+            "id": "train140028"
+          }
+        }
+      },
+      {
+        "id": "02-SUY--55-T6-Z458",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SUY--55-T6-Z458",
+            "start_time": "14:28:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SUY:"
+          },
+          "position": {
+            "latitude": -37.80238,
+            "longitude": 144.89029,
+            "bearing": 93.73556
+          },
+          "timestamp": "1784263740",
+          "vehicle": {
+            "id": "9044M-9944M"
+          }
+        }
+      },
+      {
+        "id": "02-WER--55-T6-6471",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WER--55-T6-6471",
+            "start_time": "14:35:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WER:"
+          },
+          "position": {
+            "latitude": -37.828007,
+            "longitude": 144.88663,
+            "bearing": 190.22217
+          },
+          "timestamp": "1784263900",
+          "vehicle": {
+            "id": "1072T-1101T-443M-444M-501M-502M"
+          }
+        }
+      },
+      {
+        "id": "02-BEG--55-T6-3605",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-BEG--55-T6-3605",
+            "start_time": "14:12:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-BEG:"
+          },
+          "position": {
+            "latitude": -37.820854,
+            "longitude": 145.13275,
+            "bearing": 99.330086
+          },
+          "timestamp": "1784263883",
+          "vehicle": {
+            "id": "1391T-1628T-181M-182M-855M-856M"
+          }
+        }
+      },
+      {
+        "id": "02-SUY--55-T6-Z461",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SUY--55-T6-Z461",
+            "start_time": "13:44:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SUY:"
+          },
+          "position": {
+            "latitude": -37.69852,
+            "longitude": 144.77206,
+            "bearing": -0.583373
+          },
+          "timestamp": "1784263711",
+          "vehicle": {
+            "id": "9047M-9947M"
+          }
+        }
+      },
+      {
+        "id": "02-PKM--55-T6-C082",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-PKM--55-T6-C082",
+            "start_time": "14:11:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-PKM:"
+          },
+          "position": {
+            "latitude": -37.94593,
+            "longitude": 145.14867,
+            "bearing": -47.51577
+          },
+          "timestamp": "1784263899",
+          "vehicle": {
+            "id": "9006M-9906M"
+          }
+        }
+      },
+      {
+        "id": "02-WER--55-T6-6469",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WER--55-T6-6469",
+            "start_time": "14:15:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WER:"
+          },
+          "position": {
+            "latitude": -37.871967,
+            "longitude": 144.73979,
+            "bearing": 250.87143
+          },
+          "timestamp": "1784263901",
+          "vehicle": {
+            "id": "1369T-137M-138M-1428T-255M-256M"
+          }
+        }
+      },
+      {
+        "id": "02-WER--55-T6-6476",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WER--55-T6-6476",
+            "start_time": "14:52:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WER:"
+          },
+          "position": {
+            "latitude": -37.89989,
+            "longitude": 144.66017,
+            "bearing": 0.0
+          },
+          "timestamp": "1784263129",
+          "vehicle": {
+            "id": "1142T-1148T-595M-596M-629M-630M"
+          }
+        }
+      },
+      {
+        "id": "02-WER--55-T6-6259",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WER--55-T6-6259",
+            "start_time": "14:20:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WER:"
+          },
+          "position": {
+            "latitude": -37.867065,
+            "longitude": 144.82881,
+            "bearing": -83.82247
+          },
+          "timestamp": "1784263890",
+          "vehicle": {
+            "id": "train140151"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4912",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4912",
+            "start_time": "13:37:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -37.818382,
+            "longitude": 144.9668,
+            "bearing": 68.80487
+          },
+          "timestamp": "1784263830",
+          "vehicle": {
+            "id": "1146T-1171T-591M-592M-642M-673M"
+          }
+        }
+      },
+      {
+        "id": "02-SUY--55-T6-Z067",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SUY--55-T6-Z067",
+            "start_time": "14:14:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SUY:"
+          },
+          "position": {
+            "latitude": -37.700733,
+            "longitude": 144.77365,
+            "bearing": -33.011726
+          },
+          "timestamp": "1784263894",
+          "vehicle": {
+            "id": "9045M-9945M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4926",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4926",
+            "start_time": "14:47:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -38.114365,
+            "longitude": 145.13367,
+            "bearing": -35.430916
+          },
+          "timestamp": "1784263899",
+          "vehicle": {
+            "id": "1040T-1065T-379M-380M-429M-430M"
+          }
+        }
+      },
+      {
+        "id": "02-WER--55-T6-6261",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WER--55-T6-6261",
+            "start_time": "14:40:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WER:"
+          },
+          "position": {
+            "latitude": -37.798615,
+            "longitude": 144.90927,
+            "bearing": 257.4492
+          },
+          "timestamp": "1784263903",
+          "vehicle": {
+            "id": "1152T-1189T-603M-604M-677M-678M"
+          }
+        }
+      },
+      {
+        "id": "02-HBE--55-T6-1889",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-HBE--55-T6-1889",
+            "start_time": "14:39:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-HBE:"
+          },
+          "position": {
+            "latitude": -37.81684,
+            "longitude": 144.9874,
+            "bearing": 88.20659
+          },
+          "timestamp": "1784263894",
+          "vehicle": {
+            "id": "1433T-265M-266M"
+          }
+        }
+      },
+      {
+        "id": "02-UFD--55-T6-5016",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-UFD--55-T6-5016",
+            "start_time": "14:52:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-UFD:"
+          },
+          "position": {
+            "latitude": -37.66608,
+            "longitude": 144.9468,
+            "bearing": 161.38232
+          },
+          "timestamp": "1784263273",
+          "vehicle": {
+            "id": "1150T-1151T-599M-600M-601M-602M"
+          }
+        }
+      },
+      {
+        "id": "02-SUY--55-T6-Z076",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SUY--55-T6-Z076",
+            "start_time": "14:26:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SUY:"
+          },
+          "position": {
+            "latitude": -37.78753,
+            "longitude": 144.83223,
+            "bearing": 147.68665
+          },
+          "timestamp": "1784263862",
+          "vehicle": {
+            "id": "9001M-9901M"
+          }
+        }
+      },
+      {
+        "id": "02-ALM--55-T6-2350",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-ALM--55-T6-2350",
+            "start_time": "14:38:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-ALM:"
+          },
+          "position": {
+            "latitude": -37.82685,
+            "longitude": 145.06938,
+            "bearing": -45.0
+          },
+          "timestamp": "1784263901",
+          "vehicle": {
+            "id": "1395T-189M-190M"
+          }
+        }
+      },
+      {
+        "id": "02-ALM--55-T6-2346",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-ALM--55-T6-2346",
+            "start_time": "14:08:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-ALM:"
+          },
+          "position": {
+            "latitude": -37.82618,
+            "longitude": 145.06671,
+            "bearing": 75.52971
+          },
+          "timestamp": "1784263368",
+          "vehicle": {
+            "id": "1660T-919M-920M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4415",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4415",
+            "start_time": "13:44:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -38.138668,
+            "longitude": 145.12802,
+            "bearing": 198.13948
+          },
+          "timestamp": "1784263861",
+          "vehicle": {
+            "id": "1047T-1126T-391M-392M-518M-551M"
+          }
+        }
+      },
+      {
+        "id": "02-SHM--55-T6-X091",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SHM--55-T6-X091",
+            "start_time": "14:51:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SHM:"
+          },
+          "position": {
+            "latitude": -37.818222,
+            "longitude": 144.96918,
+            "bearing": 68.74109
+          },
+          "timestamp": "1784263880",
+          "vehicle": {
+            "id": "2571T-2572T-841M-842M-843M-844M"
+          }
+        }
+      },
+      {
+        "id": "02-HBE--55-T6-1300",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-HBE--55-T6-1300",
+            "start_time": "14:41:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-HBE:"
+          },
+          "position": {
+            "latitude": -37.706074,
+            "longitude": 145.08908,
+            "bearing": 206.41408
+          },
+          "timestamp": "1784263882",
+          "vehicle": {
+            "id": "105M-106M-1353T-1664T-927M-928M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4914",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4914",
+            "start_time": "13:47:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -37.811348,
+            "longitude": 144.97327,
+            "bearing": -21.12944
+          },
+          "timestamp": "1784263900",
+          "vehicle": {
+            "id": "2531T-2569T-761M-762M-837M-838M"
+          }
+        }
+      },
+      {
+        "id": "02-LIL--55-T6-3805",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-LIL--55-T6-3805",
+            "start_time": "13:57:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-LIL:"
+          },
+          "position": {
+            "latitude": -37.811836,
+            "longitude": 145.24979,
+            "bearing": 70.56384
+          },
+          "timestamp": "1784263898",
+          "vehicle": {
+            "id": "123M-124M-1362T-1415T-229M-230M"
+          }
+        }
+      },
+      {
+        "id": "02-GWY--55-T6-2615",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-GWY--55-T6-2615",
+            "start_time": "14:55:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-GWY:"
+          },
+          "position": {
+            "latitude": -37.817986,
+            "longitude": 144.9674,
+            "bearing": 248.73314
+          },
+          "timestamp": "1784263764",
+          "vehicle": {
+            "id": "1326T-1688T-51M-52M-975M-976M"
+          }
+        }
+      },
+      {
+        "id": "02-MDD--55-T6-1697",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-MDD--55-T6-1697",
+            "start_time": "13:49:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-MDD:"
+          },
+          "position": {
+            "latitude": -37.602474,
+            "longitude": 145.10094,
+            "bearing": 8.703195
+          },
+          "timestamp": "1784263856",
+          "vehicle": {
+            "id": "1303T-1678T-5M-6M-955M-956M"
+          }
+        }
+      },
+      {
+        "id": "02-PKM--55-T6-C063",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-PKM--55-T6-C063",
+            "start_time": "13:35:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-PKM:"
+          },
+          "position": {
+            "latitude": -38.084373,
+            "longitude": 145.50668,
+            "bearing": 102.64614
+          },
+          "timestamp": "1784263721",
+          "vehicle": {
+            "id": "9027M-9927M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4417",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4417",
+            "start_time": "13:54:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -38.07847,
+            "longitude": 145.12338,
+            "bearing": 168.73563
+          },
+          "timestamp": "1784263894",
+          "vehicle": {
+            "id": "1100T-1125T-499M-534M-549M-550M"
+          }
+        }
+      },
+      {
+        "id": "02-BEG--55-T6-3010",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-BEG--55-T6-3010",
+            "start_time": "14:47:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-BEG:"
+          },
+          "position": {
+            "latitude": -37.90338,
+            "longitude": 145.33096,
+            "bearing": -40.67494
+          },
+          "timestamp": "1784263893",
+          "vehicle": {
+            "id": "133M-134M-1367T-1388T-175M-176M"
+          }
+        }
+      },
+      {
+        "id": "02-CGB--55-T6-5813",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CGB--55-T6-5813",
+            "start_time": "14:53:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CGB:"
+          },
+          "position": {
+            "latitude": -37.81832,
+            "longitude": 144.96674,
+            "bearing": 69.34787
+          },
+          "timestamp": "1784263741",
+          "vehicle": {
+            "id": "1134T-1181T-567M-568M-611M-662M"
+          }
+        }
+      },
+      {
+        "id": "02-PKM--55-T6-C067",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-PKM--55-T6-C067",
+            "start_time": "14:15:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-PKM:"
+          },
+          "position": {
+            "latitude": -37.965202,
+            "longitude": 145.17447,
+            "bearing": 132.53572
+          },
+          "timestamp": "1784263895",
+          "vehicle": {
+            "id": "9020M-9920M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4427",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4427",
+            "start_time": "14:44:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -37.840042,
+            "longitude": 144.99243,
+            "bearing": 158.03806
+          },
+          "timestamp": "1784263890",
+          "vehicle": {
+            "id": "2541T-781M-782M"
+          }
+        }
+      },
+      {
+        "id": "02-GWY--55-T6-2088",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-GWY--55-T6-2088",
+            "start_time": "14:32:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-GWY:"
+          },
+          "position": {
+            "latitude": -37.84988,
+            "longitude": 145.04243,
+            "bearing": -52.239212
+          },
+          "timestamp": "1784263876",
+          "vehicle": {
+            "id": "11M-12M-1302T-1306T-3M-4M"
+          }
+        }
+      },
+      {
+        "id": "02-PKM--55-T6-C086",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-PKM--55-T6-C086",
+            "start_time": "14:51:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-PKM:"
+          },
+          "position": {
+            "latitude": -38.084064,
+            "longitude": 145.50513,
+            "bearing": -77.490585
+          },
+          "timestamp": "1784263899",
+          "vehicle": {
+            "id": "9023M-9923M"
+          }
+        }
+      },
+      {
+        "id": "02-SHM--55-T6-X092",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SHM--55-T6-X092",
+            "start_time": "14:15:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SHM:"
+          },
+          "position": {
+            "latitude": -37.818527,
+            "longitude": 144.96765,
+            "bearing": 249.59012
+          },
+          "timestamp": "1784263576",
+          "vehicle": {
+            "id": "2518T-2553T-735M-736M-805M-806M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4419",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4419",
+            "start_time": "14:04:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -38.015274,
+            "longitude": 145.09355,
+            "bearing": -32.03492
+          },
+          "timestamp": "1784263899",
+          "vehicle": {
+            "id": "1153T-1166T-605M-606M-631M-632M"
+          }
+        }
+      },
+      {
+        "id": "02-BEG--55-T6-3603",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-BEG--55-T6-3603",
+            "start_time": "13:42:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-BEG:"
+          },
+          "position": {
+            "latitude": -37.903927,
+            "longitude": 145.33182,
+            "bearing": 138.47778
+          },
+          "timestamp": "1784263840",
+          "vehicle": {
+            "id": "10M-1305T-1432T-263M-264M-9M"
+          }
+        }
+      },
+      {
+        "id": "02-PKM--55-T6-C088",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-PKM--55-T6-C088",
+            "start_time": "15:11:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-PKM:"
+          },
+          "position": {
+            "latitude": -38.084354,
+            "longitude": 145.50659,
+            "bearing": -77.35386
+          },
+          "timestamp": "1784263721",
+          "vehicle": {
+            "id": "9027M-9927M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4413",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4413",
+            "start_time": "13:34:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -38.14262,
+            "longitude": 145.126,
+            "bearing": 199.29004
+          },
+          "timestamp": "1784263319",
+          "vehicle": {
+            "id": "115M-116M-1358T-1441T-281M-282M"
+          }
+        }
+      },
+      {
+        "id": "02-CBE--55-T6-C465",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CBE--55-T6-C465",
+            "start_time": "14:05:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CBE:"
+          },
+          "position": {
+            "latitude": -38.01212,
+            "longitude": 145.22838,
+            "bearing": 158.78137
+          },
+          "timestamp": "1784263900",
+          "vehicle": {
+            "id": "9034M-9934M"
+          }
+        }
+      },
+      {
+        "id": "02-ALM--55-T6-2801",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-ALM--55-T6-2801",
+            "start_time": "14:23:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-ALM:"
+          },
+          "position": {
+            "latitude": -37.834297,
+            "longitude": 145.0695,
+            "bearing": 161.24336
+          },
+          "timestamp": "1784263867",
+          "vehicle": {
+            "id": "1383T-1436T-165M-166M-271M-272M"
+          }
+        }
+      },
+      {
+        "id": "02-CBE--55-T6-C486",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CBE--55-T6-C486",
+            "start_time": "14:43:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CBE:"
+          },
+          "position": {
+            "latitude": -38.06186,
+            "longitude": 145.25153,
+            "bearing": -22.38256
+          },
+          "timestamp": "1784263883",
+          "vehicle": {
+            "id": "9028M-9928M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4924",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4924",
+            "start_time": "14:37:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -38.0371,
+            "longitude": 145.10791,
+            "bearing": -26.18484
+          },
+          "timestamp": "1784263901",
+          "vehicle": {
+            "id": "1312T-1685T-23M-24M-969M-970M"
+          }
+        }
+      },
+      {
+        "id": "02-MDD--55-T6-1703",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-MDD--55-T6-1703",
+            "start_time": "14:49:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-MDD:"
+          },
+          "position": {
+            "latitude": -37.820915,
+            "longitude": 144.95435,
+            "bearing": -54.547543
+          },
+          "timestamp": "1784263900",
+          "vehicle": {
+            "id": "1377T-153M-154M"
+          }
+        }
+      },
+      {
+        "id": "02-WER--55-T6-6474",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WER--55-T6-6474",
+            "start_time": "14:32:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WER:"
+          },
+          "position": {
+            "latitude": -37.849064,
+            "longitude": 144.87479,
+            "bearing": 65.75648
+          },
+          "timestamp": "1784263900",
+          "vehicle": {
+            "id": "1141T-1173T-581M-584M-645M-646M"
+          }
+        }
+      },
+      {
+        "id": "02-ALM--55-T6-2351",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-ALM--55-T6-2351",
+            "start_time": "14:37:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-ALM:"
+          },
+          "position": {
+            "latitude": -37.86556,
+            "longitude": 145.08017,
+            "bearing": 187.3348
+          },
+          "timestamp": "1784263902",
+          "vehicle": {
+            "id": "1660T-919M-920M"
+          }
+        }
+      },
+      {
+        "id": "02-WIL--55-T6-6359",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WIL--55-T6-6359",
+            "start_time": "14:30:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WIL:"
+          },
+          "position": {
+            "latitude": -37.843258,
+            "longitude": 144.88362,
+            "bearing": 175.6542
+          },
+          "timestamp": "1784263901",
+          "vehicle": {
+            "id": "1145T-1176T-582M-628M-651M-652M"
+          }
+        }
+      },
+      {
+        "id": "02-UFD--55-T6-5611",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-UFD--55-T6-5611",
+            "start_time": "14:23:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-UFD:"
+          },
+          "position": {
+            "latitude": -37.74024,
+            "longitude": 144.96349,
+            "bearing": -4.5839467
+          },
+          "timestamp": "1784263898",
+          "vehicle": {
+            "id": "1178T-1179T-655M-656M-657M-658M"
+          }
+        }
+      },
+      {
+        "id": "02-CGB--55-T6-5212",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-CGB--55-T6-5212",
+            "start_time": "14:15:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-CGB:"
+          },
+          "position": {
+            "latitude": -37.80987,
+            "longitude": 144.94417,
+            "bearing": 146.93971
+          },
+          "timestamp": "1784263898",
+          "vehicle": {
+            "id": "1061T-1082T-327M-349M-421M-422M"
+          }
+        }
+      },
+      {
+        "id": "02-WER--55-T6-6263",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-WER--55-T6-6263",
+            "start_time": "15:00:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-WER:"
+          },
+          "position": {
+            "latitude": -37.81881,
+            "longitude": 144.96646,
+            "bearing": 75.16309
+          },
+          "timestamp": "1784263722",
+          "vehicle": {
+            "id": "1135T-1169T-570M-637M-638M-661M"
+          }
+        }
+      },
+      {
+        "id": "02-GWY--55-T6-2092",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-GWY--55-T6-2092",
+            "start_time": "14:47:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-GWY:"
+          },
+          "position": {
+            "latitude": -37.875328,
+            "longitude": 145.1232,
+            "bearing": 268.52103
+          },
+          "timestamp": "1784263850",
+          "vehicle": {
+            "id": "1304T-1382T-163M-164M-7M-8M"
+          }
+        }
+      },
+      {
+        "id": "02-ALM--55-T6-2803",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-ALM--55-T6-2803",
+            "start_time": "14:38:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-ALM:"
+          },
+          "position": {
+            "latitude": -37.823383,
+            "longitude": 144.98843,
+            "bearing": 107.88671
+          },
+          "timestamp": "1784263866",
+          "vehicle": {
+            "id": "1319T-1403T-205M-206M-37M-38M"
+          }
+        }
+      },
+      {
+        "id": "02-SHM--55-T6-X093",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-SHM--55-T6-X093",
+            "start_time": "15:03:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-SHM:"
+          },
+          "position": {
+            "latitude": -37.818222,
+            "longitude": 144.96869,
+            "bearing": 68.68209
+          },
+          "timestamp": "1784263576",
+          "vehicle": {
+            "id": "2518T-2553T-735M-736M-805M-806M"
+          }
+        }
+      },
+      {
+        "id": "02-BEG--55-T6-3006",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-BEG--55-T6-3006",
+            "start_time": "13:47:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-BEG:"
+          },
+          "position": {
+            "latitude": -37.817986,
+            "longitude": 144.9674,
+            "bearing": 248.73314
+          },
+          "timestamp": "1784263759",
+          "vehicle": {
+            "id": "1326T-1688T-51M-52M-975M-976M"
+          }
+        }
+      },
+      {
+        "id": "02-MDD--55-T6-1102",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-MDD--55-T6-1102",
+            "start_time": "14:39:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-MDD:"
+          },
+          "position": {
+            "latitude": -37.65227,
+            "longitude": 145.031,
+            "bearing": 263.73532
+          },
+          "timestamp": "1784263900",
+          "vehicle": {
+            "id": "1380T-159M-160M-1635T-869M-870M"
+          }
+        }
+      },
+      {
+        "id": "02-FKN--55-T6-4920",
+        "vehicle": {
+          "trip": {
+            "trip_id": "02-FKN--55-T6-4920",
+            "start_time": "14:17:00",
+            "start_date": "20260717",
+            "route_id": "aus:vic:vic-02-FKN:"
+          },
+          "position": {
+            "latitude": -37.936317,
+            "longitude": 145.03642,
+            "bearing": 1.4469303
+          },
+          "timestamp": "1784263856",
+          "vehicle": {
+            "id": "1320T-1681T-39M-40M-961M-962M"
+          }
+        }
+      }
+    ]
+  }
+}
