@@ -36,6 +36,12 @@ gaps are recorded, staleness is displayed, inferences are labelled as inferences
   rollover correlation. VP populates ONLY lat/lon/bearing, vehicle.id, trip_id,
   route_id — station state must be derived. Coverage vs schedule dips to
   33–81% by time band. Static portal regenerates trip_ids on each publish.
+- Trip Updates' `stop_time_update` list is a rolling window, not a trip's
+  full schedule — entries get trimmed off both ends as a trip progresses
+  (single-entry lists are common). Telling "genuine trip origin/terminus"
+  from "list got trimmed to this stop" requires checking whether the raw
+  entry's `arrival`/`departure` field is genuinely absent, not its position
+  in the current list.
 - Static GTFS: `opendata.transport.vic.gov.au/dataset/gtfs-schedule`, a
   single ~270MB zip-of-zips across all transport modes, unauthenticated.
   Metro Train is mode `2` (`2/google_transit.zip` inside the outer zip).
