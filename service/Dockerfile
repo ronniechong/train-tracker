@@ -34,4 +34,6 @@ VOLUME ["/data"]
 
 # Intended to run with `read_only: true` at the compose/run level (see
 # deploy/docker-compose.yml) — nothing in this image writes outside /data.
-ENTRYPOINT ["python", "-m", "traintracker.gateway"]
+# `python -m traintracker.gateway` (2a's one-shot auth smoke check) remains
+# available for manual diagnostics via `docker compose run --entrypoint ...`.
+ENTRYPOINT ["python", "-m", "traintracker.poller"]

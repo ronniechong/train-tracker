@@ -24,17 +24,23 @@ services:
     build:
       context: ../service
       dockerfile: Dockerfile
-    # NOT unless-stopped yet: the current entrypoint is 2a's one-shot auth
-    # smoke check, not 2b's poll loop, and has no interval/backoff of its
-    # own — restarting it in a tight loop hammers the live rate limit.
-    # Flip to `unless-stopped` once 2b's real loop (which does have
-    # interval/backoff, see CLAUDE.md poll-cadence decision) lands.
-    restart: "no"
+    # 2b landed the real poll loop (service-hours cadence + circuit
+    # breaker with its own interval/backoff), so an unattended restart no
+    # longer means "hammer the live API with no throttling" the way 2a's
+    # one-shot smoke check did.
+    restart: unless-stopped
     read_only: true
     tmpfs:
       - /tmp
     environment:
       VIC_TRANSPORT_API_KEY: ${VIC_TRANSPORT_API_KEY:?VIC_TRANSPORT_API_KEY must be set in deploy/.env}
+      # NOTE: wired through, but will currently fail from inside the
+      # container — tinyproxy.filter allowlists ONLY the upstream gateway
+      # host (security invariant #5). The dead-man ping's target host isn't
+      # allowlisted yet; add it once the real TT_DEADMAN_PING_URL is known.
+      # ping() fails soft (logs a warning, never raises), so this doesn't
+      # crash the poller in the meantime.
+      TT_DEADMAN_PING_URL: ${TT_DEADMAN_PING_URL:-}
       HTTP_PROXY: http://egress-proxy:8888
       HTTPS_PROXY: http://egress-proxy:8888
       NO_PROXY: ""
