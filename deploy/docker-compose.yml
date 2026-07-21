@@ -1,0 +1,52 @@
+# "The stack": cd deploy && docker compose up -d
+#
+# Egress design (2a, confirmed 2026-07-20): `poller` is on the `internal`
+# network ONLY. Compose marks that network `internal: true`, so Docker never
+# gives it a default route to the outside world at all — this isn't a
+# firewall rule that could be misconfigured, the network itself has no NAT.
+# `poller` can reach `egress-proxy` (also on `internal`) and nothing else.
+# `egress-proxy` additionally sits on `egress` (a normal bridge network with
+# a route out) and further restricts *which* outside host it will forward
+# to, via tinyproxy.filter — two independent layers, not one.
+services:
+  egress-proxy:
+    image: docker.io/vimagick/tinyproxy:latest
+    restart: unless-stopped
+    read_only: true
+    volumes:
+      - ./tinyproxy.conf:/etc/tinyproxy/tinyproxy.conf:ro
+      - ./tinyproxy.filter:/etc/tinyproxy/tinyproxy.filter:ro
+    networks:
+      - internal
+      - egress
+
+  poller:
+    build:
+      context: ../service
+      dockerfile: Dockerfile
+    # NOT unless-stopped yet: the current entrypoint is 2a's one-shot auth
+    # smoke check, not 2b's poll loop, and has no interval/backoff of its
+    # own — restarting it in a tight loop hammers the live rate limit.
+    # Flip to `unless-stopped` once 2b's real loop (which does have
+    # interval/backoff, see CLAUDE.md poll-cadence decision) lands.
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      VIC_TRANSPORT_API_KEY: ${VIC_TRANSPORT_API_KEY:?VIC_TRANSPORT_API_KEY must be set in deploy/.env}
+      HTTP_PROXY: http://egress-proxy:8888
+      HTTPS_PROXY: http://egress-proxy:8888
+      NO_PROXY: ""
+    volumes:
+      - ${TT_DATA_DIR:-./data}:/data
+    depends_on:
+      - egress-proxy
+    networks:
+      - internal
+
+networks:
+  internal:
+    internal: true
+  egress:
+    driver: bridge

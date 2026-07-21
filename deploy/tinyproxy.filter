@@ -1,0 +1,3 @@
+# Allowlist ONLY the upstream Metro Train GTFS-Realtime gateway host.
+# One host per line, matched as an FQDN (see tinyproxy.conf: FilterType fqdn).
+^api\.opendata\.transport\.vic\.gov\.au$
