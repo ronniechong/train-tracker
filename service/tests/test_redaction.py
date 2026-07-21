@@ -51,6 +51,22 @@ def test_redacts_outbound_header_value_leak():
     assert "REDACTED" in handler.lines[0]
 
 
+def test_redacts_secret_embedded_in_a_logged_url():
+    # 2b incident (2026-07-21, live): the dead-man ping URL carries its
+    # secret as a path segment, not a header. httpx logs full request URLs
+    # at INFO level on every successful cycle -- unlike the API key (a
+    # header value), this leak vector is the URL string itself, and it
+    # actually happened live before this secret was registered here.
+    ping_url = "https://hc-ping.com/00000000-fake-uuid-0000-000000000000"
+    logger, handler = _logger_with_filter("test.ping_url", [ping_url])
+
+    logger.info('HTTP Request: GET %s "HTTP/1.1 200 OK"', ping_url)
+
+    assert len(handler.lines) == 1
+    assert ping_url not in handler.lines[0]
+    assert "REDACTED" in handler.lines[0]
+
+
 def test_leaves_unrelated_messages_untouched():
     logger, handler = _logger_with_filter("test.unrelated", ["some-secret"])
 

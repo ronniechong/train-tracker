@@ -1,3 +1,7 @@
-# Allowlist ONLY the upstream Metro Train GTFS-Realtime gateway host.
-# One host per line, matched as an FQDN (see tinyproxy.conf: FilterType fqdn).
+# Allowlist ONLY these two hosts. One host per line, matched as an FQDN
+# (see tinyproxy.conf: FilterExtended On).
+# 1. The upstream Metro Train GTFS-Realtime gateway (2a).
 ^api\.opendata\.transport\.vic\.gov\.au$
+# 2. The external dead-man's-switch ping target (2b) — deliberate, narrow
+# widening confirmed by Ronnie 2026-07-21, not the default upstream host.
+^hc-ping\.com$

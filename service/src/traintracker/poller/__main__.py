@@ -17,6 +17,7 @@ from ..gateway.client import API_KEY_ENV, GatewayClient
 from ..redaction import configure_logging
 from ..state.eventlog import InMemoryEventLog
 from ..state.store import StateStore
+from .healthcheck import PING_URL_ENV
 from .loop import PollerLoop
 
 logger = logging.getLogger("traintracker.poller")
@@ -37,7 +38,16 @@ def _interruptible_sleep(loop: PollerLoop, seconds: float) -> None:
 
 
 def main() -> int:
-    configure_logging(os.environ.get(API_KEY_ENV, ""), level=logging.INFO)
+    # The dead-man ping URL carries its own secret as a path segment (not a
+    # header, like the API key) -- httpx's own request logging prints full
+    # URLs at INFO level, so without registering it here it leaks straight
+    # into logs on every successful cycle. Caught live 2026-07-21: the real
+    # URL appeared in a docker compose logs capture during 2b verification.
+    configure_logging(
+        os.environ.get(API_KEY_ENV, ""),
+        os.environ.get(PING_URL_ENV, ""),
+        level=logging.INFO,
+    )
 
     # InMemoryEventLog for now: 2e ("history writer") swaps in a
     # SQLite-backed EventLog later without anything here needing to change
