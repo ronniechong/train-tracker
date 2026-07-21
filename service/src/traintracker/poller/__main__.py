@@ -29,6 +29,16 @@ logger = logging.getLogger("traintracker.poller")
 # recheck the stop flag between them.
 SHUTDOWN_CHECK_INTERVAL_S = 1.0
 
+# Discrepancy/ghost/gap events are recorded (2d, 2b) but never printed
+# anywhere -- they live only in the running process's memory, invisible to
+# anyone reviewing a burn-in after the fact via `docker compose logs`
+# (nothing queries them until 2e's real persistence + M3's API exist).
+# This is a deliberate stopgap for that gap, not 2e done early: a periodic
+# cumulative-count line, reading `.events` directly off the concrete
+# InMemoryEventLog instances `main()` already holds, not through the
+# `EventLog` Protocol (which doesn't guarantee `.events` at all).
+SUMMARY_INTERVAL_S = 3600.0
+
 
 def _interruptible_sleep(loop: PollerLoop, seconds: float) -> None:
     remaining = seconds
@@ -53,8 +63,10 @@ def main() -> int:
     # SQLite-backed EventLog later without anything here needing to change
     # (see state/eventlog.py's own docstring) -- these events are lost on
     # restart until then, which is expected at this milestone.
-    store = StateStore(discrepancy_log=InMemoryEventLog(), ghost_log=InMemoryEventLog())
+    discrepancy_log = InMemoryEventLog()
+    ghost_log = InMemoryEventLog()
     gap_log = InMemoryEventLog()
+    store = StateStore(discrepancy_log=discrepancy_log, ghost_log=ghost_log)
 
     loop = PollerLoop(gateway=GatewayClient(), store=store, gap_log=gap_log)
 
@@ -66,6 +78,7 @@ def main() -> int:
     signal.signal(signal.SIGTERM, handle_signal)
 
     logger.info("poller starting")
+    last_summary_at = datetime.now(timezone.utc)
     while not loop.stopped:
         cycle_start = datetime.now(timezone.utc)
         result = loop.run_cycle(cycle_start)
@@ -77,6 +90,16 @@ def main() -> int:
             loop.breaker.backoff_active,
             interval,
         )
+
+        if (cycle_start - last_summary_at).total_seconds() >= SUMMARY_INTERVAL_S:
+            logger.info(
+                "hourly summary: discrepancies=%d ghost_episodes=%d breaker_gap_episodes=%d",
+                len(discrepancy_log.events),
+                len(ghost_log.events),
+                len(gap_log.events),
+            )
+            last_summary_at = cycle_start
+
         _interruptible_sleep(loop, interval)
 
     logger.info("poller stopped")
