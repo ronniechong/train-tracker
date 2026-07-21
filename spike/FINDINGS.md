@@ -246,3 +246,29 @@ must be derived, not read directly) was already anticipated from the
 - Real track-curve rendering (`shapes.txt`) — still deferred (post-M4, no
   change; the re-sliced static snapshot again excludes `shapes.txt`,
   consistent with the straight-line-rendering decision).
+
+---
+
+## Addendum — 2d pre-analysis: loop-gap share (2026-07-21)
+
+Ahead of 2g's soak gate, milestone 2d asked for a first estimate of what
+share of ghost-eligible gaps are City Loop-contained (the CLAUDE.md ghost
+design's revisit clause: "if ~99% of ghost events are City Loop-contained →
+dedicated in-loop state instead of generic ghosting"). Computed with
+`spike/loop_gap_estimate.py` against the full VP capture (6,364 trips),
+using gap thresholds of 60s and 90s (the settled coasting-before-ghost
+window):
+
+| Gap threshold | Ghost-eligible gaps | Loop-contained | Loop-entry/exit | Outside network |
+|---|---|---|---|---|
+| ≥60s | 1,179 | 0 (0.0%) | 0 / 0 | 1,179 |
+| ≥90s | 1,101 | 0 (0.0%) | 0 / 0 | 1,101 |
+
+**Verdict:** Loop-gap share is ~0%, not ~99% — the revisit clause does
+**not** trigger. Consistent with Q4's original finding: the loop tunnel
+produces brief GPS freezing (median 20.5s), which resolves well inside the
+60s coasting window and never reaches an actual ghost-eligible gap. The
+~1,100+ gaps that do occur are genuine coverage drops elsewhere on the
+network (matches the 33–92% coverage-by-band finding), unrelated to the
+loop. **Resolution:** keep the generic ghost state machine as designed in
+CLAUDE.md — no dedicated "in loop, position unavailable" state needed.
