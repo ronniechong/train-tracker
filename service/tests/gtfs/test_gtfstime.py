@@ -5,6 +5,7 @@ import pytest
 from traintracker.gtfs.gtfstime import (
     gtfs_time_to_utc,
     parse_gtfs_time,
+    service_date_boundary_utc,
     service_date_for_instant,
     service_day_start_utc,
 )
@@ -79,3 +80,20 @@ def test_service_date_for_instant_after_boundary_is_same_day():
 def test_service_date_for_instant_requires_aware_datetime():
     with pytest.raises(ValueError):
         service_date_for_instant(datetime(2026, 7, 20, 0, 0, 0))
+
+
+def test_service_date_boundary_utc_is_the_inverse_of_service_date_for_instant():
+    # 3am AEST on 2026-07-21 is UTC+10 -> 17:00 UTC on 2026-07-20.
+    boundary = service_date_boundary_utc(date(2026, 7, 21))
+    assert boundary == datetime(2026, 7, 20, 17, 0, 0, tzinfo=timezone.utc)
+    # An instant one second before the boundary still belongs to the prior
+    # service_date; one second at/after it has rolled over to this one.
+    assert service_date_for_instant(boundary - timedelta(seconds=1)) == date(2026, 7, 20)
+    assert service_date_for_instant(boundary) == date(2026, 7, 21)
+
+
+def test_service_date_boundary_utc_across_dst_transition():
+    # 3am AEDT on the spring-forward date itself is still a normal, existing
+    # local time (only 2-3am is skipped), so this should resolve cleanly.
+    boundary = service_date_boundary_utc(date(2026, 10, 4))
+    assert service_date_for_instant(boundary) == date(2026, 10, 4)

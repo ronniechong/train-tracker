@@ -30,10 +30,12 @@ ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1
 
 USER app
-VOLUME ["/data"]
+VOLUME ["/data", "/backup"]
 
 # Intended to run with `read_only: true` at the compose/run level (see
-# deploy/docker-compose.yml) — nothing in this image writes outside /data.
-# `python -m traintracker.gateway` (2a's one-shot auth smoke check) remains
-# available for manual diagnostics via `docker compose run --entrypoint ...`.
+# deploy/docker-compose.yml) — nothing in this image writes outside /data or
+# /backup. `python -m traintracker.gateway` (2a's one-shot auth smoke check)
+# and `python -m traintracker.history` (2e's nightly sync/retention job)
+# remain available for manual/cron invocation via
+# `docker compose run --entrypoint ...`.
 ENTRYPOINT ["python", "-m", "traintracker.poller"]

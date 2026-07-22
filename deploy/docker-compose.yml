@@ -46,13 +46,39 @@ services:
       NO_PROXY: ""
     volumes:
       - ${TT_DATA_DIR:-./data}:/data
+      # 2e: nightly maintenance (`python -m traintracker.history`, run via
+      # `docker compose run --rm --entrypoint "python -m traintracker.history"
+      # poller`) reads/writes closed history partitions here. A second bind
+      # mount, not a subdirectory of /data, so the backup copy is a genuinely
+      # separate location on disk.
+      - ${TT_BACKUP_DIR:-./backup}:/backup
     depends_on:
       - egress-proxy
     networks:
       - internal
+      # 2f: joins the host's already-existing general monitoring stack's
+      # network so ITS Prometheus can scrape `poller:9109` by service name --
+      # no second Prometheus/Grafana/cAdvisor/node_exporter run by this repo
+      # (see the `monitoring` network definition below and JOURNAL Session
+      # 16/17). Purely additive: `poller` keeps its existing `internal`
+      # egress-restricted network exactly as before, this only adds a second,
+      # separate network for INBOUND scraping -- doesn't touch invariant #5.
+      - monitoring
 
 networks:
   internal:
     internal: true
   egress:
     driver: bridge
+  # Not managed by this repo -- an already-running stack on the host owns
+  # this network's actual definition (Grafana/Prometheus/Loki/cAdvisor/
+  # node_exporter/Mongo, in a separate `docker compose` project). Referenced
+  # here only so `poller` can join it; `external: true` means Compose must
+  # find it already created, never tries to create or own it itself. If the
+  # other stack's compose project directory or name ever changes, this
+  # network name (Compose's default naming: `<project-dir-name>_default`)
+  # would need updating to match -- host-specific enough that the exact
+  # value is confirmed against the live host, not assumed.
+  monitoring:
+    external: true
+    name: monitoring_default

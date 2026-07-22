@@ -1,0 +1,37 @@
+# DRAFT, not wired into anything yet (see docker-compose.yml's own note and
+# JOURNAL Session 16): originally written assuming a dedicated Grafana
+# container this project would run itself. The host already runs a
+# general Grafana instance instead -- this is reference material for adding
+# train-tracker's alerting to THAT instance, not something to file-provision
+# as-is without review, for two reasons:
+#
+# 1. UNVERIFIED: authored with no live Grafana to load it into (no network
+#    access this session to even pull the image). Confirm the
+#    `${TT_ALERT_WEBHOOK_URL}` env-var-expansion syntax and overall schema
+#    against whatever Grafana version is actually running.
+# 2. The `policies:` block below sets the ROOT/default notification policy
+#    for the whole org -- on a shared instance that already monitors other
+#    things, blindly applying this could silently overwrite an existing
+#    policy tree. If the existing instance already has other alerts, this
+#    needs to become a nested route matching only train-tracker's alert
+#    labels (e.g. a label like `project: train-tracker` on the 3 alert
+#    rules), not a root-level replacement. Left as the simple/dedicated-
+#    instance version here since we don't yet know what's already there.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: train-tracker-slack
+    receivers:
+      - uid: train-tracker-slack-webhook
+        type: slack
+        settings:
+          url: ${TT_ALERT_WEBHOOK_URL}
+        disableResolveMessage: false
+
+# See point 2 above -- do not apply this policies: block to a shared
+# instance without first checking its existing notification policy tree.
+policies:
+  - orgId: 1
+    receiver: train-tracker-slack
+    group_by: ["alertname"]

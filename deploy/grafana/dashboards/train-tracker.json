@@ -1,0 +1,204 @@
+{
+  "title": "train-tracker",
+  "uid": "train-tracker",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "timezone": "browser",
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "tags": ["train-tracker"],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Feed data age (seconds since header last advanced)",
+      "description": "Alert threshold is 300s (5min); NEVER driven off entity count -- a legitimate zero-entity overnight cycle still advances the header and does not show here as stale.",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "time() - traintracker_feed_last_changed_timestamp_seconds",
+          "legendFormat": "{{feed}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Poll cycle rate, by result",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (result) (rate(traintracker_poll_cycles_total[$__rate_interval]))",
+          "legendFormat": "{{result}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "x-rate-limit remaining (lowest window per cycle)",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "traintracker_rate_limit_remaining",
+          "legendFormat": "remaining",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "TU/VP discrepancy ratio",
+      "description": "Decision gate: <2% -> freshest-per-field merge rule stands (settled). >=2% -> dedicated reconciliation-formula session.",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(traintracker_discrepancy_events_total[$__rate_interval]) / rate(traintracker_poll_cycles_total{result=\"ok\"}[$__rate_interval])",
+          "legendFormat": "discrepancy ratio",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Ghost episodes, by City Loop containment",
+      "description": "Decision gate: if ~99% of ghost events are loop_contained=true -> dedicated 'in loop, position unavailable' state (M4).",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (loop_contained) (rate(traintracker_ghost_events_total[$__rate_interval]))",
+          "legendFormat": "loop_contained={{loop_contained}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Circuit breaker backoff active",
+      "description": "1 while backing off. Staleness/outage alerts AND against this being 0, so a legitimate backoff episode is never read as an outage.",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "max": 1 }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "traintracker_backoff_active",
+          "legendFormat": "backoff_active",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "text",
+      "title": "Coverage by band -- deferred",
+      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 4 },
+      "options": {
+        "mode": "markdown",
+        "content": "**Not implemented yet.** Computing live coverage-vs-schedule requires loading the pinned static snapshot (2c) inside the running poller to know which trips are scheduled right now -- a new integration surface not wired up by any milestone yet (2c's fetch job itself also has no production entrypoint). Flagged and deferred at 2f's kickoff (2026-07-21) rather than built half-considered. See `milestones/02f-observability-alerting.md`."
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Container memory (working set)",
+      "description": "Filtered to this project's own containers -- the shared cAdvisor instance also reports every other container on the host. `name=~` regex assumes docker-compose's default container naming; adjust if the shared instance's compose project name differs.",
+      "gridPos": { "x": 0, "y": 28, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "container_memory_working_set_bytes{name=~\".*(poller|egress-proxy).*\"}",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Container CPU usage",
+      "description": "Filtered to this project's own containers -- see panel 8's note on the name filter.",
+      "gridPos": { "x": 12, "y": 28, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(container_cpu_usage_seconds_total{name=~\".*(poller|egress-proxy).*\"}[$__rate_interval])",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Container last start time (restart proxy)",
+      "description": "cAdvisor has no direct 'restart count' metric (that's a Kubernetes-only concept). A drop then jump in this value for a container is a restart -- an approximation, not a counter, until/unless something better is wired up. Filtered to this project's own containers, see panel 8's note.",
+      "gridPos": { "x": 0, "y": 36, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "dateTimeAsIso" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "container_start_time_seconds{name=~\".*(poller|egress-proxy).*\"} * 1000",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Disk headroom (root filesystem)",
+      "description": "Alert threshold: <15% free (confirmed 2026-07-20).",
+      "gridPos": { "x": 12, "y": 36, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 0 },
+              { "color": "green", "value": 15 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"} * 100",
+          "legendFormat": "free %",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

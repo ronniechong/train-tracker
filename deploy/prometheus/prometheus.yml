@@ -1,0 +1,18 @@
+# NOT a standalone config -- the host already runs a general
+# Prometheus outside this project (cAdvisor/node_exporter already scrape
+# every container on the box, including `poller` once it's deployed there;
+# no separate instance for this project, see docker-compose.yml's own note
+# and JOURNAL Session 16). This is the one scrape target train-tracker
+# actually needs added to that EXISTING instance's config -- merge this
+# `scrape_configs` entry into it, don't run this file on its own.
+#
+# `poller:9109` assumes Prometheus can resolve that service name, i.e. it's
+# on the same docker network as `poller` (the `internal` network) -- confirm
+# that's true of the existing instance's setup once Ronnie checks how it's
+# deployed; if not, this needs a real host:port instead (host-specific, so
+# that value belongs in the private ops/ notes, not committed here).
+scrape_configs:
+  - job_name: train-tracker-poller
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["poller:9109"]

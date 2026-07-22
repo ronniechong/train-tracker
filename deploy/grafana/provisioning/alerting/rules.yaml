@@ -1,0 +1,139 @@
+# DRAFT, not wired into anything yet -- see contact-points.yaml's header for
+# why (the host runs a shared Grafana/Prometheus, not a dedicated
+# instance for this project; JOURNAL Session 16). Additional caveats beyond
+# that file's:
+#
+# - `up{job="train-tracker-poller"}` and the `mountpoint="/"` disk query
+#   below assume the shared Prometheus's scrape job is named exactly that
+#   (see prometheus.yml's own note) and that there's exactly one
+#   node_exporter target (true for a single-host setup, but review if that
+#   changes). `folder: train-tracker` similarly assumes a fresh folder is
+#   fine to create in the shared instance, not colliding with anything.
+# - Every rule below carries a `project: train-tracker` label specifically
+#   so a future *nested* notification policy (matching on that label) can
+#   route these without touching the shared instance's existing root policy
+#   -- see contact-points.yaml's point 2.
+#
+# 2f's three alert conditions (milestone AC), each a single Prometheus
+# instant-query + classic threshold condition. Two suppression cases from
+# the AC are handled as follows -- neither needed new mechanism to be built:
+#   1. Backoff reason code: the staleness rule's own PromQL ANDs against
+#      `traintracker_backoff_active == 0`, so a legitimate circuit-breaker
+#      backoff episode never fires it.
+#   2. Zero-entity-but-header-advancing: satisfied by construction --
+#      staleness is header-timestamp age, never entity count, from the
+#      metric's own definition (`metrics.py`). There was never an
+#      entity-count-based signal here to produce a false positive from.
+#
+# UNVERIFIED: authored without a live Grafana instance (no network access in
+# this session even to pull the image, let alone load and test this file).
+# The overall provisioned-alert-rule schema is one of Grafana's more
+# version-sensitive areas -- confirm this loads and evaluates correctly
+# against the actual pinned version at first live deploy, per
+# milestones/02f-observability-alerting.md.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: train-tracker-alerts
+    folder: train-tracker
+    interval: 1m
+    rules:
+      - uid: feed-staleness
+        title: "Feed header stale (and not a backoff episode)"
+        condition: C
+        for: 2m
+        labels:
+          severity: critical
+          project: train-tracker
+        annotations:
+          summary: "A realtime feed's header timestamp hasn't advanced in over 5 minutes, and the circuit breaker isn't backing off -- this is a real staleness/outage signal, not a polite pause."
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            model:
+              expr: "(time() - traintracker_feed_last_changed_timestamp_seconds{feed=~\"trip_updates|vehicle_positions\"} > 300) and (traintracker_backoff_active == 0)"
+              instant: true
+              refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+              refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+
+      - uid: poller-down
+        title: "poller container down"
+        condition: C
+        for: 2m
+        labels:
+          severity: critical
+          project: train-tracker
+        annotations:
+          summary: "Prometheus can no longer scrape the poller container at all."
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            model:
+              expr: "up{job=\"train-tracker-poller\"} == 0"
+              instant: true
+              refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+              refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+
+      - uid: disk-headroom
+        title: "Disk headroom below 15% free"
+        condition: C
+        for: 5m
+        labels:
+          severity: warning
+          project: train-tracker
+        annotations:
+          summary: "Root filesystem free space has dropped below the confirmed 15% threshold (2026-07-20 decision)."
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            model:
+              expr: "(node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"}) * 100"
+              instant: true
+              refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: lt
+                    params: [15]
+              refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0

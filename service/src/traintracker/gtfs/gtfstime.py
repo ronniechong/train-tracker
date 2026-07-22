@@ -79,3 +79,26 @@ def service_date_for_instant(
     if local.hour < day_boundary_hour:
         service_date -= timedelta(days=1)
     return service_date
+
+
+def service_date_boundary_utc(
+    service_date: date,
+    tz_name: str = MELBOURNE_TZ,
+    day_boundary_hour: int = 3,
+) -> datetime:
+    """The UTC instant of `day_boundary_hour` local time on `service_date` —
+    the exact inverse of `service_date_for_instant`: any instant at or past
+    this one for `service_date + 1 day` has already rolled over to the next
+    service_date. Used by 2e's history store to know precisely when a
+    service_date's partition can no longer receive writes (a 24:xx trip
+    still attributed to the previous day)."""
+    local_boundary = datetime(
+        service_date.year,
+        service_date.month,
+        service_date.day,
+        day_boundary_hour,
+        0,
+        0,
+        tzinfo=ZoneInfo(tz_name),
+    )
+    return local_boundary.astimezone(timezone.utc)

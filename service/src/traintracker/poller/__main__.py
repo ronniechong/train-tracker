@@ -12,13 +12,29 @@ import os
 import signal
 import time
 from datetime import datetime, timezone
+from pathlib import Path
+
+from prometheus_client import start_http_server
 
 from ..gateway.client import API_KEY_ENV, GatewayClient
+from ..gtfs.pinning import PinManifest
+from ..history.store import HistoryStore
+from ..metrics import Metrics
 from ..redaction import configure_logging
-from ..state.eventlog import InMemoryEventLog
 from ..state.store import StateStore
 from .healthcheck import PING_URL_ENV
-from .loop import PollerLoop
+from .loop import ALL_FEEDS, PollerLoop
+
+# Fixed container-internal mount point (see Dockerfile's `VOLUME` and
+# `deploy/docker-compose.yml`) -- `TT_DATA_DIR` only exists as a compose-level
+# bind-mount substitution on the host side, never as an env var in-container.
+DATA_DIR = Path("/data")
+
+# Scraped by Prometheus over the `internal` docker network (2f) -- not
+# published to the host, so this doesn't change the poller's external
+# exposure at all. Not the OpenTelemetry-default 9464 or node_exporter's
+# 9100, just a value distinct from both to avoid any confusion reading logs.
+METRICS_PORT = 9109
 
 logger = logging.getLogger("traintracker.poller")
 
@@ -29,14 +45,11 @@ logger = logging.getLogger("traintracker.poller")
 # recheck the stop flag between them.
 SHUTDOWN_CHECK_INTERVAL_S = 1.0
 
-# Discrepancy/ghost/gap events are recorded (2d, 2b) but never printed
-# anywhere -- they live only in the running process's memory, invisible to
-# anyone reviewing a burn-in after the fact via `docker compose logs`
-# (nothing queries them until 2e's real persistence + M3's API exist).
-# This is a deliberate stopgap for that gap, not 2e done early: a periodic
-# cumulative-count line, reading `.events` directly off the concrete
-# InMemoryEventLog instances `main()` already holds, not through the
-# `EventLog` Protocol (which doesn't guarantee `.events` at all).
+# Periodic summary line for anyone reviewing a burn-in via `docker compose
+# logs` -- counts are read via `HistoryStore.counts()`, i.e. today's
+# service_date partition, not a process-lifetime cumulative total (2b's
+# original stopgap, before 2e's persistence existed, counted from process
+# start; that in-memory counter is gone now that events survive a restart).
 SUMMARY_INTERVAL_S = 3600.0
 
 
@@ -59,13 +72,25 @@ def main() -> int:
         level=logging.INFO,
     )
 
-    # InMemoryEventLog for now: 2e ("history writer") swaps in a
-    # SQLite-backed EventLog later without anything here needing to change
-    # (see state/eventlog.py's own docstring) -- these events are lost on
-    # restart until then, which is expected at this milestone.
-    discrepancy_log = InMemoryEventLog()
-    ghost_log = InMemoryEventLog()
-    gap_log = InMemoryEventLog()
+    # 2e: day-partitioned SQLite persistence for discrepancy/ghost/gap
+    # events, paired with whichever static snapshot digest (2c) is pinned to
+    # each service_date. `history.rotate(now)` (called once per cycle below)
+    # is what routes each `.record(event)` call to the right day's file --
+    # merge.py/ghost.py/breaker.py stay unaware partitioning exists at all.
+    history = HistoryStore(
+        history_dir=DATA_DIR / "history",
+        pin_manifest=PinManifest(DATA_DIR / "gtfs" / "pin_manifest.json"),
+    )
+
+    # 2f: wrap 2e's persisting EventLogs with counting, same composable
+    # pattern -- each `.record(event)` call now both increments a Prometheus
+    # counter AND persists to SQLite, still with no changes needed to
+    # merge.py/ghost.py/breaker.py.
+    metrics = Metrics()
+    start_http_server(METRICS_PORT)
+    discrepancy_log, ghost_log, gap_log = metrics.event_logs(
+        history.discrepancy_log, history.ghost_log, history.gap_log,
+    )
     store = StateStore(discrepancy_log=discrepancy_log, ghost_log=ghost_log)
 
     loop = PollerLoop(gateway=GatewayClient(), store=store, gap_log=gap_log)
@@ -81,7 +106,10 @@ def main() -> int:
     last_summary_at = datetime.now(timezone.utc)
     while not loop.stopped:
         cycle_start = datetime.now(timezone.utc)
+        history.rotate(cycle_start)
         result = loop.run_cycle(cycle_start)
+        metrics.record_cycle(result, loop.breaker)
+        metrics.record_feed_ages(ALL_FEEDS, loop.last_changed_at)
         interval = loop.next_interval(cycle_start)
         logger.info(
             "cycle ok=%s changed=%s backoff_active=%s next_in=%.1fs",
@@ -92,16 +120,20 @@ def main() -> int:
         )
 
         if (cycle_start - last_summary_at).total_seconds() >= SUMMARY_INTERVAL_S:
+            counts = history.counts()
             logger.info(
-                "hourly summary: discrepancies=%d ghost_episodes=%d breaker_gap_episodes=%d",
-                len(discrepancy_log.events),
-                len(ghost_log.events),
-                len(gap_log.events),
+                "hourly summary (service_date=%s): discrepancies=%d ghost_episodes=%d "
+                "breaker_gap_episodes=%d",
+                history.service_date,
+                counts.get("discrepancy_events", 0),
+                counts.get("ghost_events", 0),
+                counts.get("poll_gap_events", 0),
             )
             last_summary_at = cycle_start
 
         _interruptible_sleep(loop, interval)
 
+    history.close()
     logger.info("poller stopped")
     return 0
 
