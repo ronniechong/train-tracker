@@ -7,6 +7,7 @@ least once") has something runnable to check against.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 
@@ -16,11 +17,11 @@ from .client import API_KEY_ENV, Feed, GatewayAuthError, GatewayClient, GatewayE
 logger = logging.getLogger("traintracker.gateway.smoke")
 
 
-def main() -> int:
+async def main() -> int:
     configure_logging(os.environ.get(API_KEY_ENV, ""), level=logging.INFO)
     try:
-        with GatewayClient() as client:
-            result = client.fetch(Feed.VEHICLE_POSITIONS)
+        async with GatewayClient() as client:
+            result = await client.fetch(Feed.VEHICLE_POSITIONS)
     except (GatewayAuthError, GatewayError) as exc:
         logger.error("smoke check failed: %s", exc)
         return 1
@@ -35,4 +36,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(asyncio.run(main()))

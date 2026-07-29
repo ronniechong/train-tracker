@@ -23,7 +23,7 @@ def _clear_env(monkeypatch):
 
 def _client_with_transport(handler, **kwargs) -> GatewayClient:
     client = GatewayClient(api_key="test-key", **kwargs)
-    client._client = httpx.Client(transport=httpx.MockTransport(handler))
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     return client
 
 
@@ -43,7 +43,7 @@ def test_base_url_override_env(monkeypatch):
     assert base_url() == "https://example.invalid/custom"
 
 
-def test_sends_keyid_header_and_parses_payload():
+async def test_sends_keyid_header_and_parses_payload():
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -52,7 +52,7 @@ def test_sends_keyid_header_and_parses_payload():
         return httpx.Response(200, content=b"protobuf-bytes-stand-in")
 
     client = _client_with_transport(handler)
-    result = client.fetch(Feed.VEHICLE_POSITIONS)
+    result = await client.fetch(Feed.VEHICLE_POSITIONS)
 
     assert seen["headers"]["KeyId"] == "test-key"
     assert seen["url"].endswith("/vehicle-positions")
@@ -60,7 +60,7 @@ def test_sends_keyid_header_and_parses_payload():
     assert result.throttle == ()
 
 
-def test_parses_rate_limit_header():
+async def test_parses_rate_limit_header():
     windows = [
         {"window": 0, "type": "throttle", "remaining": 23},
         {"window": 59, "type": "throttle", "remaining": 959},
@@ -74,7 +74,7 @@ def test_parses_rate_limit_header():
         )
 
     client = _client_with_transport(handler)
-    result = client.fetch(Feed.TRIP_UPDATES)
+    result = await client.fetch(Feed.TRIP_UPDATES)
 
     assert result.throttle == (
         ThrottleWindow(window=0, type="throttle", remaining=23),
@@ -82,18 +82,18 @@ def test_parses_rate_limit_header():
     )
 
 
-def test_malformed_rate_limit_header_degrades_gracefully():
+async def test_malformed_rate_limit_header_degrades_gracefully():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, content=b"x", headers={"x-rate-limit": "not-json"})
 
     client = _client_with_transport(handler)
-    result = client.fetch(Feed.SERVICE_ALERTS)
+    result = await client.fetch(Feed.SERVICE_ALERTS)
 
     assert result.throttle == ()
 
 
 @pytest.mark.parametrize("status", [401, 403])
-def test_auth_errors_raise_without_body_or_headers_in_message(status):
+async def test_auth_errors_raise_without_body_or_headers_in_message(status):
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
             status,
@@ -106,7 +106,7 @@ def test_auth_errors_raise_without_body_or_headers_in_message(status):
     client = _client_with_transport(handler)
 
     with pytest.raises(GatewayAuthError) as excinfo:
-        client.fetch(Feed.VEHICLE_POSITIONS)
+        await client.fetch(Feed.VEHICLE_POSITIONS)
 
     assert excinfo.value.status_code == status
     # The exception message must never carry the raw header/body content —
@@ -115,21 +115,21 @@ def test_auth_errors_raise_without_body_or_headers_in_message(status):
     assert "WWW-Authenticate" not in str(excinfo.value)
 
 
-def test_other_http_errors_raise():
+async def test_other_http_errors_raise():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(404, content=b"soap fault stand-in")
 
     client = _client_with_transport(handler)
 
     with pytest.raises(httpx.HTTPStatusError):
-        client.fetch(Feed.SERVICE_ALERTS)
+        await client.fetch(Feed.SERVICE_ALERTS)
 
 
-def test_context_manager_closes_client():
+async def test_context_manager_closes_client():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, content=b"x")
 
     client = _client_with_transport(handler)
-    with client as c:
+    async with client as c:
         assert c is client
     assert client._client.is_closed

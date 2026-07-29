@@ -74,13 +74,13 @@ class ScriptedGateway:
             raise AssertionError(f"unexpected path {path}")
 
         self.client = GatewayClient(api_key="test-key")
-        self.client._client = httpx.Client(transport=httpx.MockTransport(handler))
+        self.client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
 
 
 def _new_loop(scripted: ScriptedGateway) -> tuple[PollerLoop, StateStore]:
     store = StateStore(discrepancy_log=InMemoryEventLog(), ghost_log=InMemoryEventLog())
     gap_log = InMemoryEventLog()
-    healthcheck_client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200)))
+    healthcheck_client = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200)))
     loop = PollerLoop(
         gateway=scripted.client,
         store=store,
@@ -91,11 +91,11 @@ def _new_loop(scripted: ScriptedGateway) -> tuple[PollerLoop, StateStore]:
     return loop, store
 
 
-def test_successful_cycle_ingests_all_three_feeds_and_pings():
+async def test_successful_cycle_ingests_all_three_feeds_and_pings():
     scripted = ScriptedGateway()
     loop, store = _new_loop(scripted)
 
-    result = loop.run_cycle(T0)
+    result = await loop.run_cycle(T0)
 
     assert result.ok is True
     assert result.changed_feeds == frozenset(ALL_FEEDS)
@@ -103,13 +103,13 @@ def test_successful_cycle_ingests_all_three_feeds_and_pings():
     assert store.status_of("T1") == "live"
 
 
-def test_unchanged_header_is_deduped_but_store_still_ticks_forward():
+async def test_unchanged_header_is_deduped_but_store_still_ticks_forward():
     scripted = ScriptedGateway()
     loop, store = _new_loop(scripted)
-    loop.run_cycle(T0)
+    await loop.run_cycle(T0)
 
     # Second cycle: nothing changed upstream (headers identical).
-    result = loop.run_cycle(T0 + timedelta(seconds=10))
+    result = await loop.run_cycle(T0 + timedelta(seconds=10))
 
     assert result.changed_feeds == frozenset()
     # Cached content must still be re-ingested with the new cycle_time, not
@@ -119,10 +119,10 @@ def test_unchanged_header_is_deduped_but_store_still_ticks_forward():
     assert store.status_of("T1") == "live"
 
 
-def test_coasting_advances_in_real_time_across_unchanged_cycles():
+async def test_coasting_advances_in_real_time_across_unchanged_cycles():
     scripted = ScriptedGateway()
     loop, store = _new_loop(scripted)
-    loop.run_cycle(T0)
+    await loop.run_cycle(T0)
 
     # Trip vanishes from both feeds entirely (new timestamp, no entities).
     scripted.tu_ts = 2000
@@ -137,31 +137,31 @@ def test_coasting_advances_in_real_time_across_unchanged_cycles():
             return httpx.Response(200, content=empty_tu.SerializeToString())
         return httpx.Response(200, content=_sa_bytes(2000))
 
-    scripted.client._client = httpx.Client(transport=httpx.MockTransport(handler))
+    scripted.client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
 
-    loop.run_cycle(T0 + timedelta(seconds=100))  # past COASTING_TIMEOUT_S (90s)
+    await loop.run_cycle(T0 + timedelta(seconds=100))  # past COASTING_TIMEOUT_S (90s)
 
     assert store.status_of("T1") == "ghost"
 
 
-def test_request_failure_escalates_breaker_and_marks_cycle_not_ok():
+async def test_request_failure_escalates_breaker_and_marks_cycle_not_ok():
     scripted = ScriptedGateway()
     scripted.fail_feeds = {"vehicle-positions"}
     loop, store = _new_loop(scripted)
 
-    result = loop.run_cycle(T0)
+    result = await loop.run_cycle(T0)
 
     assert result.ok is False
     assert loop.breaker.backoff_active is True
 
 
-def test_backoff_active_is_passed_through_to_state_store():
+async def test_backoff_active_is_passed_through_to_state_store():
     scripted = ScriptedGateway()
     loop, store = _new_loop(scripted)
     loop.breaker.record_failure(T0)  # force backoff without needing a real failed fetch
     assert loop.breaker.backoff_active is True
 
-    loop.run_cycle(T0 + timedelta(seconds=5))
+    await loop.run_cycle(T0 + timedelta(seconds=5))
 
     # A live trip must not start coasting/ghosting just because backoff is
     # active this tick (2d finding #6) -- confirmed indirectly: the trip
@@ -169,45 +169,45 @@ def test_backoff_active_is_passed_through_to_state_store():
     assert store.status_of("T1") == "live"
 
 
-def test_low_rate_limit_remaining_escalates_breaker_even_without_failures():
+async def test_low_rate_limit_remaining_escalates_breaker_even_without_failures():
     scripted = ScriptedGateway()
     scripted.rate_limit_remaining = 1
     loop, _store = _new_loop(scripted)
 
-    result = loop.run_cycle(T0)
+    result = await loop.run_cycle(T0)
 
     assert result.ok is True
     assert loop.breaker.backoff_active is True
 
 
-def test_gap_episode_recorded_in_gap_log_on_recovery():
+async def test_gap_episode_recorded_in_gap_log_on_recovery():
     scripted = ScriptedGateway()
     store = StateStore(discrepancy_log=InMemoryEventLog(), ghost_log=InMemoryEventLog())
     gap_log = InMemoryEventLog()
-    healthcheck_client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200)))
+    healthcheck_client = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200)))
     loop = PollerLoop(gateway=scripted.client, store=store, gap_log=gap_log, healthcheck_client=healthcheck_client)
 
     scripted.fail_feeds = {"vehicle-positions"}
-    loop.run_cycle(T0)
+    await loop.run_cycle(T0)
     assert gap_log.events == []  # still escalating, not recovered yet
 
     scripted.fail_feeds = set()
-    loop.run_cycle(T0 + timedelta(seconds=30))
+    await loop.run_cycle(T0 + timedelta(seconds=30))
 
     assert len(gap_log.events) == 1
     assert gap_log.events[0].reason == "circuit_breaker"
 
 
-def test_auth_error_marks_cycle_failed_without_raising():
+async def test_auth_error_marks_cycle_failed_without_raising():
     scripted = ScriptedGateway()
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(401, headers={"WWW-Authenticate": "irrelevant"})
 
-    scripted.client._client = httpx.Client(transport=httpx.MockTransport(handler))
+    scripted.client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     loop, _store = _new_loop(scripted)
 
-    result = loop.run_cycle(T0)
+    result = await loop.run_cycle(T0)
 
     assert result.ok is False
     assert loop.breaker.backoff_active is True

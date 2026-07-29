@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 PING_URL_ENV = "TT_DEADMAN_PING_URL"
 
 
-def ping(client: httpx.Client, url: str | None = None) -> bool:
+async def ping(client: httpx.AsyncClient, url: str | None = None) -> bool:
     """Best-effort: a failed or unconfigured dead-man ping must never crash
     the poller, it's a monitoring signal, not a dependency."""
     resolved_url = url or os.environ.get(PING_URL_ENV)
@@ -33,7 +33,7 @@ def ping(client: httpx.Client, url: str | None = None) -> bool:
         logger.debug("%s not set, skipping dead-man ping", PING_URL_ENV)
         return False
     try:
-        response = client.get(resolved_url, timeout=10.0)
+        response = await client.get(resolved_url, timeout=10.0)
         response.raise_for_status()
         return True
     except httpx.HTTPError as exc:

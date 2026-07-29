@@ -3,14 +3,22 @@
 Runs forever (until SIGINT/SIGTERM) at a service-hours-aware, breaker-backed
 cadence. 2a's `python -m traintracker.gateway` one-shot smoke check remains
 available separately for manual auth diagnostics.
+
+Async since M3 (2026-07-30): this loop now shares a process and an asyncio
+event loop with the FastAPI/SSE server (CLAUDE.md's M3 process-boundary
+decision — same process, so 2d's in-process `EventHub` can be read directly
+without any IPC). `GatewayClient`/`healthcheck.ping` converted to
+`httpx.AsyncClient` alongside this; `CircuitBreaker`/`HistoryStore` have no
+actual I/O latency worth yielding on (pure computation / small local SQLite
+writes) and stay synchronous, called directly from this async loop.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import signal
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -39,7 +47,7 @@ METRICS_PORT = 9109
 logger = logging.getLogger("traintracker.poller")
 
 # Docker's default stop grace period is 10s before SIGKILL. A single
-# `time.sleep(interval)` could block for up to the breaker's 5-minute cap
+# `asyncio.sleep(interval)` could block for up to the breaker's 5-minute cap
 # (or the overnight 30-60s window), so a SIGTERM mid-sleep would get force-
 # killed rather than shut down cleanly. Sleep in small slices instead and
 # recheck the stop flag between them.
@@ -53,14 +61,14 @@ SHUTDOWN_CHECK_INTERVAL_S = 1.0
 SUMMARY_INTERVAL_S = 3600.0
 
 
-def _interruptible_sleep(loop: PollerLoop, seconds: float) -> None:
+async def _interruptible_sleep(loop: PollerLoop, seconds: float) -> None:
     remaining = seconds
     while remaining > 0 and not loop.stopped:
-        time.sleep(min(SHUTDOWN_CHECK_INTERVAL_S, remaining))
+        await asyncio.sleep(min(SHUTDOWN_CHECK_INTERVAL_S, remaining))
         remaining -= SHUTDOWN_CHECK_INTERVAL_S
 
 
-def main() -> int:
+async def main() -> int:
     # The dead-man ping URL carries its own secret as a path segment (not a
     # header, like the API key) -- httpx's own request logging prints full
     # URLs at INFO level, so without registering it here it leaks straight
@@ -93,21 +101,27 @@ def main() -> int:
     )
     store = StateStore(discrepancy_log=discrepancy_log, ghost_log=ghost_log)
 
-    loop = PollerLoop(gateway=GatewayClient(), store=store, gap_log=gap_log)
+    gateway = GatewayClient()
+    loop = PollerLoop(gateway=gateway, store=store, gap_log=gap_log)
 
-    def handle_signal(signum: int, frame: object) -> None:
-        logger.info("received signal %d, shutting down after this cycle", signum)
+    def handle_signal() -> None:
+        logger.info("received stop signal, shutting down after this cycle")
         loop.stop()
 
-    signal.signal(signal.SIGINT, handle_signal)
-    signal.signal(signal.SIGTERM, handle_signal)
+    # `loop.add_signal_handler` (not `signal.signal`) so the handler runs on
+    # the event loop rather than possibly interrupting an in-flight await --
+    # standard asyncio practice, and fine here since the target is always
+    # Linux/Docker (SIGTERM is what `docker stop` sends).
+    event_loop = asyncio.get_running_loop()
+    event_loop.add_signal_handler(signal.SIGINT, handle_signal)
+    event_loop.add_signal_handler(signal.SIGTERM, handle_signal)
 
     logger.info("poller starting")
     last_summary_at = datetime.now(timezone.utc)
     while not loop.stopped:
         cycle_start = datetime.now(timezone.utc)
         history.rotate(cycle_start)
-        result = loop.run_cycle(cycle_start)
+        result = await loop.run_cycle(cycle_start)
         metrics.record_cycle(result, loop.breaker)
         metrics.record_feed_ages(ALL_FEEDS, loop.last_changed_at)
         interval = loop.next_interval(cycle_start)
@@ -131,12 +145,13 @@ def main() -> int:
             )
             last_summary_at = cycle_start
 
-        _interruptible_sleep(loop, interval)
+        await _interruptible_sleep(loop, interval)
 
+    await gateway.aclose()
     history.close()
     logger.info("poller stopped")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(asyncio.run(main()))

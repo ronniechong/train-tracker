@@ -90,7 +90,11 @@ def base_url() -> str:
 class GatewayClient:
     """Thin, single-purpose HTTP client for the three Metro Train feeds.
 
-    `httpx.Client` honours standard proxy env vars (`HTTPS_PROXY` etc —
+    Async since M3 (2026-07-30): the poll loop now runs on the same asyncio
+    event loop as the FastAPI/SSE server it shares a process with, so this
+    can no longer block the loop with a synchronous call.
+
+    `httpx.AsyncClient` honours standard proxy env vars (`HTTPS_PROXY` etc —
     `trust_env=True` is the default) so the 2a egress-sidecar decision stays
     a compose/env config swap, never a code change, if it's ever revisited.
     """
@@ -105,21 +109,21 @@ class GatewayClient:
         if not self._api_key:
             raise GatewayError(f"{API_KEY_ENV} is not set")
         self._base_url = base_url_override or base_url()
-        self._client = httpx.Client(timeout=timeout)
+        self._client = httpx.AsyncClient(timeout=timeout)
 
-    def close(self) -> None:
-        self._client.close()
+    async def aclose(self) -> None:
+        await self._client.aclose()
 
-    def __enter__(self) -> GatewayClient:
+    async def __aenter__(self) -> GatewayClient:
         return self
 
-    def __exit__(self, *exc_info: object) -> None:
-        self.close()
+    async def __aexit__(self, *exc_info: object) -> None:
+        await self.aclose()
 
-    def fetch(self, feed: Feed) -> FeedResponse:
+    async def fetch(self, feed: Feed) -> FeedResponse:
         url = f"{self._base_url}/{feed.value}"
         logger.debug("gateway request: GET %s", url)  # never log headers
-        response = self._client.get(url, headers={"KeyId": self._api_key})
+        response = await self._client.get(url, headers={"KeyId": self._api_key})
 
         if response.status_code in (401, 403):
             logger.warning(

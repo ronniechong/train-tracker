@@ -56,13 +56,13 @@ class PollerLoop:
         store: StateStore,
         gap_log: EventLog,
         breaker: CircuitBreaker | None = None,
-        healthcheck_client: httpx.Client | None = None,
+        healthcheck_client: httpx.AsyncClient | None = None,
     ):
         self._gateway = gateway
         self._store = store
         self._gap_log = gap_log
         self._breaker = breaker or CircuitBreaker()
-        self._healthcheck_client = healthcheck_client or httpx.Client()
+        self._healthcheck_client = healthcheck_client or httpx.AsyncClient()
         self._cache = _FeedCache()
         self._stop = False
 
@@ -83,7 +83,7 @@ class PollerLoop:
     def stop(self) -> None:
         self._stop = True
 
-    def run_cycle(self, now: datetime | None = None) -> CycleResult:
+    async def run_cycle(self, now: datetime | None = None) -> CycleResult:
         now = now or datetime.now(timezone.utc)
         changed: set[Feed] = set()
         lowest_remaining: int | None = None
@@ -91,7 +91,7 @@ class PollerLoop:
 
         for feed in ALL_FEEDS:
             try:
-                response = self._gateway.fetch(feed)
+                response = await self._gateway.fetch(feed)
             except GatewayAuthError:
                 logger.error("auth rejected on %s, aborting cycle", feed.value)
                 ok = False
@@ -134,7 +134,7 @@ class PollerLoop:
             )
 
         if ok:
-            healthcheck.ping(self._healthcheck_client)
+            await healthcheck.ping(self._healthcheck_client)
 
         return CycleResult(ok=ok, changed_feeds=frozenset(changed), lowest_remaining=lowest_remaining)
 
