@@ -87,6 +87,14 @@ services:
     image: caddy:2.9-alpine
     restart: unless-stopped
     read_only: true
+    # Non-root (invariant 5) -- same UID convention as `poller`. Unlike
+    # `tailscale`, Caddy needs no special capability: it only listens on
+    # the unprivileged `:8080` here, TLS termination happens upstream of
+    # this container entirely. `caddy_data`/`caddy_config` must be
+    # chowned to this UID once before first use under this user (see
+    # ops/runbook.md) -- the official image runs as root by default, so
+    # both volumes were created root-owned before this changed.
+    user: "1000:1000"
     tmpfs:
       - /tmp
     volumes:
