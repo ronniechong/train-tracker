@@ -1,0 +1,24 @@
+# M3: sole ingress into the `poller` service's FastAPI/SSE app. Listens on
+# plain HTTP on an internal-only network — TLS termination happens on the
+# reverse-ingress layer in front of this container, not here.
+{
+	auto_https off
+	admin off
+}
+
+:8080 {
+	encode gzip
+
+	# SSE must never be buffered — flush every write immediately so deltas
+	# reach the client as they're generated, not batched up.
+	@stream path /api/stream
+	handle @stream {
+		reverse_proxy poller:8000 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		reverse_proxy poller:8000
+	}
+}

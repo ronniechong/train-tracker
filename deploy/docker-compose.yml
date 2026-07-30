@@ -64,11 +64,72 @@ services:
       # egress-restricted network exactly as before, this only adds a second,
       # separate network for INBOUND scraping -- doesn't touch invariant #5.
       - monitoring
+      # M3: a second, separate network carrying the FastAPI/SSE app's
+      # inbound traffic only, shared with nothing but `caddy`. Distinct
+      # from `internal` (which stays purely for the poller's own outbound
+      # calls via `egress-proxy`) -- this container now has two independent
+      # network purposes, not one network doing double duty.
+      - ingress
+
+  # M3: sole reverse-proxy ingress into the FastAPI/SSE app (invariant 4).
+  # Joins `ingress` to reach `poller` and `public` for its own outbound
+  # route -- the latter exists only because the `tailscale` sidecar below
+  # shares this container's network namespace and needs it, not because
+  # Caddy itself calls out anywhere.
+  caddy:
+    image: caddy:2.9-alpine
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - ingress
+      - public
+    depends_on:
+      - poller
+
+  # M3: terminates the public reverse-tunnel connection into Caddy. Shares
+  # Caddy's network namespace (`network_mode`) instead of joining a network
+  # of its own, so it reaches Caddy over localhost and never gains any
+  # network membership beyond exactly what Caddy already has.
+  tailscale:
+    image: tailscale/tailscale:latest
+    restart: unless-stopped
+    network_mode: service:caddy
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+      - ./tailscale-entrypoint.sh:/entrypoint.sh:ro
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:?TS_AUTHKEY must be set in deploy/.env}
+      TS_HOSTNAME: ${TS_HOSTNAME:-train-tracker}
+      TARGET_PORT: "8080"
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    depends_on:
+      - caddy
 
 networks:
   internal:
     internal: true
   egress:
+    driver: bridge
+  # M3: internal-only (no NAT out) -- `poller` only ever accepts inbound
+  # from `caddy` here, never initiates anything on it.
+  ingress:
+    internal: true
+  # M3: the only network with a real outbound route among the ones this
+  # milestone adds. Exists for the `tailscale` sidecar's own traffic
+  # (reaching the coordination service), inherited via `network_mode` on
+  # the `caddy` service it shares a namespace with.
+  public:
     driver: bridge
   # Not managed by this repo -- an already-running stack on the host owns
   # this network's actual definition (Grafana/Prometheus/Loki/cAdvisor/
@@ -82,3 +143,8 @@ networks:
   monitoring:
     external: true
     name: monitoring_default
+
+volumes:
+  caddy_data:
+  caddy_config:
+  tailscale_state:
