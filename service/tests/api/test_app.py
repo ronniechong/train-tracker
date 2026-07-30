@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 from google.transit import gtfs_realtime_pb2
@@ -41,6 +41,42 @@ def _sa_bytes(timestamp: int) -> bytes:
     feed.header.gtfs_realtime_version = "2.0"
     feed.header.timestamp = timestamp
     return feed.SerializeToString()
+
+
+async def _loop_with_vanished_train(first_seen_at: datetime) -> tuple[PollerLoop, StateStore]:
+    """T1 is live for one cycle at `first_seen_at`, then drops out of both
+    TU and VP entirely (empty entity lists, not just an unchanged header) on
+    a second cycle 100s later -- past `COASTING_TIMEOUT_S` (90s), so it's
+    tracked as "ghost" with `last_seen_at == first_seen_at` and no snapshot
+    left in `store.latest_snapshots` at all. Exercises the M3 fix: a fully
+    vanished train must still show up in `/api/state`, not silently
+    disappear."""
+    vanished = False
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if "trip-updates" in path:
+            return httpx.Response(200, content=_sa_bytes(2000) if vanished else _tu_bytes(1000))
+        if "vehicle-positions" in path:
+            return httpx.Response(200, content=_sa_bytes(2000) if vanished else _vp_bytes(1000))
+        return httpx.Response(200, content=_sa_bytes(2000 if vanished else 1000))
+
+    gateway = GatewayClient(api_key="test-key")
+    gateway._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    store = StateStore(discrepancy_log=InMemoryEventLog(), ghost_log=InMemoryEventLog())
+    healthcheck_client = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200)))
+    loop = PollerLoop(
+        gateway=gateway,
+        store=store,
+        gap_log=InMemoryEventLog(),
+        breaker=CircuitBreaker(),
+        healthcheck_client=healthcheck_client,
+    )
+
+    await loop.run_cycle(first_seen_at)
+    vanished = True
+    await loop.run_cycle(first_seen_at + timedelta(seconds=100))
+    return loop, store
 
 
 async def _running_loop() -> tuple[PollerLoop, StateStore]:
@@ -149,3 +185,40 @@ async def test_cors_allows_configured_origin(monkeypatch):
         response = await client.get("/api/state", headers={"Origin": "https://ronniechong.com"})
 
     assert response.headers["access-control-allow-origin"] == "https://ronniechong.com"
+
+
+async def test_state_includes_vanished_train_as_ghost_with_last_known_position():
+    # Recent last_seen_at (100s ago in cycle-time terms, effectively "now"
+    # in wall-clock terms) -- well inside MAX_GHOST_AGE_S, must still show.
+    loop, store = await _loop_with_vanished_train(datetime.now(timezone.utc))
+
+    async with await _client_for(loop, store) as client:
+        response = await client.get("/api/state")
+
+    trains = response.json()["trains"]
+    assert len(trains) == 1
+    train = trains[0]
+    assert train["trip_id"] == "T1"
+    assert train["status"] == "ghost"
+    # No fresher data available once vanished from both feeds -- honestly
+    # null, not invented.
+    assert train["route_id"] is None
+    assert train["position_updated_at"] is None
+    assert train["schedule_updated_at"] is None
+    # But the last confirmed fix and when it was confirmed are retained.
+    assert train["latitude"] == -37.81
+    assert train["longitude"] == 144.96
+    assert train["last_seen_at"] is not None
+
+
+async def test_state_excludes_ghost_train_older_than_max_age():
+    # last_seen_at 3 hours before real "now" -- past MAX_GHOST_AGE_S (2h),
+    # so this is presentation-layer "definitely journey-ended", not a
+    # currently-relevant ghost.
+    stale_sighting = datetime.now(timezone.utc) - timedelta(hours=3)
+    loop, store = await _loop_with_vanished_train(stale_sighting)
+
+    async with await _client_for(loop, store) as client:
+        response = await client.get("/api/state")
+
+    assert response.json()["trains"] == []

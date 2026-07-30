@@ -57,6 +57,24 @@ class _TrackedTrain:
     ghost_started_at: datetime | None = None
 
 
+@dataclass(frozen=True)
+class TrackedTrainView:
+    """Read-only snapshot of one tracked trip, for M3's API/SSE consumers.
+
+    Deliberately minimal (status + last-known position only) -- this is all
+    `_TrackedTrain` actually retains once a trip drops out of both live
+    feeds. A vanished/ghost trip's route/schedule fields are NOT available
+    here; `merge.py`'s output (`StateStore.latest_snapshots`) is the only
+    source for those, and only while the trip is still present in at least
+    one feed. A consumer wanting a real "scheduled position" for a fully-
+    vanished ghost needs M4's not-yet-built schedule-lookup, not this."""
+
+    trip_id: str
+    status: Status
+    last_seen_at: datetime | None
+    last_position: tuple[float, float] | None
+
+
 class TrainLifecycleTracker:
     def __init__(
         self,
@@ -123,6 +141,32 @@ class TrainLifecycleTracker:
     def status_of(self, trip_id: str) -> Status | None:
         tracked = self._trains.get(trip_id)
         return tracked.status if tracked else None
+
+    def all_tracked(self) -> tuple[TrackedTrainView, ...]:
+        """Every trip this tracker has ever seen (live, coasting, or ghost),
+        not just the ones present in the current cycle's merge output --
+        `StateStore.latest_snapshots` alone under-reports ghost/coasting
+        trips once they drop out of both feeds entirely (M3 finding, caught
+        while building `/api/state`: it only iterated `latest_snapshots`,
+        so a fully-vanished train just silently disappeared from the API
+        instead of being honestly labelled "ghost").
+
+        No age-based filtering here -- `_trains` currently has no eviction
+        at all (CLAUDE.md's "ghost ... fade at journey end" was never
+        actually implemented, a separate open gap, see M3 milestone doc),
+        so this can include arbitrarily old entries. Callers that present
+        this as "current state" (the API) are responsible for their own
+        recency filtering; this method reports the tracker's true internal
+        state, unfiltered, on purpose."""
+        return tuple(
+            TrackedTrainView(
+                trip_id=trip_id,
+                status=tracked.status,
+                last_seen_at=tracked.last_seen_at,
+                last_position=tracked.last_position,
+            )
+            for trip_id, tracked in self._trains.items()
+        )
 
     def flush(self, at: datetime) -> None:
         """Force-close any still-open ghost episodes (e.g. at the end of a

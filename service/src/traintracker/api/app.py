@@ -22,12 +22,24 @@ from fastapi.responses import JSONResponse
 from ..gateway.client import Feed
 from ..metrics import STALENESS_THRESHOLD_S
 from ..poller.loop import ALL_FEEDS, PollerLoop
+from ..state.ghost import TrackedTrainView
 from ..state.store import StateStore
 from .schemas import FeedStatus, HealthResponse, StateResponse, Train
 
 logger = logging.getLogger("traintracker.api")
 
 CORS_ORIGINS_ENV = "TT_CORS_ORIGINS"
+
+# A ghost/coasting train with no live-feed presence for longer than this is
+# treated as journey-ended for API purposes. `state/ghost.py`'s tracker has
+# no eviction of its own (CLAUDE.md's "ghost ... fade at journey end" was
+# never actually built -- a separate, still-open gap, see M3 milestone doc)
+# so `store.all_tracked()` can return arbitrarily old entries; this is a
+# presentation-layer approximation to stop a live consumer being flooded
+# with every trip ever seen since the process started, not a tuned value --
+# generous relative to the ~90s-few-minute typical ghost durations seen in
+# the 2g soak week.
+MAX_GHOST_AGE_S = 2 * 60 * 60
 
 
 def _cors_origins() -> list[str]:
@@ -41,17 +53,45 @@ def _feed_status(loop: PollerLoop, feed: Feed, now: datetime) -> FeedStatus:
     return FeedStatus(last_changed_at=changed_at, stale=stale)
 
 
-def _train(store: StateStore, trip_id: str) -> Train:
-    snapshot = store.latest_snapshots[trip_id]
+def _is_current(tracked: TrackedTrainView, now: datetime) -> bool:
+    if tracked.last_seen_at is None:
+        # Never seen a live position at all this session -- this is a
+        # brand-new trip picked up from one feed only (e.g. scheduled in
+        # TU, no VP fix yet), not a stale leftover. Nothing to filter on.
+        return True
+    return (now - tracked.last_seen_at).total_seconds() <= MAX_GHOST_AGE_S
+
+
+def _train(store: StateStore, tracked: TrackedTrainView) -> Train:
+    snapshot = store.latest_snapshots.get(tracked.trip_id)
+    if snapshot is not None:
+        return Train(
+            trip_id=tracked.trip_id,
+            route_id=snapshot.route_id,
+            status=tracked.status,
+            latitude=snapshot.latitude,
+            longitude=snapshot.longitude,
+            bearing=snapshot.bearing,
+            position_updated_at=snapshot.position_updated_at,
+            schedule_updated_at=snapshot.schedule_updated_at,
+            last_seen_at=tracked.last_seen_at,
+        )
+
+    # Dropped out of both live feeds entirely (coasting/ghost with only a
+    # last-known fix) -- report what's actually known (position, honestly
+    # timestamped via last_seen_at) rather than either inventing fresher
+    # data or silently omitting the train from the response.
+    latitude, longitude = tracked.last_position or (None, None)
     return Train(
-        trip_id=snapshot.trip_id,
-        route_id=snapshot.route_id,
-        status=store.status_of(trip_id),
-        latitude=snapshot.latitude,
-        longitude=snapshot.longitude,
-        bearing=snapshot.bearing,
-        position_updated_at=snapshot.position_updated_at,
-        schedule_updated_at=snapshot.schedule_updated_at,
+        trip_id=tracked.trip_id,
+        route_id=None,
+        status=tracked.status,
+        latitude=latitude,
+        longitude=longitude,
+        bearing=None,
+        position_updated_at=None,
+        schedule_updated_at=None,
+        last_seen_at=tracked.last_seen_at,
     )
 
 
@@ -90,7 +130,11 @@ def create_app(loop: PollerLoop, store: StateStore) -> FastAPI:
             generated_at=now,
             backoff_active=loop.breaker.backoff_active,
             feeds={feed.value: _feed_status(loop, feed, now) for feed in ALL_FEEDS},
-            trains=[_train(store, trip_id) for trip_id in store.latest_snapshots],
+            trains=[
+                _train(store, tracked)
+                for tracked in store.all_tracked()
+                if _is_current(tracked, now)
+            ],
         )
 
     return app

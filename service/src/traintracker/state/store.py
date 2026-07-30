@@ -13,7 +13,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from .eventlog import EventLog
-from .ghost import TrainLifecycleTracker
+from .ghost import TrackedTrainView, TrainLifecycleTracker
 from .merge import TrainSnapshot, merge
 
 
@@ -50,6 +50,9 @@ class StateStore:
 
     def status_of(self, trip_id: str):
         return self._lifecycle.status_of(trip_id)
+
+    def all_tracked(self) -> tuple[TrackedTrainView, ...]:
+        return self._lifecycle.all_tracked()
 
     def flush(self, at: datetime) -> None:
         self._lifecycle.flush(at)
