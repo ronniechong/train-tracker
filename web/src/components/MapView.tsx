@@ -9,6 +9,7 @@ import styles from './MapView.module.css'
 interface MapViewProps {
   trains: Map<string, Train>
   hiddenRouteIds: ReadonlySet<string>
+  hideGhosts: boolean
 }
 
 /** Owns the MapLibre instance imperatively -- trains/routes update via
@@ -16,7 +17,7 @@ interface MapViewProps {
  * not JSX diffing (see milestones/03b-web-react-design-system.md decision
  * #1: re-rendering ~200 markers through React state on every SSE delta
  * would undo M4's MapLibre-native-transition design). */
-export function MapView({ trains, hiddenRouteIds }: MapViewProps) {
+export function MapView({ trains, hiddenRouteIds, hideGhosts }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markerManagerRef = useRef<TrainMarkerManager | null>(null)
@@ -55,8 +56,8 @@ export function MapView({ trains, hiddenRouteIds }: MapViewProps) {
   useEffect(() => {
     if (!loaded || !mapRef.current) return
     applyHiddenRoutes(mapRef.current, hiddenRouteIds)
-    markerManagerRef.current?.sync(trains, hiddenRouteIds)
-  }, [loaded, hiddenRouteIds, trains])
+    markerManagerRef.current?.sync(trains, hiddenRouteIds, hideGhosts)
+  }, [loaded, hiddenRouteIds, trains, hideGhosts])
 
   return (
     <main className={styles.mapContainer}>

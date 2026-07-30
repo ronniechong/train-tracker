@@ -17,6 +17,18 @@
   cursor: pointer;
 }
 
+/* MapLibre also sets `transform` on this same element every render frame
+   while the camera is panning/zooming, to keep the marker pinned to its
+   real geographic position -- with the transition above always active,
+   the browser eases toward each of those frames instead of snapping
+   instantly, so the dot visibly lags/floats away from its true position
+   during a drag (found live, 2026-07-31). trainMarkers.ts toggles this
+   class for the duration of any camera move so the transition only
+   applies to genuine SSE-driven position updates, never to panning. */
+.train-marker--instant {
+  transition: none;
+}
+
 .train-dot {
   position: absolute;
   inset: 0;

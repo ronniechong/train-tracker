@@ -1,6 +1,7 @@
 import type { LiveState } from '../hooks/useLiveFeed'
 import type { FeedStatus, Train } from '../api-types'
 import { Section } from './Section'
+import { Toggle } from './Toggle'
 import { cx } from '../lib/cx'
 import styles from './StatusPanel.module.css'
 
@@ -41,9 +42,11 @@ function trainCounts(trains: Map<string, Train>): Record<Train['status'], number
 
 interface StatusPanelProps {
   liveState: LiveState
+  hideGhosts: boolean
+  onToggleHideGhosts: (hide: boolean) => void
 }
 
-export function StatusPanel({ liveState }: StatusPanelProps) {
+export function StatusPanel({ liveState, hideGhosts, onToggleHideGhosts }: StatusPanelProps) {
   const counts = trainCounts(liveState.trains)
 
   return (
@@ -83,6 +86,10 @@ export function StatusPanel({ liveState }: StatusPanelProps) {
           </span>
         </span>
       </div>
+      <label className={styles.ghostToggleRow}>
+        <span>Hide ghost trains</span>
+        <Toggle checked={hideGhosts} onChange={onToggleHideGhosts} aria-label="Hide ghost trains" />
+      </label>
     </Section>
   )
 }

@@ -144,11 +144,14 @@ function styleMarkerElements(elements: MarkerElements, train: Train): void {
 }
 
 export interface TrainMarkerManager {
-  /** Reconciles markers against the current train set + legend visibility. */
-  sync(trains: Map<string, Train>, hiddenRouteIds: ReadonlySet<string>): void
+  /** Reconciles markers against the current train set + legend visibility
+   * + the "hide ghost trains" preference. */
+  sync(trains: Map<string, Train>, hiddenRouteIds: ReadonlySet<string>, hideGhosts: boolean): void
   /** Removes every marker from the map. Call on MapView unmount. */
   destroy(): void
 }
+
+const INSTANT_CLASS = 'train-marker--instant'
 
 /** Owns all train marker state for one map instance. Instantiated once per
  * `MapView` mount (not a module singleton) so remounting the map — e.g.
@@ -157,6 +160,24 @@ export interface TrainMarkerManager {
 export function createTrainMarkerManager(map: maplibregl.Map): TrainMarkerManager {
   const markers = new Map<string, maplibregl.Marker>()
   const elementsByTripId = new Map<string, MarkerElements>()
+  // While the camera is moving, MapLibre updates every marker's transform
+  // on each render frame -- the CSS position transition must be off for
+  // that duration (see trainMarkers.css's INSTANT_CLASS comment) or dots
+  // visibly lag behind a pan/zoom instead of tracking it.
+  let isMoving = false
+
+  function setInstant(elements: MarkerElements, instant: boolean): void {
+    elements.root.classList.toggle(INSTANT_CLASS, instant)
+  }
+
+  map.on('movestart', () => {
+    isMoving = true
+    for (const elements of elementsByTripId.values()) setInstant(elements, true)
+  })
+  map.on('moveend', () => {
+    isMoving = false
+    for (const elements of elementsByTripId.values()) setInstant(elements, false)
+  })
 
   function removeTrain(tripId: string): void {
     markers.get(tripId)?.remove()
@@ -164,8 +185,13 @@ export function createTrainMarkerManager(map: maplibregl.Map): TrainMarkerManage
     elementsByTripId.delete(tripId)
   }
 
-  function upsertTrain(train: Train, hiddenRouteIds: ReadonlySet<string>): void {
-    if (train.latitude === null || train.longitude === null || isRouteHidden(train.route_id, hiddenRouteIds)) {
+  function upsertTrain(train: Train, hiddenRouteIds: ReadonlySet<string>, hideGhosts: boolean): void {
+    if (
+      train.latitude === null ||
+      train.longitude === null ||
+      isRouteHidden(train.route_id, hiddenRouteIds) ||
+      (hideGhosts && train.status === 'ghost')
+    ) {
       removeTrain(train.trip_id)
       return
     }
@@ -173,6 +199,7 @@ export function createTrainMarkerManager(map: maplibregl.Map): TrainMarkerManage
     let elements = elementsByTripId.get(train.trip_id)
     if (!marker || !elements) {
       elements = createMarkerElements()
+      if (isMoving) setInstant(elements, true)
       elementsByTripId.set(train.trip_id, elements)
       marker = new maplibregl.Marker({ element: elements.root })
       marker.setLngLat([train.longitude, train.latitude])
@@ -185,12 +212,12 @@ export function createTrainMarkerManager(map: maplibregl.Map): TrainMarkerManage
   }
 
   return {
-    sync(trains, hiddenRouteIds) {
+    sync(trains, hiddenRouteIds, hideGhosts) {
       for (const tripId of markers.keys()) {
         if (!trains.has(tripId)) removeTrain(tripId)
       }
       for (const train of trains.values()) {
-        upsertTrain(train, hiddenRouteIds)
+        upsertTrain(train, hiddenRouteIds, hideGhosts)
       }
     },
     destroy() {

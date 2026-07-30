@@ -11,15 +11,23 @@ interface SidebarProps {
   liveState: LiveState
   hiddenRouteIds: ReadonlySet<string>
   onToggleRoute: (routeId: string, visible: boolean) => void
+  hideGhosts: boolean
+  onToggleHideGhosts: (hide: boolean) => void
 }
 
-export function Sidebar({ liveState, hiddenRouteIds, onToggleRoute }: SidebarProps) {
+export function Sidebar({
+  liveState,
+  hiddenRouteIds,
+  onToggleRoute,
+  hideGhosts,
+  onToggleHideGhosts,
+}: SidebarProps) {
   return (
     <aside className={styles.sidebar}>
       <Header />
       <Legend hiddenRouteIds={hiddenRouteIds} onToggle={onToggleRoute} />
       <Search />
-      <StatusPanel liveState={liveState} />
+      <StatusPanel liveState={liveState} hideGhosts={hideGhosts} onToggleHideGhosts={onToggleHideGhosts} />
       <StationPanel />
       <Section>
         <Placeholder>CTA — Stage 5</Placeholder>

@@ -1,5 +1,6 @@
 import { geometry, type Route } from '../geometry'
 import { Section } from './Section'
+import { Toggle } from './Toggle'
 import styles from './Legend.module.css'
 
 // Groups lines by color family to match PTV's own published line-color
@@ -61,16 +62,11 @@ export function Legend({ hiddenRouteIds, onToggle }: LegendProps) {
                   <span className={styles.swatch} style={{ backgroundColor: route.color }} />
                   <span>{route.name}</span>
                 </span>
-                <span className={styles.toggle}>
-                  <input
-                    type="checkbox"
-                    checked={visible}
-                    onChange={(event) => onToggle(route.id, event.target.checked)}
-                  />
-                  <span className={styles.track}>
-                    <span className={styles.thumb} />
-                  </span>
-                </span>
+                <Toggle
+                  checked={visible}
+                  onChange={(checked) => onToggle(route.id, checked)}
+                  aria-label={`Show ${route.name} line`}
+                />
               </label>
             </li>
           )

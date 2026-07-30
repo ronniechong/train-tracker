@@ -7,6 +7,9 @@ import styles from './App.module.css'
 export function App() {
   const liveState = useLiveFeed()
   const [hiddenRouteIds, setHiddenRouteIds] = useState<ReadonlySet<string>>(() => new Set())
+  // Off by default -- genuine ghosts stay visible, honestly labelled, per
+  // Ronnie's call (2026-07-31): hiding them is opt-in, not the default.
+  const [hideGhosts, setHideGhosts] = useState(false)
 
   function handleToggleRoute(routeId: string, visible: boolean): void {
     setHiddenRouteIds((prev) => {
@@ -22,8 +25,14 @@ export function App() {
 
   return (
     <div className={styles.shell}>
-      <Sidebar liveState={liveState} hiddenRouteIds={hiddenRouteIds} onToggleRoute={handleToggleRoute} />
-      <MapView trains={liveState.trains} hiddenRouteIds={hiddenRouteIds} />
+      <Sidebar
+        liveState={liveState}
+        hiddenRouteIds={hiddenRouteIds}
+        onToggleRoute={handleToggleRoute}
+        hideGhosts={hideGhosts}
+        onToggleHideGhosts={setHideGhosts}
+      />
+      <MapView trains={liveState.trains} hiddenRouteIds={hiddenRouteIds} hideGhosts={hideGhosts} />
     </div>
   )
 }
