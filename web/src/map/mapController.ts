@@ -1,6 +1,6 @@
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { geometry, type Bounds } from './geometry'
+import { geometry, type Bounds } from '../geometry'
 
 // OpenFreeMap: free, no API key, no published rate limits (chosen as the M4
 // MVP basemap — see work-docs milestones/04-map.md). Provisional; swap the
@@ -47,7 +47,10 @@ function routesToGeoJSON(): GeoJSON.FeatureCollection<GeoJSON.LineString> {
 
 // Which routes actually serve each station -- needed so toggling one line
 // off doesn't hide a station that's still served by another visible line
-// (e.g. Flinders Street, or any interchange).
+// (e.g. Flinders Street, or any interchange). Pure lookup derived once from
+// the static geometry bundle -- unlike the map/marker state in this module
+// and in trainMarkers.ts, this never changes and isn't tied to any one map
+// instance, so it's safe to keep at module scope.
 const routesByStationId = new Map<string, Set<string>>()
 for (const route of geometry.routes) {
   for (const stationId of route.stationIds) {
@@ -76,6 +79,12 @@ function stationsToGeoJSON(hidden: ReadonlySet<string>): GeoJSON.FeatureCollecti
   }
 }
 
+/** Whether a train's route is currently toggled off in the legend. `null`
+ * route_id (ghosts with no known route) is never considered hidden. */
+export function isRouteHidden(routeId: string | null, hiddenRouteIds: ReadonlySet<string>): boolean {
+  return routeId !== null && hiddenRouteIds.has(routeId)
+}
+
 export function initMap(container: HTMLElement): maplibregl.Map {
   return new maplibregl.Map({
     container,
@@ -88,9 +97,23 @@ export function initMap(container: HTMLElement): maplibregl.Map {
   }).addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
 }
 
+/** MapLibre computes its initial center/zoom against the container's size
+ * at construction time, clamped by `maxBounds`. Mounting inside a React
+ * effect (vs. the vanilla build's synchronous script-tag init) risks that
+ * measurement racing the CSS grid/`100dvh` layout settling, which -- given
+ * the network's bounds are asymmetric around the CBD (Stony Point pulls
+ * the south edge much further out than the north edge, see CLAUDE.md) --
+ * can clamp the camera to a visibly wrong spot rather than just a slightly
+ * wrong zoom. Cheap and correct regardless of root cause: force a resize
+ * against the now-settled container, then re-assert the intended camera.
+ * Call once, after the map's `load` event. */
+export function resetInitialView(map: maplibregl.Map): void {
+  map.jumpTo({ center: MELBOURNE_CBD, zoom: INITIAL_ZOOM })
+}
+
 /** Adds the route-line and station-point layers. Call once after the map's
  * `load` event — GeoJSON sources can't be added before the style is ready. */
-export function addGeometryLayers(map: maplibregl.Map): void {
+export function addGeometryLayers(map: maplibregl.Map, hiddenRouteIds: ReadonlySet<string>): void {
   map.addSource(ROUTES_SOURCE_ID, { type: 'geojson', data: routesToGeoJSON() })
   map.addSource(STATIONS_SOURCE_ID, { type: 'geojson', data: stationsToGeoJSON(hiddenRouteIds) })
 
@@ -116,26 +139,15 @@ export function addGeometryLayers(map: maplibregl.Map): void {
   })
 }
 
-const hiddenRouteIds = new Set<string>()
-
-export function isRouteHidden(routeId: string | null): boolean {
-  return routeId !== null && hiddenRouteIds.has(routeId)
-}
-
 /** Legend show/hide toggle. Updates a filter on the shared route-lines
  * layer (one filter, not one MapLibre layer per route — 18 routes, not
  * worth the extra layers) and recomputes which stations should still show
  * (a station only hides once every route serving it is hidden — toggling
  * one line off shouldn't hide an interchange still served by another
  * visible line). Train markers are DOM elements outside MapLibre's own
- * layers, so they're not handled here — callers should re-run `syncTrains`
- * after this using `isRouteHidden` to filter, see `main.ts`. */
-export function setRouteVisible(map: maplibregl.Map, routeId: string, visible: boolean): void {
-  if (visible) {
-    hiddenRouteIds.delete(routeId)
-  } else {
-    hiddenRouteIds.add(routeId)
-  }
+ * layers, so they're not handled here — callers re-sync trainMarkers
+ * separately using the same `hiddenRouteIds`, see `MapView.tsx`. */
+export function applyHiddenRoutes(map: maplibregl.Map, hiddenRouteIds: ReadonlySet<string>): void {
   const hidden = [...hiddenRouteIds]
   map.setFilter(
     ROUTE_LINES_LAYER_ID,

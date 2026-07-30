@@ -1,0 +1,20 @@
+.section {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 0.75rem 0.9rem;
+}
+
+.title {
+  margin: 0 0 0.5rem;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.placeholder {
+  color: var(--color-text-dim);
+  font-size: var(--font-size-base);
+  font-style: italic;
+}

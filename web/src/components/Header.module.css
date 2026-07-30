@@ -1,0 +1,25 @@
+.header {
+  padding: 0.25rem 0.1rem 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.titleRow img {
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+}
+
+.title {
+  font-size: var(--font-size-lg);
+  margin: 0;
+}
+
+.tagline {
+  margin: 0.3rem 0 0;
+  color: var(--color-text-dim);
+  font-size: var(--font-size-sm);
+}

@@ -1,10 +1,14 @@
 import * as maplibregl from 'maplibre-gl'
-import { geometry } from './geometry'
-import { isRouteHidden } from './map'
-import type { Train } from './api-types'
+import './trainMarkers.css'
+import { geometry } from '../geometry'
+import { isRouteHidden } from './mapController'
+import type { Train } from '../api-types'
 
 const routeColorById = new Map(geometry.routes.map((route) => [route.id, route.color]))
 const routeNameById = new Map(geometry.routes.map((route) => [route.id, route.name]))
+
+// Deliberately not design tokens: these render on the map itself, not the
+// app's UI chrome, so they stay constant regardless of light/dark theme.
 const GHOST_COLOR = '#888888'
 const UNKNOWN_ROUTE_COLOR = '#ffffff'
 
@@ -49,6 +53,13 @@ interface MarkerElements {
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
+// Plain DOM elements, not JSX -- MapLibre's Marker API wants a raw
+// HTMLElement, and re-rendering ~200 of these through React on every SSE
+// delta would undo the M4 decision to use MapLibre-native CSS transitions
+// for smooth movement (see mapController.ts / milestones/04-map.md). Class
+// names here are real global CSS classes (trainMarkers.css), NOT CSS
+// Modules -- a module would hash/rename them and break this string-based
+// wiring.
 /** Root carries MapLibre's own position transform+transition (smooth
  * movement, per the M4 spec-review steelman — no hand-rolled
  * interpolation). Pulse/dot/arrow/tooltip are independent children so
@@ -101,8 +112,6 @@ function createMarkerElements(): MarkerElements {
   return { root, pulse, dot, arrow, tooltip, tooltipSwatch, tooltipTitle, tooltipMeta }
 }
 
-const elementsByTripId = new Map<string, MarkerElements>()
-
 function styleMarkerElements(elements: MarkerElements, train: Train): void {
   const color = markerColor(train)
   elements.dot.style.backgroundColor = color
@@ -134,39 +143,58 @@ function styleMarkerElements(elements: MarkerElements, train: Train): void {
   elements.tooltipMeta.textContent = `${STATUS_LABEL[train.status]} · confirmed ${relativeTime(train.last_seen_at)}`
 }
 
-const markers = new Map<string, maplibregl.Marker>()
-
-function upsertTrain(map: maplibregl.Map, train: Train): void {
-  if (train.latitude === null || train.longitude === null || isRouteHidden(train.route_id)) {
-    removeTrain(train.trip_id)
-    return
-  }
-  let marker = markers.get(train.trip_id)
-  let elements = elementsByTripId.get(train.trip_id)
-  if (!marker || !elements) {
-    elements = createMarkerElements()
-    elementsByTripId.set(train.trip_id, elements)
-    marker = new maplibregl.Marker({ element: elements.root })
-    marker.setLngLat([train.longitude, train.latitude])
-    marker.addTo(map)
-    markers.set(train.trip_id, marker)
-  } else {
-    marker.setLngLat([train.longitude, train.latitude])
-  }
-  styleMarkerElements(elements, train)
+export interface TrainMarkerManager {
+  /** Reconciles markers against the current train set + legend visibility. */
+  sync(trains: Map<string, Train>, hiddenRouteIds: ReadonlySet<string>): void
+  /** Removes every marker from the map. Call on MapView unmount. */
+  destroy(): void
 }
 
-function removeTrain(tripId: string): void {
-  markers.get(tripId)?.remove()
-  markers.delete(tripId)
-  elementsByTripId.delete(tripId)
-}
+/** Owns all train marker state for one map instance. Instantiated once per
+ * `MapView` mount (not a module singleton) so remounting the map — e.g.
+ * React StrictMode's dev-only double-invoke — can't leave stale markers
+ * pointing at a removed map. */
+export function createTrainMarkerManager(map: maplibregl.Map): TrainMarkerManager {
+  const markers = new Map<string, maplibregl.Marker>()
+  const elementsByTripId = new Map<string, MarkerElements>()
 
-export function syncTrains(map: maplibregl.Map, trains: Map<string, Train>): void {
-  for (const tripId of markers.keys()) {
-    if (!trains.has(tripId)) removeTrain(tripId)
+  function removeTrain(tripId: string): void {
+    markers.get(tripId)?.remove()
+    markers.delete(tripId)
+    elementsByTripId.delete(tripId)
   }
-  for (const train of trains.values()) {
-    upsertTrain(map, train)
+
+  function upsertTrain(train: Train, hiddenRouteIds: ReadonlySet<string>): void {
+    if (train.latitude === null || train.longitude === null || isRouteHidden(train.route_id, hiddenRouteIds)) {
+      removeTrain(train.trip_id)
+      return
+    }
+    let marker = markers.get(train.trip_id)
+    let elements = elementsByTripId.get(train.trip_id)
+    if (!marker || !elements) {
+      elements = createMarkerElements()
+      elementsByTripId.set(train.trip_id, elements)
+      marker = new maplibregl.Marker({ element: elements.root })
+      marker.setLngLat([train.longitude, train.latitude])
+      marker.addTo(map)
+      markers.set(train.trip_id, marker)
+    } else {
+      marker.setLngLat([train.longitude, train.latitude])
+    }
+    styleMarkerElements(elements, train)
+  }
+
+  return {
+    sync(trains, hiddenRouteIds) {
+      for (const tripId of markers.keys()) {
+        if (!trains.has(tripId)) removeTrain(tripId)
+      }
+      for (const train of trains.values()) {
+        upsertTrain(train, hiddenRouteIds)
+      }
+    },
+    destroy() {
+      for (const tripId of [...markers.keys()]) removeTrain(tripId)
+    },
   }
 }

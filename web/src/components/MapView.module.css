@@ -1,0 +1,28 @@
+.mapContainer {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+/* The map div is handed to maplibregl.Map({ container }) directly --
+   MapLibre appends its own .maplibregl-map element as a child of it, not
+   of .mapContainer, so that's what needs sizing here. Kept as a dedicated
+   empty div (not shared with LoadingOverlay's JSX) so React and MapLibre
+   never write into the same parent node.
+
+   `position: absolute; inset: 0` (not height/width: 100%) deliberately --
+   a percentage height here resolves against .mapContainer's grid-row auto
+   track, and MapLibre's own ResizeObserver on this element created a real
+   feedback loop through that ambiguity (observed growing to 6000px+ tall
+   a few seconds after load, dragging the camera's maxBounds clamp far off
+   the intended CBD center). Absolute positioning against the .mapContainer
+   containing block sidesteps the content-based sizing algorithm entirely. */
+.map {
+  position: absolute;
+  inset: 0;
+}
+
+.map :global(.maplibregl-map) {
+  height: 100%;
+  width: 100%;
+}

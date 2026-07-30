@@ -1,0 +1,102 @@
+/* Design tokens. Light is the CSS default; dark applies automatically via
+   prefers-color-scheme. `data-theme="light"|"dark"` on <html> is a manual
+   override hook for M4 Stage 5's future toggle -- nothing sets it yet. */
+
+:root {
+  /* ---- Color: light (default) ---- */
+  --color-bg: #f5f6f8;
+  --color-panel-bg: #ffffff;
+  --color-border: #e0e3e8;
+  --color-text: #1a1d23;
+  --color-text-dim: #6b7280;
+  --color-accent: #0284c7;
+
+  --color-success: #2e9e44;
+  --color-warning: #b9720a;
+  --color-danger: #c9433f;
+  --color-toggle-on: #2c6f88;
+
+  color-scheme: light;
+
+  --shadow-sm: 0 1px 2px rgba(15, 17, 21, 0.08);
+  --shadow-md: 0 4px 16px rgba(15, 17, 21, 0.16);
+
+  /* ---- Spacing ---- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  /* ---- Radius ---- */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+
+  /* ---- Typography ---- */
+  --font-family: 'Inter Variable', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-size-xs: 0.72rem;
+  --font-size-sm: 0.8rem;
+  --font-size-base: 0.85rem;
+  --font-size-md: 0.95rem;
+  --font-size-lg: 1.05rem;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  /* ---- Layout ---- */
+  --sidebar-width: 20%;
+  --sidebar-min-width: 280px;
+}
+
+/* Dark, via system preference -- unless explicitly overridden to light
+   (see the data-theme block below). Values carried over unchanged from
+   the vanilla build, already tuned live across Stages 1-3. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-bg: #0f1115;
+    --color-panel-bg: #16191f;
+    --color-border: #262b33;
+    --color-text: #e7e9ec;
+    --color-text-dim: #9aa1ac;
+    --color-accent: #4fc3f7;
+
+    --color-success: #4caf50;
+    --color-warning: #f0ad4e;
+    --color-danger: #e05c5c;
+    --color-toggle-on: #3d7a91;
+
+    color-scheme: dark;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* Explicit dark override, for when Stage 5 wires up a manual toggle
+   regardless of system preference. */
+:root[data-theme='dark'] {
+  --color-bg: #0f1115;
+  --color-panel-bg: #16191f;
+  --color-border: #262b33;
+  --color-text: #e7e9ec;
+  --color-text-dim: #9aa1ac;
+  --color-accent: #4fc3f7;
+
+  --color-success: #4caf50;
+  --color-warning: #f0ad4e;
+  --color-danger: #e05c5c;
+  --color-toggle-on: #3d7a91;
+
+  color-scheme: dark;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+/* Note: train marker colors (map/trainMarkers.ts, map/trainMarkers.css)
+   are deliberately NOT tokenized here -- they render on the map itself,
+   not the app's UI chrome, so they stay constant regardless of light/dark
+   theme. Kept as plain constants next to the code that uses them. */

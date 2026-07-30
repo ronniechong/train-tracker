@@ -1,0 +1,6 @@
+.shell {
+  display: grid;
+  grid-template-columns: minmax(var(--sidebar-min-width), var(--sidebar-width)) 1fr;
+  height: 100dvh;
+  width: 100%;
+}
