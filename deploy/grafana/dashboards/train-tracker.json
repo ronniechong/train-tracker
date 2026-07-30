@@ -216,6 +216,23 @@
           "refId": "A"
         }
       ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Poller scrape target up",
+      "description": "Alert (poller-down): fires when this reads 0 for >2m -- Prometheus can no longer scrape the poller container at all. Distinct from panel 1's feed-staleness -- this is 'is the container reachable', that one is 'are the upstream feeds fresh'.",
+      "gridPos": { "x": 0, "y": 52, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "max": 1 }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "up{job=\"train-tracker-poller\"}",
+          "legendFormat": "up",
+          "refId": "A"
+        }
+      ]
     }
   ]
 }
