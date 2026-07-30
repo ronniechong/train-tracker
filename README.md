@@ -10,6 +10,20 @@ Design priorities: polite consumption of the upstream public API, security by
 construction, deep observability, and data honesty (gaps recorded, staleness
 displayed, inferences labelled).
 
+## Development setup
+
+This repo ships a pre-commit hook (`.githooks/pre-commit`) that blocks
+commits containing secrets via [gitleaks](https://github.com/gitleaks/gitleaks)
+(`brew install gitleaks` or see their releases page). Git doesn't enable
+custom hook directories by default, so after cloning, run once:
+
+```
+git config core.hooksPath .githooks
+```
+
+CI also runs gitleaks on every push as a backstop, but this local hook is
+what stops a secret from being committed in the first place.
+
 ## Data attribution
 
 Train positions and schedule data are derived and processed from the
