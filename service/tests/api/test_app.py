@@ -1,12 +1,16 @@
+import json
 from datetime import datetime, timedelta, timezone
 
 import httpx
+import pytest
 from google.transit import gtfs_realtime_pb2
 
-from traintracker.api.app import create_app
+from traintracker.api.app import _event_source, create_app
+from traintracker.api.limits import ConnectionTracker
 from traintracker.gateway.client import GatewayClient
 from traintracker.poller.breaker import CircuitBreaker
 from traintracker.poller.loop import PollerLoop
+from traintracker.state.eventhub import InProcessEventHub
 from traintracker.state.eventlog import InMemoryEventLog
 from traintracker.state.store import StateStore
 
@@ -114,8 +118,20 @@ async def _running_loop() -> tuple[PollerLoop, StateStore]:
     return loop, store
 
 
-async def _client_for(loop: PollerLoop, store: StateStore) -> httpx.AsyncClient:
-    app = create_app(loop=loop, store=store)
+async def _client_for(
+    loop: PollerLoop,
+    store: StateStore,
+    hub: InProcessEventHub | None = None,
+    connections: ConnectionTracker | None = None,
+    heartbeat_interval_s: float = 20.0,
+) -> httpx.AsyncClient:
+    app = create_app(
+        loop=loop,
+        store=store,
+        hub=hub or InProcessEventHub(),
+        connections=connections,
+        heartbeat_interval_s=heartbeat_interval_s,
+    )
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
 
 
@@ -222,3 +238,105 @@ async def test_state_excludes_ghost_train_older_than_max_age():
         response = await client.get("/api/state")
 
     assert response.json()["trains"] == []
+
+
+def _parse_sse_chunk(chunk: str) -> tuple[str, dict | None]:
+    """Parses one already-yielded `_event_source` chunk. Not testing this
+    against a real HTTP/ASGI transport at all -- httpx's `ASGITransport`
+    fully awaits an ASGI app to completion before returning anything,
+    which cannot work for a route whose body never ends on its own. Driving
+    `_event_source` directly (below) is what actually exercises the event
+    logic; the FastAPI route wiring around it (headers, media type,
+    connection-cap 503) needs a real live server to verify, not a unit
+    test -- flagged as a genuine coverage gap in the M3 milestone doc."""
+    if chunk.startswith(":"):
+        return "heartbeat", None
+    event_line, data_line, _ = chunk.split("\n", 2)
+    return event_line.removeprefix("event: "), json.loads(data_line.removeprefix("data: "))
+
+
+async def _never_disconnected() -> bool:
+    return False
+
+
+async def test_event_source_sends_snapshot_then_delta_on_change():
+    hub = InProcessEventHub()
+    loop, store = await _running_loop()
+
+    gen = _event_source(loop, store, hub, _never_disconnected, heartbeat_interval_s=20.0)
+    try:
+        event_type, body = _parse_sse_chunk(await gen.__anext__())
+        assert event_type == "snapshot"
+        assert body["trains"][0]["trip_id"] == "T1"
+        assert body["trains"][0]["status"] == "live"
+
+        # Simulate the poll loop completing another cycle in which T1 has
+        # moved -- a real deployment does this via `hub.publish` in
+        # poller/__main__.py's `_run_poll_loop`; driven directly here since
+        # this test doesn't run the full main loop.
+        def moved_handler(request: httpx.Request) -> httpx.Response:
+            path = request.url.path
+            if "trip-updates" in path:
+                return httpx.Response(200, content=_tu_bytes(3000))
+            if "vehicle-positions" in path:
+                feed = gtfs_realtime_pb2.FeedMessage()
+                feed.header.gtfs_realtime_version = "2.0"
+                feed.header.timestamp = 3000
+                entity = feed.entity.add()
+                entity.id = "vp1"
+                entity.vehicle.trip.trip_id = "T1"
+                entity.vehicle.position.latitude = -37.90
+                entity.vehicle.position.longitude = 145.00
+                entity.vehicle.timestamp = 3000
+                return httpx.Response(200, content=feed.SerializeToString())
+            return httpx.Response(200, content=_sa_bytes(3000))
+
+        loop._gateway._client = httpx.AsyncClient(transport=httpx.MockTransport(moved_handler))
+        await loop.run_cycle(datetime.now(timezone.utc))
+        hub.publish("tick")
+
+        event_type, body = _parse_sse_chunk(await gen.__anext__())
+        assert event_type == "delta"
+        assert body["changed"][0]["trip_id"] == "T1"
+        assert body["changed"][0]["latitude"] == -37.90
+        assert body["removed"] == []
+    finally:
+        await gen.aclose()
+
+
+async def test_event_source_sends_heartbeat_when_idle():
+    hub = InProcessEventHub()
+    loop, store = await _running_loop()
+
+    gen = _event_source(loop, store, hub, _never_disconnected, heartbeat_interval_s=0.05)
+    try:
+        await gen.__anext__()  # the initial snapshot
+        event_type, _body = _parse_sse_chunk(await gen.__anext__())
+        assert event_type == "heartbeat"
+    finally:
+        await gen.aclose()
+
+
+async def test_event_source_unsubscribes_from_hub_on_disconnect():
+    hub = InProcessEventHub()
+    loop, store = await _running_loop()
+
+    async def already_disconnected() -> bool:
+        return True
+
+    gen = _event_source(loop, store, hub, already_disconnected, heartbeat_interval_s=20.0)
+    await gen.__anext__()  # the initial snapshot -- disconnect isn't checked until after this
+    with pytest.raises(StopAsyncIteration):
+        await gen.__anext__()  # disconnect check now trips, generator ends
+
+    assert len(hub._subscribers) == 0
+
+
+async def test_stream_rejects_connection_over_global_cap():
+    loop, store = await _running_loop()
+    connections = ConnectionTracker(max_global=0, max_per_ip=5)
+
+    async with await _client_for(loop, store, connections=connections) as client:
+        response = await client.get("/api/stream")
+
+    assert response.status_code == 503

@@ -36,6 +36,7 @@ from ..gtfs.pinning import PinManifest
 from ..history.store import HistoryStore
 from ..metrics import Metrics
 from ..redaction import configure_logging
+from ..state.eventhub import InProcessEventHub
 from ..state.store import StateStore
 from .healthcheck import PING_URL_ENV
 from .loop import ALL_FEEDS, PollerLoop
@@ -124,7 +125,11 @@ async def main() -> int:
     gateway = GatewayClient()
     loop = PollerLoop(gateway=gateway, store=store, gap_log=gap_log)
 
-    api = create_app(loop=loop, store=store)
+    # M3: producer side of 2d's EventHub interface finally gets a
+    # consumer (the SSE route below) -- one hub instance, shared between
+    # the poll loop (publishes) and the API (subscribes).
+    hub = InProcessEventHub()
+    api = create_app(loop=loop, store=store, hub=hub)
     server = uvicorn.Server(uvicorn.Config(api, host="0.0.0.0", port=API_PORT, log_level="info"))
 
     def handle_signal() -> None:
@@ -149,6 +154,13 @@ async def main() -> int:
             result = await loop.run_cycle(cycle_start)
             metrics.record_cycle(result, loop.breaker)
             metrics.record_feed_ages(ALL_FEEDS, loop.last_changed_at)
+            # M3 finding #5's resolution: one tick per completed cycle,
+            # whatever the current cadence actually is (10s or the
+            # overnight 30-60s) -- SSE consumers see reality, not an
+            # invented fixed cadence. The value itself carries no data
+            # (see state/eventhub.py); every subscriber recomputes state
+            # fresh from `loop`/`store` when it wakes up.
+            hub.publish(cycle_start)
             interval = loop.next_interval(cycle_start)
             logger.info(
                 "cycle ok=%s changed=%s backoff_active=%s next_in=%.1fs",

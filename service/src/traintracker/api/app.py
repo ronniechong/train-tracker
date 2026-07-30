@@ -11,24 +11,39 @@ explorer alongside it.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from ..gateway.client import Feed
 from ..metrics import STALENESS_THRESHOLD_S
 from ..poller.loop import ALL_FEEDS, PollerLoop
+from ..state.eventhub import EventHub
 from ..state.ghost import TrackedTrainView
 from ..state.store import StateStore
-from .schemas import FeedStatus, HealthResponse, StateResponse, Train
+from .limits import ConnectionLimitExceeded, ConnectionTracker
+from .schemas import DeltaResponse, FeedStatus, HealthResponse, StateResponse, Train
 
 logger = logging.getLogger("traintracker.api")
 
 CORS_ORIGINS_ENV = "TT_CORS_ORIGINS"
+
+# M3 finding #5's resolution: this is a cap on connection *idleness*, not a
+# promised data-freshness cadence -- the actual delta cadence is whatever
+# the poll loop's real cadence is (10s or the overnight 30-60s), since a
+# tick only fires after a real poll cycle completes. This value only
+# controls how long a truly quiet connection goes before a keepalive
+# comment, chosen to stay comfortably under the reverse-ingress layer's
+# idle-connection timeout (check the deployed value before relying on this
+# if that ever changes -- exposure/ingress specifics live in ops docs, not
+# this repo).
+SSE_HEARTBEAT_INTERVAL_S = 20.0
 
 # A ghost/coasting train with no live-feed presence for longer than this is
 # treated as journey-ended for API purposes. `state/ghost.py`'s tracker has
@@ -95,7 +110,100 @@ def _train(store: StateStore, tracked: TrackedTrainView) -> Train:
     )
 
 
-def create_app(loop: PollerLoop, store: StateStore) -> FastAPI:
+def _current_state(loop: PollerLoop, store: StateStore) -> StateResponse:
+    now = datetime.now(timezone.utc)
+    return StateResponse(
+        generated_at=now,
+        backoff_active=loop.breaker.backoff_active,
+        feeds={feed.value: _feed_status(loop, feed, now) for feed in ALL_FEEDS},
+        trains=[
+            _train(store, tracked)
+            for tracked in store.all_tracked()
+            if _is_current(tracked, now)
+        ],
+    )
+
+
+def _client_ip(request: Request) -> str:
+    # `X-Forwarded-For` is normally not something to trust from a client --
+    # here it's safe: per the M3 process-boundary decision, this container
+    # only carries the new `ingress` network, shared solely with `caddy`.
+    # Nothing else can reach this port to forge the header in the first
+    # place, unlike a general public-internet-facing service.
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _diff(previous: dict[str, Train], current: dict[str, Train]) -> tuple[list[Train], list[str]]:
+    changed = [train for trip_id, train in current.items() if previous.get(trip_id) != train]
+    removed = [trip_id for trip_id in previous if trip_id not in current]
+    return changed, removed
+
+
+def _sse_event(event: str, body: DeltaResponse | StateResponse) -> str:
+    return f"event: {event}\ndata: {body.model_dump_json()}\n\n"
+
+
+async def _event_source(
+    loop: PollerLoop,
+    store: StateStore,
+    hub: EventHub,
+    is_disconnected: Callable[[], Awaitable[bool]],
+    heartbeat_interval_s: float,
+) -> AsyncIterator[str]:
+    """The actual SSE event logic, independent of FastAPI/Starlette/ASGI --
+    `is_disconnected` is injected rather than taking a `Request` so this can
+    be driven directly in tests. (Found the hard way: httpx's `ASGITransport`
+    fully awaits an ASGI app to completion before returning anything at all,
+    so it cannot drive an infinite generator like this one -- there's no way
+    to test the real route end-to-end without a live server. Extracting this
+    function is what makes the actual event logic testable at all.)
+
+    No shared ring buffer (M3's steelman-informed scope cut) -- `sent` is
+    local to this one connection, diffed fresh against `store`/`loop` on
+    every tick.
+    """
+    # Bounded to 1: this queue only ever carries "something changed, go
+    # recompute" wake-ups (the value itself is never read below), so a
+    # backlog beyond the single most recent tick is pure noise, never data
+    # loss -- see state/eventhub.py's InProcessEventHub.
+    queue = hub.subscribe(maxsize=1)
+    try:
+        state = _current_state(loop, store)
+        sent = {train.trip_id: train for train in state.trains}
+        yield _sse_event("snapshot", state)
+
+        while True:
+            if await is_disconnected():
+                break
+            try:
+                await asyncio.wait_for(queue.get(), timeout=heartbeat_interval_s)
+            except TimeoutError:
+                yield ": heartbeat\n\n"
+                continue
+
+            state = _current_state(loop, store)
+            current = {train.trip_id: train for train in state.trains}
+            changed, removed = _diff(sent, current)
+            if changed or removed:
+                delta = DeltaResponse(generated_at=state.generated_at, changed=changed, removed=removed)
+                yield _sse_event("delta", delta)
+                sent = current
+    finally:
+        hub.unsubscribe(queue)
+
+
+def create_app(
+    loop: PollerLoop,
+    store: StateStore,
+    hub: EventHub,
+    connections: ConnectionTracker | None = None,
+    heartbeat_interval_s: float = SSE_HEARTBEAT_INTERVAL_S,
+) -> FastAPI:
+    connections = connections or ConnectionTracker()
+
     app = FastAPI(
         title="train-tracker",
         debug=False,
@@ -125,16 +233,36 @@ def create_app(loop: PollerLoop, store: StateStore) -> FastAPI:
 
     @app.get("/api/state", response_model=StateResponse)
     async def get_state() -> StateResponse:
-        now = datetime.now(timezone.utc)
-        return StateResponse(
-            generated_at=now,
-            backoff_active=loop.breaker.backoff_active,
-            feeds={feed.value: _feed_status(loop, feed, now) for feed in ALL_FEEDS},
-            trains=[
-                _train(store, tracked)
-                for tracked in store.all_tracked()
-                if _is_current(tracked, now)
-            ],
+        return _current_state(loop, store)
+
+    @app.get("/api/stream")
+    async def stream(request: Request):
+        client_ip = _client_ip(request)
+        try:
+            connections.acquire(client_ip)
+        except ConnectionLimitExceeded as exc:
+            return JSONResponse(status_code=503, content={"detail": str(exc)})
+
+        async def bound_source() -> AsyncIterator[str]:
+            try:
+                async for chunk in _event_source(
+                    loop, store, hub, request.is_disconnected, heartbeat_interval_s
+                ):
+                    yield chunk
+            finally:
+                connections.release(client_ip)
+
+        return StreamingResponse(
+            bound_source(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                # Nginx-specific, harmless elsewhere -- Caddy's own
+                # buffering is disabled via `flush_interval -1` on this
+                # route instead (deploy/Caddyfile, not yet built).
+                "X-Accel-Buffering": "no",
+            },
         )
 
     return app

@@ -44,5 +44,18 @@ class StateResponse(BaseModel):
     trains: list[Train]
 
 
+class DeltaResponse(BaseModel):
+    """SSE `delta` event body, computed per-connection against whatever
+    that connection was sent last (no shared ring buffer -- M3's
+    steelman-informed scope cut, see the milestone doc). `changed` is any
+    train (new or updated) whose fields differ from last time; `removed`
+    is trip_ids that were reported last time but no longer are (e.g. aged
+    past api/app.py's MAX_GHOST_AGE_S)."""
+
+    generated_at: datetime
+    changed: list[Train]
+    removed: list[str]
+
+
 class HealthResponse(BaseModel):
     status: str

@@ -28,3 +28,16 @@ def test_unsubscribe_stops_further_delivery():
     hub.unsubscribe(queue)
     hub.publish("event-1")
     assert queue.empty()
+
+
+def test_full_bounded_queue_does_not_break_delivery_to_other_subscribers():
+    hub = InProcessEventHub()
+    slow = hub.subscribe(maxsize=1)
+    healthy = hub.subscribe()
+
+    hub.publish("event-1")  # fills `slow`'s single slot
+    hub.publish("event-2")  # `slow` is full -- must not raise or skip `healthy`
+
+    assert slow.get_nowait() == "event-1"  # the tick that fit, not silently swapped
+    assert healthy.get_nowait() == "event-1"
+    assert healthy.get_nowait() == "event-2"
