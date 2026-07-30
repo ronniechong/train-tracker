@@ -10,7 +10,12 @@ decision — same process, so 2d's in-process `EventHub` can be read directly
 without any IPC). `GatewayClient`/`healthcheck.ping` converted to
 `httpx.AsyncClient` alongside this; `CircuitBreaker`/`HistoryStore` have no
 actual I/O latency worth yielding on (pure computation / small local SQLite
-writes) and stay synchronous, called directly from this async loop.
+writes) and stay synchronous, called directly from this async loop. The
+FastAPI app is run here too, as `uvicorn.Server.serve()` embedded directly
+in this event loop rather than via `uvicorn`'s own CLI/multiprocess runner
+-- that's what makes the "single worker, always" constraint (M3 finding #3)
+automatic rather than something that needs enforcing: there is no
+`--workers` flag to misconfigure in this mode, only one process ever exists.
 """
 
 from __future__ import annotations
@@ -22,8 +27,10 @@ import signal
 from datetime import datetime, timezone
 from pathlib import Path
 
+import uvicorn
 from prometheus_client import start_http_server
 
+from ..api.app import create_app
 from ..gateway.client import API_KEY_ENV, GatewayClient
 from ..gtfs.pinning import PinManifest
 from ..history.store import HistoryStore
@@ -43,6 +50,19 @@ DATA_DIR = Path("/data")
 # exposure at all. Not the OpenTelemetry-default 9464 or node_exporter's
 # 9100, just a value distinct from both to avoid any confusion reading logs.
 METRICS_PORT = 9109
+
+# M3: the FastAPI app. Bound to all interfaces *inside the container* --
+# not the host -- because reachability is enforced by Docker network
+# membership, not by binding to loopback: this container only carries the
+# new `ingress` network (shared solely with the `caddy` service) alongside
+# its existing, untouched `internal`/egress-restricted network, so nothing
+# outside `ingress` can reach this port regardless of which interface it
+# binds. Binding to literal 127.0.0.1 here would make it unreachable from
+# the separate `caddy` container entirely, which isn't what invariant #4
+# ("API binds localhost") was written to prevent -- that invariant's intent
+# (only Caddy can reach it) is what's preserved; the mechanism had to change
+# once Caddy became a second container rather than a same-machine process.
+API_PORT = 8000
 
 logger = logging.getLogger("traintracker.poller")
 
@@ -104,9 +124,13 @@ async def main() -> int:
     gateway = GatewayClient()
     loop = PollerLoop(gateway=gateway, store=store, gap_log=gap_log)
 
+    api = create_app(loop=loop, store=store)
+    server = uvicorn.Server(uvicorn.Config(api, host="0.0.0.0", port=API_PORT, log_level="info"))
+
     def handle_signal() -> None:
         logger.info("received stop signal, shutting down after this cycle")
         loop.stop()
+        server.should_exit = True
 
     # `loop.add_signal_handler` (not `signal.signal`) so the handler runs on
     # the event loop rather than possibly interrupting an in-flight await --
@@ -116,36 +140,55 @@ async def main() -> int:
     event_loop.add_signal_handler(signal.SIGINT, handle_signal)
     event_loop.add_signal_handler(signal.SIGTERM, handle_signal)
 
-    logger.info("poller starting")
-    last_summary_at = datetime.now(timezone.utc)
-    while not loop.stopped:
-        cycle_start = datetime.now(timezone.utc)
-        history.rotate(cycle_start)
-        result = await loop.run_cycle(cycle_start)
-        metrics.record_cycle(result, loop.breaker)
-        metrics.record_feed_ages(ALL_FEEDS, loop.last_changed_at)
-        interval = loop.next_interval(cycle_start)
-        logger.info(
-            "cycle ok=%s changed=%s backoff_active=%s next_in=%.1fs",
-            result.ok,
-            sorted(f.value for f in result.changed_feeds),
-            loop.breaker.backoff_active,
-            interval,
-        )
-
-        if (cycle_start - last_summary_at).total_seconds() >= SUMMARY_INTERVAL_S:
-            counts = history.counts()
+    async def _run_poll_loop() -> None:
+        logger.info("poller starting")
+        last_summary_at = datetime.now(timezone.utc)
+        while not loop.stopped:
+            cycle_start = datetime.now(timezone.utc)
+            history.rotate(cycle_start)
+            result = await loop.run_cycle(cycle_start)
+            metrics.record_cycle(result, loop.breaker)
+            metrics.record_feed_ages(ALL_FEEDS, loop.last_changed_at)
+            interval = loop.next_interval(cycle_start)
             logger.info(
-                "hourly summary (service_date=%s): discrepancies=%d ghost_episodes=%d "
-                "breaker_gap_episodes=%d",
-                history.service_date,
-                counts.get("discrepancy_events", 0),
-                counts.get("ghost_events", 0),
-                counts.get("poll_gap_events", 0),
+                "cycle ok=%s changed=%s backoff_active=%s next_in=%.1fs",
+                result.ok,
+                sorted(f.value for f in result.changed_feeds),
+                loop.breaker.backoff_active,
+                interval,
             )
-            last_summary_at = cycle_start
 
-        await _interruptible_sleep(loop, interval)
+            if (cycle_start - last_summary_at).total_seconds() >= SUMMARY_INTERVAL_S:
+                counts = history.counts()
+                logger.info(
+                    "hourly summary (service_date=%s): discrepancies=%d ghost_episodes=%d "
+                    "breaker_gap_episodes=%d",
+                    history.service_date,
+                    counts.get("discrepancy_events", 0),
+                    counts.get("ghost_events", 0),
+                    counts.get("poll_gap_events", 0),
+                )
+                last_summary_at = cycle_start
+
+            await _interruptible_sleep(loop, interval)
+
+        # The poll loop stopping (e.g. a signal) is also the API's cue to
+        # stop, and vice versa -- `asyncio.gather` below waits on both, so
+        # either one exiting first must signal the other rather than
+        # leaving `gather` waiting forever on a server no signal handler
+        # told to stop (only SIGINT/SIGTERM set `server.should_exit` above).
+        server.should_exit = True
+
+    logger.info("poller+api starting (api on :%d, internal to the ingress network only)", API_PORT)
+    # Deliberately `server._serve()`, not the public `server.serve()`:
+    # `serve()` wraps everything in `capture_signals()`, which calls plain
+    # `signal.signal()` for SIGINT/SIGTERM -- that would silently replace
+    # the `event_loop.add_signal_handler` registration above the moment the
+    # server started, breaking the poll-loop/API shared-shutdown coordination
+    # this function depends on. `_serve()` is the same coroutine minus that
+    # wrapper (verified against uvicorn 0.52.0's source; re-check this if
+    # uvicorn's version bound in pyproject.toml ever moves).
+    await asyncio.gather(_run_poll_loop(), server._serve())
 
     await gateway.aclose()
     history.close()
