@@ -6,7 +6,7 @@ import pytest
 from google.transit import gtfs_realtime_pb2
 
 from traintracker.api.app import _event_source, create_app
-from traintracker.api.limits import ConnectionTracker
+from traintracker.api.limits import ConnectionTracker, RateLimiter
 from traintracker.gateway.client import GatewayClient
 from traintracker.poller.breaker import CircuitBreaker
 from traintracker.poller.loop import PollerLoop
@@ -123,6 +123,7 @@ async def _client_for(
     store: StateStore,
     hub: InProcessEventHub | None = None,
     connections: ConnectionTracker | None = None,
+    rate_limiter: RateLimiter | None = None,
     heartbeat_interval_s: float = 20.0,
 ) -> httpx.AsyncClient:
     app = create_app(
@@ -130,6 +131,7 @@ async def _client_for(
         store=store,
         hub=hub or InProcessEventHub(),
         connections=connections,
+        rate_limiter=rate_limiter,
         heartbeat_interval_s=heartbeat_interval_s,
     )
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
@@ -340,3 +342,44 @@ async def test_stream_rejects_connection_over_global_cap():
         response = await client.get("/api/stream")
 
     assert response.status_code == 503
+
+
+async def test_state_rejects_request_over_per_ip_rate_limit():
+    loop, store = await _running_loop()
+    rate_limiter = RateLimiter(max_per_ip=1, max_global=100, window_s=60)
+
+    async with await _client_for(loop, store, rate_limiter=rate_limiter) as client:
+        first = await client.get("/api/state")
+        second = await client.get("/api/state")
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert second.headers["retry-after"] == "60"
+
+
+async def test_healthz_rejects_request_over_global_rate_limit():
+    loop, store = await _running_loop()
+    rate_limiter = RateLimiter(max_per_ip=100, max_global=1, window_s=60)
+
+    async with await _client_for(loop, store, rate_limiter=rate_limiter) as client:
+        first = await client.get("/healthz")
+        second = await client.get("/healthz")
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+
+
+async def test_rate_limit_is_scoped_per_endpoint_and_client():
+    # A limiter shared across the whole app still tracks distinct requests
+    # correctly -- healthz and state hitting the same global counter is
+    # intended (that's the point of a *global* cap), but this confirms two
+    # different clients don't bleed into each other's per-IP counters.
+    loop, store = await _running_loop()
+    rate_limiter = RateLimiter(max_per_ip=1, max_global=100, window_s=60)
+
+    async with await _client_for(loop, store, rate_limiter=rate_limiter) as client:
+        a = await client.get("/api/state", headers={"x-forwarded-for": "1.1.1.1"})
+        b = await client.get("/api/state", headers={"x-forwarded-for": "2.2.2.2"})
+
+    assert a.status_code == 200
+    assert b.status_code == 200

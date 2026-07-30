@@ -17,7 +17,7 @@ import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
@@ -27,7 +27,13 @@ from ..poller.loop import ALL_FEEDS, PollerLoop
 from ..state.eventhub import EventHub
 from ..state.ghost import TrackedTrainView
 from ..state.store import StateStore
-from .limits import ConnectionLimitExceeded, ConnectionTracker
+from .limits import (
+    RATE_LIMIT_WINDOW_S,
+    ConnectionLimitExceeded,
+    ConnectionTracker,
+    RateLimitExceeded,
+    RateLimiter,
+)
 from .schemas import DeltaResponse, FeedStatus, HealthResponse, StateResponse, Train
 
 logger = logging.getLogger("traintracker.api")
@@ -136,6 +142,20 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def _rate_limit_dependency(rate_limiter: RateLimiter, endpoint: str) -> Callable[[Request], Awaitable[None]]:
+    async def _check(request: Request) -> None:
+        try:
+            rate_limiter.check(_client_ip(request), endpoint, datetime.now(timezone.utc).timestamp())
+        except RateLimitExceeded as exc:
+            raise HTTPException(
+                status_code=429,
+                detail=str(exc),
+                headers={"Retry-After": str(int(RATE_LIMIT_WINDOW_S))},
+            ) from exc
+
+    return _check
+
+
 def _diff(previous: dict[str, Train], current: dict[str, Train]) -> tuple[list[Train], list[str]]:
     changed = [train for trip_id, train in current.items() if previous.get(trip_id) != train]
     removed = [trip_id for trip_id in previous if trip_id not in current]
@@ -200,9 +220,11 @@ def create_app(
     store: StateStore,
     hub: EventHub,
     connections: ConnectionTracker | None = None,
+    rate_limiter: RateLimiter | None = None,
     heartbeat_interval_s: float = SSE_HEARTBEAT_INTERVAL_S,
 ) -> FastAPI:
     connections = connections or ConnectionTracker()
+    rate_limiter = rate_limiter or RateLimiter()
 
     app = FastAPI(
         title="train-tracker",
@@ -227,11 +249,19 @@ def create_app(
         logger.exception("unhandled error on %s %s", request.method, request.url.path)
         return JSONResponse(status_code=500, content={"detail": "internal error"})
 
-    @app.get("/healthz", response_model=HealthResponse)
+    @app.get(
+        "/healthz",
+        response_model=HealthResponse,
+        dependencies=[Depends(_rate_limit_dependency(rate_limiter, "healthz"))],
+    )
     async def healthz() -> HealthResponse:
         return HealthResponse(status="ok")
 
-    @app.get("/api/state", response_model=StateResponse)
+    @app.get(
+        "/api/state",
+        response_model=StateResponse,
+        dependencies=[Depends(_rate_limit_dependency(rate_limiter, "state"))],
+    )
     async def get_state() -> StateResponse:
         return _current_state(loop, store)
 

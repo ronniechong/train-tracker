@@ -1,7 +1,16 @@
-# DRAFT, not wired into anything yet -- see contact-points.yaml's header for
-# why (the host runs a shared Grafana/Prometheus, not a dedicated
-# instance for this project; JOURNAL Session 16). Additional caveats beyond
-# that file's:
+# Reference/template for the shared Grafana instance's provisioning, not
+# something applied by file-provisioning directly (see contact-points.yaml's
+# header for why -- the host runs a shared Grafana/Prometheus, not a
+# dedicated instance for this project; JOURNAL Session 16). **The first
+# three rules below (feed-staleness, poller-down, disk-headroom) were
+# confirmed LIVE in the shared instance 2026-07-30** -- applied via the
+# provisioning API with the instance's real datasource/folder UIDs
+# substituted for the placeholder values below, not by pointing Grafana's
+# file-provisioner at this file as-is. `rate-limit-abuse` (added 2026-07-30)
+# follows the same pattern: written here with placeholders, applied live
+# separately. Keep this file as the readable source of truth for what
+# SHOULD exist; confirm against the live instance before assuming it does.
+# Additional caveats beyond contact-points.yaml's:
 #
 # - `up{job="train-tracker-poller"}` and the `mountpoint="/"` disk query
 #   below assume the shared Prometheus's scrape job is named exactly that
@@ -25,12 +34,13 @@
 #      metric's own definition (`metrics.py`). There was never an
 #      entity-count-based signal here to produce a false positive from.
 #
-# UNVERIFIED: authored without a live Grafana instance (no network access in
-# this session even to pull the image, let alone load and test this file).
 # The overall provisioned-alert-rule schema is one of Grafana's more
-# version-sensitive areas -- confirm this loads and evaluates correctly
-# against the actual pinned version at first live deploy, per
-# milestones/02f-observability-alerting.md.
+# version-sensitive areas -- confirmed working against the live instance's
+# actual pinned version (13.0.2) for the first three rules; `rate-limit-
+# abuse` uses the identical schema shape so is expected to load the same
+# way, but confirm it actually evaluates once `traintracker_rate_limited_
+# requests_total` has real samples (the metric doesn't exist in Prometheus
+# until the rate limiter rejects at least one request).
 apiVersion: 1
 
 groups:
@@ -100,6 +110,46 @@ groups:
                 - evaluator:
                     type: gt
                     params: [0]
+              refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+
+      - uid: rate-limit-abuse
+        title: "High rate of rejected requests (possible DDoS/abuse)"
+        condition: C
+        for: 2m
+        labels:
+          severity: warning
+          project: train-tracker
+        annotations:
+          summary: "The REST rate limiter (M3) has rejected more than 50 requests in the last 5 minutes, across either the per-IP or global cap -- legitimate traffic should essentially never hit this, so a sustained rise is an abuse/DDoS signal, not normal usage. First-cut threshold, not tuned against real post-launch traffic yet."
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            model:
+              # `or vector(0)` matters here specifically: unlike the other
+              # rules' metrics (set every poll cycle from process start),
+              # this Counter's labelled child doesn't exist in Prometheus
+              # at all until the rate limiter rejects its first request --
+              # without the fallback, `sum(increase(...))` over an absent
+              # series returns no data, which Grafana would otherwise
+              # evaluate as NoData rather than "0, all clear".
+              expr: "sum(increase(traintracker_rate_limited_requests_total[5m])) or vector(0)"
+              instant: true
+              refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [50]
               refId: C
             relativeTimeRange:
               from: 0
