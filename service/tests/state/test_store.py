@@ -76,3 +76,25 @@ def test_ingest_also_drives_the_lifecycle_tracker():
 
     store.ingest(tu, vp, _at(0))
     assert store.status_of("trip-1") == "live"
+
+
+def test_on_tick_hook_fires_with_the_fresh_all_tracked_result():
+    calls = []
+    store = StateStore(InMemoryEventLog(), InMemoryEventLog(), on_tick=calls.append)
+    tu = _tu_feed("1000000", "trip-1")
+    vp = _vp_feed("1000000", "trip-1", "1000000")
+
+    store.ingest(tu, vp, _at(0))
+
+    assert len(calls) == 1
+    assert [t.trip_id for t in calls[0]] == ["trip-1"]
+    assert calls[0][0].status == "live"
+
+
+def test_on_tick_hook_is_optional():
+    # Default None -- must not raise for the common case of no observer.
+    store = StateStore(InMemoryEventLog(), InMemoryEventLog())
+    tu = _tu_feed("1000000", "trip-1")
+    vp = _vp_feed("1000000", "trip-1", "1000000")
+
+    store.ingest(tu, vp, _at(0))  # no exception

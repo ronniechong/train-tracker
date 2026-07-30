@@ -6,7 +6,7 @@ from traintracker.gateway.client import Feed
 from traintracker.metrics import STALENESS_THRESHOLD_S, CountingEventLog, Metrics
 from traintracker.poller.breaker import CircuitBreaker
 from traintracker.poller.loop import CycleResult
-from traintracker.state.ghost import GhostEvent
+from traintracker.state.ghost import GhostEvent, TrackedTrainView
 from traintracker.state.merge import DiscrepancyEvent
 
 
@@ -131,3 +131,35 @@ def test_record_feed_ages_only_sets_gauge_for_feeds_seen_at_least_once():
 
 def test_staleness_threshold_matches_the_settled_decision():
     assert STALENESS_THRESHOLD_S == 300
+
+
+def _tracked(trip_id: str, status: str) -> TrackedTrainView:
+    return TrackedTrainView(
+        trip_id=trip_id, status=status, last_seen_at=None,
+        last_position=None, last_touched_at=None,
+    )
+
+
+def test_record_tracked_trips_counts_by_status_and_zeroes_absent_ones():
+    registry = CollectorRegistry()
+    metrics = Metrics(registry)
+
+    metrics.record_tracked_trips((
+        _tracked("t1", "live"), _tracked("t2", "live"), _tracked("t3", "ghost"),
+    ))
+
+    assert registry.get_sample_value("traintracker_tracked_trips", {"status": "live"}) == 2.0
+    assert registry.get_sample_value("traintracker_tracked_trips", {"status": "ghost"}) == 1.0
+    # No coasting trips this call -- must read as a real 0, not a missing
+    # series (same "or vector(0)" concern as the rate-limit alert).
+    assert registry.get_sample_value("traintracker_tracked_trips", {"status": "coasting"}) == 0.0
+
+
+def test_record_tracked_trips_overwrites_previous_call_not_accumulates():
+    registry = CollectorRegistry()
+    metrics = Metrics(registry)
+
+    metrics.record_tracked_trips((_tracked("t1", "ghost"), _tracked("t2", "ghost")))
+    metrics.record_tracked_trips((_tracked("t1", "ghost"),))
+
+    assert registry.get_sample_value("traintracker_tracked_trips", {"status": "ghost"}) == 1.0

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from traintracker.state.eventlog import InMemoryEventLog
-from traintracker.state.ghost import COASTING_TIMEOUT_S, TrainLifecycleTracker
+from traintracker.state.ghost import COASTING_TIMEOUT_S, MAX_GHOST_AGE_S, TrainLifecycleTracker
 from traintracker.state.merge import TrainSnapshot
 
 
@@ -148,3 +148,66 @@ def test_flush_force_closes_open_ghost_episodes_with_no_reappearance():
 def test_status_of_unknown_trip_is_none():
     tracker = TrainLifecycleTracker(InMemoryEventLog())
     assert tracker.status_of("nonexistent") is None
+
+
+def test_evicts_ghost_after_max_ghost_age_since_last_touched():
+    log = InMemoryEventLog()
+    tracker = TrainLifecycleTracker(log)
+
+    tracker.tick({"trip-1": _snap(-37.8, 144.9, _at(0))}, _at(0))
+    tracker.tick({}, _at(COASTING_TIMEOUT_S + 10))
+    assert tracker.status_of("trip-1") == "ghost"
+
+    # last_touched_at is frozen at t=0 (last genuine feed mention) --
+    # the empty-snapshot tick above must NOT refresh it, or nothing would
+    # ever age out. MAX_GHOST_AGE_S past t=0, not past the ghost-
+    # transition tick, is what should trigger eviction.
+    tracker.tick({}, _at(MAX_GHOST_AGE_S + 1))
+    assert tracker.status_of("trip-1") is None
+    assert tracker.all_tracked() == ()
+
+    # Eviction of a still-ghosted trip must close its episode, same as
+    # flush() does, so the event log/metrics don't get a dangling one.
+    assert len(log.events) == 1
+    event = log.events[0]
+    assert event.trip_id == "trip-1"
+    assert event.reappeared_at is None
+    assert event.reappear_position is None
+
+
+def test_evicts_tu_only_ghost_with_no_last_seen_at():
+    """The exact hole this fix closes: a trip seen only in Trip Updates
+    never gets a `last_seen_at` (that field is VP-confirmation-only), so
+    time-based filtering keyed on it alone can never age this out --
+    `last_touched_at` (set from any feed) must be what eviction uses."""
+    log = InMemoryEventLog()
+    tracker = TrainLifecycleTracker(log)
+
+    schedule_only = TrainSnapshot(
+        trip_id="trip-2", route_id="r", start_time="19:00:00", start_date="20260718",
+        schedule_relationship="SCHEDULED", stop_time_updates=(), schedule_updated_at=_at(0),
+        latitude=None, longitude=None, bearing=None, position_updated_at=None,
+    )
+    tracker.tick({"trip-2": schedule_only}, _at(0))
+    assert tracker.status_of("trip-2") == "ghost"
+
+    tracker.tick({}, _at(MAX_GHOST_AGE_S + 1))
+    assert tracker.status_of("trip-2") is None
+    assert tracker.all_tracked() == ()
+
+
+def test_all_tracked_excludes_evicted_trips_but_keeps_recent_ones():
+    log = InMemoryEventLog()
+    tracker = TrainLifecycleTracker(log)
+
+    tracker.tick({"old": _snap(-37.8, 144.9, _at(0))}, _at(0))
+    tracker.tick({}, _at(COASTING_TIMEOUT_S + 10))
+    assert tracker.status_of("old") == "ghost"
+
+    # "new" appears in the same tick that pushes "old" past MAX_GHOST_AGE_S
+    # -- only "old" (untouched since t=0) should be evicted.
+    later = _at(MAX_GHOST_AGE_S + 1)
+    tracker.tick({"new": _snap(-37.9, 145.0, later)}, later)
+
+    trip_ids = {t.trip_id for t in tracker.all_tracked()}
+    assert trip_ids == {"new"}

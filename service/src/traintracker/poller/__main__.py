@@ -120,7 +120,9 @@ async def main() -> int:
     discrepancy_log, ghost_log, gap_log = metrics.event_logs(
         history.discrepancy_log, history.ghost_log, history.gap_log,
     )
-    store = StateStore(discrepancy_log=discrepancy_log, ghost_log=ghost_log)
+    store = StateStore(
+        discrepancy_log=discrepancy_log, ghost_log=ghost_log, on_tick=metrics.record_tracked_trips,
+    )
 
     gateway = GatewayClient()
     loop = PollerLoop(gateway=gateway, store=store, gap_log=gap_log)

@@ -32,6 +32,18 @@ from .merge import TrainSnapshot
 # pre-analysis. First-cut constant, revisit at 2g like GEOFENCE_RADIUS_M.
 COASTING_TIMEOUT_S = 90.0
 
+# A tracked trip untouched by either feed for longer than this is evicted
+# outright -- moved here from api/app.py (session 2026-07-31), where it
+# was only a presentation-layer filter: `_trains` itself had no eviction,
+# so a trip seen only in Trip Updates (never confirmed live, `last_seen_at`
+# staying None forever) accumulated in this dict indefinitely, across
+# service days, for the life of the process -- hundreds of stale ghosts
+# were observed live on the map before this was found and fixed. Same
+# generous-relative-to-actual-ghost-durations value as before (the 2g soak
+# week's ghosts typically resolved in ~90s-few-minutes); not tuned against
+# eviction load specifically.
+MAX_GHOST_AGE_S = 2 * 60 * 60
+
 Status = Literal["live", "coasting", "ghost"]
 
 
@@ -55,6 +67,11 @@ class _TrackedTrain:
     coasting_elapsed: timedelta = field(default_factory=timedelta)
     backoff_overlapped: bool = False
     ghost_started_at: datetime | None = None
+    # Set every tick this trip appears in EITHER feed, regardless of
+    # whether it has a live position -- unlike `last_seen_at` (VP-
+    # confirmation-only, stays None for TU-only trips), this always gets a
+    # real value, so it's what eviction ages against.
+    last_touched_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -73,6 +90,11 @@ class TrackedTrainView:
     status: Status
     last_seen_at: datetime | None
     last_position: tuple[float, float] | None
+    # Unlike `last_seen_at` (VP-confirmation-only), always populated once a
+    # trip has ticked at least once -- the freshness signal consumers
+    # should use for "is this genuinely current" checks (see api/app.py's
+    # `_is_current`).
+    last_touched_at: datetime | None
 
 
 class TrainLifecycleTracker:
@@ -101,6 +123,16 @@ class TrainLifecycleTracker:
         for trip_id in self._trains.keys() | snapshots.keys():
             tracked = self._trains.setdefault(trip_id, _TrackedTrain())
             snap = snapshots.get(trip_id)
+            # Only bump on a genuine feed mention this cycle -- NOT for
+            # every already-tracked trip_id (the union above always
+            # includes those regardless of whether they reappeared).
+            # Setting it unconditionally would mean every ~10s tick
+            # refreshes every trip still sitting in `_trains`, and nothing
+            # would ever actually age out -- exactly the bug this exists
+            # to fix, just reintroduced one level up. Caught before this
+            # shipped by tracing through what a real multi-cycle run does.
+            if snap is not None:
+                tracked.last_touched_at = cycle_time
             position = (snap.latitude, snap.longitude) if snap and snap.has_position else None
 
             if position is not None:
@@ -138,6 +170,25 @@ class TrainLifecycleTracker:
             else:
                 tracked.status = "coasting"
 
+        self._evict_stale(cycle_time)
+
+    def _evict_stale(self, cycle_time: datetime) -> None:
+        """Drop any trip untouched by either feed for longer than
+        `MAX_GHOST_AGE_S`. Closes a still-open ghost episode first (same
+        call `flush()` makes) so eviction never silently drops an episode
+        from the event log/metrics."""
+        stale_ids = [
+            trip_id
+            for trip_id, tracked in self._trains.items()
+            if tracked.last_touched_at is not None
+            and (cycle_time - tracked.last_touched_at).total_seconds() >= MAX_GHOST_AGE_S
+        ]
+        for trip_id in stale_ids:
+            tracked = self._trains[trip_id]
+            if tracked.status == "ghost":
+                self._emit_reappearance(trip_id, tracked, cycle_time, reappear_position=None)
+            del self._trains[trip_id]
+
     def status_of(self, trip_id: str) -> Status | None:
         tracked = self._trains.get(trip_id)
         return tracked.status if tracked else None
@@ -151,19 +202,18 @@ class TrainLifecycleTracker:
         so a fully-vanished train just silently disappeared from the API
         instead of being honestly labelled "ghost").
 
-        No age-based filtering here -- `_trains` currently has no eviction
-        at all (CLAUDE.md's "ghost ... fade at journey end" was never
-        actually implemented, a separate open gap, see M3 milestone doc),
-        so this can include arbitrarily old entries. Callers that present
-        this as "current state" (the API) are responsible for their own
-        recency filtering; this method reports the tracker's true internal
-        state, unfiltered, on purpose."""
+        No age-based filtering *by this method* -- `tick()` itself now
+        evicts anything untouched for `MAX_GHOST_AGE_S` (session
+        2026-07-31, closing CLAUDE.md's "ghost ... fade at journey end"
+        gap), so `_trains` is already bounded by the time this is called;
+        this method just reports it as-is rather than re-filtering."""
         return tuple(
             TrackedTrainView(
                 trip_id=trip_id,
                 status=tracked.status,
                 last_seen_at=tracked.last_seen_at,
                 last_position=tracked.last_position,
+                last_touched_at=tracked.last_touched_at,
             )
             for trip_id, tracked in self._trains.items()
         )

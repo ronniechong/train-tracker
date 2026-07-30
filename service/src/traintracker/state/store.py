@@ -11,6 +11,7 @@ stateful object too.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Callable
 
 from .eventlog import EventLog
 from .ghost import TrackedTrainView, TrainLifecycleTracker
@@ -18,9 +19,19 @@ from .merge import TrainSnapshot, merge
 
 
 class StateStore:
-    def __init__(self, discrepancy_log: EventLog, ghost_log: EventLog):
+    def __init__(
+        self,
+        discrepancy_log: EventLog,
+        ghost_log: EventLog,
+        on_tick: Callable[[tuple[TrackedTrainView, ...]], None] | None = None,
+    ):
         self._discrepancy_log = discrepancy_log
         self._lifecycle = TrainLifecycleTracker(ghost_log)
+        # Optional hook fired with the fresh `all_tracked()` result after
+        # every `ingest()` -- lets a caller (e.g. metrics) observe tracked-
+        # trip counts without this module knowing metrics exist at all,
+        # same separation `merge.py`/`ghost.py` already keep.
+        self._on_tick = on_tick
         self.latest_snapshots: dict[str, TrainSnapshot] = {}
         # (trip_id, discrepancy_type) pairs active as of the last ingest.
         # `merge()` is a deliberately memoryless, single-cycle function (see
@@ -46,6 +57,8 @@ class StateStore:
 
         self._lifecycle.tick(snapshots, cycle_time, backoff_active=backoff_active)
         self.latest_snapshots = snapshots
+        if self._on_tick is not None:
+            self._on_tick(self._lifecycle.all_tracked())
         return snapshots
 
     def status_of(self, trip_id: str):

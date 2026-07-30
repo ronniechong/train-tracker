@@ -21,6 +21,7 @@ from prometheus_client import REGISTRY, CollectorRegistry, Counter, Gauge
 from .gateway.client import Feed
 from .poller.breaker import CircuitBreaker
 from .poller.loop import CycleResult
+from .state.ghost import Status, TrackedTrainView
 
 # Confirmed decision (CLAUDE.md): alert on feed header age, NEVER entity
 # count -- this threshold is the only staleness signal built here. The
@@ -104,6 +105,16 @@ class Metrics:
             "episode is never read as an outage",
             registry=registry,
         )
+        self.tracked_trips = Gauge(
+            "traintracker_tracked_trips",
+            "Trips currently held in TrainLifecycleTracker._trains, by "
+            "status -- added 2026-07-31 alongside the eviction fix for a "
+            "real unbounded-growth bug (TU-only trips never got a "
+            "last_seen_at, so never aged out); watch this stays bounded "
+            "rather than climbing, which is what the bug looked like",
+            ["status"],
+            registry=registry,
+        )
 
     def event_logs(
         self, discrepancy_log: object, ghost_log: object, gap_log: object,
@@ -127,3 +138,14 @@ class Metrics:
             changed_at = last_changed_at(feed)
             if changed_at is not None:
                 self.feed_last_changed_timestamp.labels(feed=feed.value).set(changed_at.timestamp())
+
+    def record_tracked_trips(self, tracked: tuple[TrackedTrainView, ...]) -> None:
+        counts: dict[Status, int] = {"live": 0, "coasting": 0, "ghost": 0}
+        for trip in tracked:
+            counts[trip.status] += 1
+        # Set all three labels every call, not just non-zero ones -- an
+        # always-zero status should read as a real 0 on the dashboard, not
+        # a missing series (same "or vector(0)" concern as the rate-limit
+        # alert, M3 journal).
+        for status, count in counts.items():
+            self.tracked_trips.labels(status=status).set(count)

@@ -25,7 +25,7 @@ from ..gateway.client import Feed
 from ..metrics import STALENESS_THRESHOLD_S
 from ..poller.loop import ALL_FEEDS, PollerLoop
 from ..state.eventhub import EventHub
-from ..state.ghost import TrackedTrainView
+from ..state.ghost import MAX_GHOST_AGE_S, TrackedTrainView
 from ..state.store import StateStore
 from .limits import (
     RATE_LIMIT_WINDOW_S,
@@ -74,17 +74,6 @@ CORS_ORIGINS_ENV = "TT_CORS_ORIGINS"
 # this repo).
 SSE_HEARTBEAT_INTERVAL_S = 20.0
 
-# A ghost/coasting train with no live-feed presence for longer than this is
-# treated as journey-ended for API purposes. `state/ghost.py`'s tracker has
-# no eviction of its own (CLAUDE.md's "ghost ... fade at journey end" was
-# never actually built -- a separate, still-open gap, see M3 milestone doc)
-# so `store.all_tracked()` can return arbitrarily old entries; this is a
-# presentation-layer approximation to stop a live consumer being flooded
-# with every trip ever seen since the process started, not a tuned value --
-# generous relative to the ~90s-few-minute typical ghost durations seen in
-# the 2g soak week.
-MAX_GHOST_AGE_S = 2 * 60 * 60
-
 
 def _cors_origins() -> list[str]:
     raw = os.environ.get(CORS_ORIGINS_ENV, "")
@@ -98,12 +87,17 @@ def _feed_status(loop: PollerLoop, feed: Feed, now: datetime) -> FeedStatus:
 
 
 def _is_current(tracked: TrackedTrainView, now: datetime) -> bool:
-    if tracked.last_seen_at is None:
-        # Never seen a live position at all this session -- this is a
-        # brand-new trip picked up from one feed only (e.g. scheduled in
-        # TU, no VP fix yet), not a stale leftover. Nothing to filter on.
-        return True
-    return (now - tracked.last_seen_at).total_seconds() <= MAX_GHOST_AGE_S
+    # `last_touched_at` (unlike `last_seen_at`) is set on every tick
+    # regardless of feed, so this correctly ages out TU-only trips too --
+    # `last_seen_at` alone stayed None forever for those, the exact hole
+    # that let stale ghosts accumulate and still pass this check (found
+    # 2026-07-31, see state/ghost.py). `_trains` itself now also evicts on
+    # this same age via `TrainLifecycleTracker._evict_stale` (called every
+    # tick) -- this check exists in addition because a request can land
+    # between ticks, when the tracker hasn't had a chance to sweep yet.
+    if tracked.last_touched_at is None:
+        return True  # not yet ticked even once; shouldn't happen in practice
+    return (now - tracked.last_touched_at).total_seconds() <= MAX_GHOST_AGE_S
 
 
 def _train(store: StateStore, tracked: TrackedTrainView) -> Train:
