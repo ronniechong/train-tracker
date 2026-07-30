@@ -137,6 +137,19 @@ async def _client_for(
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
 
 
+async def test_attribution_returns_cc_by_credit():
+    loop, store = await _running_loop()
+    async with await _client_for(loop, store) as client:
+        response = await client.get("/attribution")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "Victoria Department of Transport and Planning"
+    assert body["license"] == "CC BY 4.0"
+    assert body["license_url"] == "https://creativecommons.org/licenses/by/4.0/"
+    assert "derived" in body["note"]
+
+
 async def test_healthz_returns_ok():
     loop, store = await _running_loop()
     async with await _client_for(loop, store) as client:

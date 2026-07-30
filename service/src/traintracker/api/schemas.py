@@ -59,3 +59,15 @@ class DeltaResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
+
+
+class AttributionResponse(BaseModel):
+    """M3 finding #11: a license condition, not a nicety -- static content,
+    deliberately its own endpoint rather than embedded in every `/api/state`/
+    SSE payload (CC BY 4.0 requires the credit be findable and displayed
+    somewhere tied to the data's use, not restated on every single packet)."""
+
+    source: str
+    license: str
+    license_url: str
+    note: str

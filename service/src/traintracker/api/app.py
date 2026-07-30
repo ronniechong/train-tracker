@@ -34,7 +34,30 @@ from .limits import (
     RateLimitExceeded,
     RateLimiter,
 )
-from .schemas import DeltaResponse, FeedStatus, HealthResponse, StateResponse, Train
+from .schemas import (
+    AttributionResponse,
+    DeltaResponse,
+    FeedStatus,
+    HealthResponse,
+    StateResponse,
+    Train,
+)
+
+# M3 finding #11: both the static GTFS schedule and the realtime feeds are
+# published by Vic DoT under CC BY 4.0 (confirmed live, M1 spike). Neither
+# dataset page mandates an exact credit-line format, so this follows
+# standard CC BY 4.0 practice: name the source, link the license text,
+# note the data is derived/processed rather than the original feed as-is.
+DATA_ATTRIBUTION = AttributionResponse(
+    source="Victoria Department of Transport and Planning",
+    license="CC BY 4.0",
+    license_url="https://creativecommons.org/licenses/by/4.0/",
+    note=(
+        "Train positions and schedule data displayed here are derived and "
+        "processed from the Department's GTFS-Realtime and static GTFS "
+        "feeds, not a direct copy of the original feeds."
+    ),
+)
 
 logger = logging.getLogger("traintracker.api")
 
@@ -264,6 +287,14 @@ def create_app(
     )
     async def get_state() -> StateResponse:
         return _current_state(loop, store)
+
+    @app.get(
+        "/attribution",
+        response_model=AttributionResponse,
+        dependencies=[Depends(_rate_limit_dependency(rate_limiter, "attribution"))],
+    )
+    async def attribution() -> AttributionResponse:
+        return DATA_ATTRIBUTION
 
     @app.get("/api/stream")
     async def stream(request: Request):
