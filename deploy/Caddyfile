@@ -9,6 +9,25 @@
 :8080 {
 	encode gzip
 
+	# Security headers (M3 finding #8/invariant 3), applied to every
+	# response including the ones nothing else touches (404s, the catch-
+	# all error handler). This is a GET-only JSON/SSE API, never HTML or a
+	# script/resource host, so `default-src 'none'` is the correct CSP,
+	# not just a cautious default. `Cache-Control: no-store` closes a real
+	# gap: `/api/state` sends no caching directive of its own, so without
+	# this a browser or intermediate cache could serve stale train
+	# positions. `-Server` strips the version-fingerprinting freebie
+	# (previously leaked both `Caddy` and `uvicorn` in one response).
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		Content-Security-Policy "default-src 'none'"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		Cache-Control no-store
+		-Server
+	}
+
 	# SSE must never be buffered — flush every write immediately so deltas
 	# reach the client as they're generated, not batched up.
 	@stream path /api/stream
