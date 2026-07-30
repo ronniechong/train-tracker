@@ -5,7 +5,10 @@ CLAUDE.local.md
 docker-compose.override.yml
 
 # --- data (stays out of the public repo) ---
-data/
+# Scoped to the deploy runtime bind-mount specifically -- a bare `data/`
+# matches at any depth and was silently excluding the *intentionally*
+# committed web/src/data/geometry.json (M4's bundled static geometry file).
+/deploy/data/
 *.db
 *.db-*
 spike/captures/
