@@ -2,11 +2,14 @@
 first app-code Slack integration in this repo (2f's ops alerts are
 Grafana's own Slack contact point, configured in Grafana, not here).
 
-Deliberately a SEPARATE webhook/env var from `TT_ALERT_WEBHOOK_URL` (2f's
-ops-alerts channel): Slack binds an incoming webhook to one channel at
-creation time with no per-payload override, so "different audience"
-(rider-facing disruption info vs. infra health) means "different webhook",
-not a channel field in the POST body (M5 05e kickoff decision).
+Reuses `TT_ALERT_WEBHOOK_URL` (2f's ops-alerts webhook) rather than a
+dedicated one -- 05e's kickoff considered a separate webhook/channel
+(different audience: rider-facing disruption info vs. infra health) but
+Ronnie decided against the extra Slack setup for two config values that
+would only ever need to stay in sync; briefings and ops alerts share one
+channel by choice (revisited 2026-07-31, reversing that kickoff's
+tentative call). Splitting them again later is a one-line env change,
+not a code change.
 
 Mirrors `healthcheck.ping()`'s exact shape: best-effort, resolves its URL
 from an env var if not passed explicitly, logs and returns `False` rather
@@ -23,7 +26,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-WEBHOOK_URL_ENV = "TT_BRIEFING_WEBHOOK_URL"
+WEBHOOK_URL_ENV = "TT_ALERT_WEBHOOK_URL"
 
 
 async def post_message(client: httpx.AsyncClient, text: str, webhook_url: str | None = None) -> bool:

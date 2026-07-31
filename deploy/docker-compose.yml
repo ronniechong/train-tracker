@@ -56,17 +56,20 @@ services:
       # ai/tracing.py's LangfuseTracedLLMClient both construct cleanly
       # with these unset, verified live; they only fail at actual call
       # time, and that failure is caught and logged, never left to crash
-      # the poller). NOT sufficient on its own to make the AI layer reach
-      # the outside world though -- egress-proxy's tinyproxy.filter still
-      # only allowlists the transport-data hosts, see ops/runbook.md for
-      # the widening this still needs before any of this can work
-      # deployed, unlike every live-verification so far (all ran locally,
-      # never inside this container/proxy).
+      # the poller). egress-proxy's tinyproxy.filter widened for these
+      # hosts and live-verified deployed 2026-07-31 (see JOURNAL).
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
       LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
-      TT_BRIEFING_WEBHOOK_URL: ${TT_BRIEFING_WEBHOOK_URL:-}
+      # 05e: briefings reuse TT_ALERT_WEBHOOK_URL (poller/slack.py) rather
+      # than a dedicated webhook -- decided 2026-07-31, reversing that
+      # kickoff's tentative separate-webhook call once weighed against two
+      # config values that would only ever need to stay in sync. Grafana
+      # (2f) also posts to this same webhook directly, from its own
+      # container, not via this env var -- this line is what lets the
+      # POLLER's process reach it too, previously only Grafana needed it.
+      TT_ALERT_WEBHOOK_URL: ${TT_ALERT_WEBHOOK_URL:-}
     volumes:
       - ${TT_DATA_DIR:-./data}:/data
       # 2e: nightly maintenance (`python -m traintracker.history`, run via

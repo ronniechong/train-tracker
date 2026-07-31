@@ -17,5 +17,6 @@
 # LANGFUSE_BASE_URL value, not assumed; confirmed 2026-07-31.
 ^cloud\.langfuse\.com$
 # 6. Slack incoming webhooks (05e) — fixed host regardless of which
-# webhook/workspace/channel TT_BRIEFING_WEBHOOK_URL actually points at.
+# webhook/workspace/channel TT_ALERT_WEBHOOK_URL actually points at (also
+# now used by the poller directly, not just Grafana — see docker-compose.yml).
 ^hooks\.slack\.com$
