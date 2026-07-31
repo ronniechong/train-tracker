@@ -123,3 +123,14 @@
   color: var(--color-text-dim);
   cursor: pointer;
 }
+
+/* Whichever section sits last before the sidebar footer gets this, so its
+   own bordered card visually fills the leftover column space instead of
+   leaving an empty gap above the footer (which pins itself to the bottom
+   via `margin-top: auto` regardless) -- see Sidebar.tsx for current
+   ordering. */
+.grow {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}

@@ -8,11 +8,13 @@ import {
   initMap,
   registerStationInteractions,
   resetInitialView,
+  setMapStyle,
 } from '../map/mapController'
 import { createTrainMarkerManager, type TrainMarkerManager } from '../map/trainMarkers'
 import { createStationPopupManager, type StationPopupManager } from '../map/stationPopup'
 import { LoadingOverlay } from './LoadingOverlay'
 import type { Train } from '../api-types'
+import type { Theme } from '../hooks/useTheme'
 import styles from './MapView.module.css'
 
 // A search selection carries its own `nonce` so re-selecting the same
@@ -37,6 +39,7 @@ interface MapViewProps {
   // recenter-button click, mirroring flyToRequest's nonce so repeated
   // clicks each re-trigger the effect below.
   recenterRequest: number | null
+  theme: Theme
 }
 
 /** Owns the MapLibre instance imperatively -- trains/routes update via
@@ -52,6 +55,7 @@ export function MapView({
   selectedStationId,
   flyToRequest,
   recenterRequest,
+  theme,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
@@ -65,13 +69,17 @@ export function MapView({
   // effect, but must always call the latest onStationClick from props.
   const onStationClickRef = useRef(onStationClick)
   onStationClickRef.current = onStationClick
+  // Tracks whichever theme the basemap is CURRENTLY showing, so the style-
+  // swap effect below only fires on a genuine change, not on mount (initMap
+  // already loads the right style first time) or on unrelated re-renders.
+  const appliedThemeRef = useRef(theme)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
-    const map = initMap(container)
+    const map = initMap(container, appliedThemeRef.current)
     mapRef.current = map
 
     map.on('load', () => {
@@ -125,6 +133,21 @@ export function MapView({
     if (!loaded || !mapRef.current || recenterRequest === null) return
     flyToDefaultView(mapRef.current)
   }, [loaded, recenterRequest])
+
+  // Basemap follows the app's light/dark theme (M4 Stage 5 follow-up,
+  // 2026-07-31). setStyle() wipes style-level sources/layers (route
+  // lines, station points), so they're re-added once the new style
+  // finishes loading -- markers/popups are untouched, they're plain DOM
+  // overlays outside the style entirely.
+  useEffect(() => {
+    if (!loaded || !mapRef.current || appliedThemeRef.current === theme) return
+    appliedThemeRef.current = theme
+    const map = mapRef.current
+    setMapStyle(map, theme, () => {
+      addGeometryLayers(map, hiddenRouteIdsRef.current)
+      applyHiddenRoutes(map, hiddenRouteIdsRef.current)
+    })
+  }, [loaded, theme])
 
   return (
     <main className={styles.mapContainer}>

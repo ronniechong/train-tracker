@@ -44,13 +44,16 @@ interface StatusPanelProps {
   liveState: LiveState
   hideGhosts: boolean
   onToggleHideGhosts: (hide: boolean) => void
+  /** Applied when this is the last sidebar section before the footer --
+   * see StatusPanel.module.css's `.grow`. */
+  grow?: boolean
 }
 
-export function StatusPanel({ liveState, hideGhosts, onToggleHideGhosts }: StatusPanelProps) {
+export function StatusPanel({ liveState, hideGhosts, onToggleHideGhosts, grow }: StatusPanelProps) {
   const counts = trainCounts(liveState.trains)
 
   return (
-    <Section title="Data status">
+    <Section title="Data status" className={grow ? styles.grow : undefined}>
       <p
         className={cx(
           styles.connection,

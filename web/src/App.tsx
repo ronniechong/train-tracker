@@ -1,21 +1,34 @@
 import { useState } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { MapView, type FlyToRequest } from './components/MapView'
+import { DrawerToggle } from './components/DrawerToggle'
 import { useLiveFeed } from './hooks/useLiveFeed'
+import { useTheme } from './hooks/useTheme'
 import { routesByStationId, stationsById, type Station } from './geometry'
 import styles from './App.module.css'
 
 export function App() {
   const liveState = useLiveFeed()
+  // Lifted up (not called separately in Header/MapView) so both the app
+  // chrome (via data-theme, CSS tokens) and the map's own basemap swap
+  // stay in sync off one shared value -- two independent useTheme() calls
+  // would each keep their own local state, unaware of the other toggling.
+  const [theme, setTheme] = useTheme()
   const [hiddenRouteIds, setHiddenRouteIds] = useState<ReadonlySet<string>>(() => new Set())
-  // Off by default -- genuine ghosts stay visible, honestly labelled, per
-  // Ronnie's call (2026-07-31): hiding them is opt-in, not the default.
-  const [hideGhosts, setHideGhosts] = useState(false)
+  // On by default (reversed 2026-07-31, Session 26 -- was off/opt-in at
+  // Session 24) -- still a real toggle, not a removal: ghosts stay fully
+  // available and honestly labelled, just not shown until asked for.
+  const [hideGhosts, setHideGhosts] = useState(true)
   // Shared by both station-selection entry points (search + map click) --
   // see M4 Stage 4 remainder, 2026-07-31.
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null)
   const [flyToRequest, setFlyToRequest] = useState<FlyToRequest | null>(null)
   const [recenterRequest, setRecenterRequest] = useState<number | null>(null)
+  // M4 Stage 5: mobile off-canvas drawer. Harmless to leave true above the
+  // breakpoint -- Sidebar.module.css's `.open` rule only exists inside a
+  // `max-width: 768px` media query, so this has zero visual effect on
+  // desktop regardless of its value.
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   function handleToggleRoute(routeId: string, visible: boolean): void {
     setHiddenRouteIds((prev) => {
@@ -38,6 +51,10 @@ export function App() {
     for (const routeId of routesByStationId.get(station.id) ?? []) {
       if (hiddenRouteIds.has(routeId)) handleToggleRoute(routeId, true)
     }
+    // Selecting a station while the mobile drawer is open would otherwise
+    // leave the result hidden behind it -- close so the map (and the fly/
+    // panel update) is actually visible.
+    setDrawerOpen(false)
   }
 
   // Map click: null means the click missed every station (clear
@@ -66,6 +83,8 @@ export function App() {
 
   return (
     <div className={styles.shell}>
+      <DrawerToggle open={drawerOpen} onToggle={() => setDrawerOpen((prev) => !prev)} />
+      {drawerOpen && <div className={styles.drawerBackdrop} onClick={() => setDrawerOpen(false)} />}
       <Sidebar
         liveState={liveState}
         hiddenRouteIds={hiddenRouteIds}
@@ -75,7 +94,13 @@ export function App() {
         onSearchSelect={handleSearchSelect}
         selectedStationId={selectedStationId}
         onClearStation={() => setSelectedStationId(null)}
-        onRecenter={() => setRecenterRequest((n) => (n ?? 0) + 1)}
+        onRecenter={() => {
+          setRecenterRequest((n) => (n ?? 0) + 1)
+          setDrawerOpen(false)
+        }}
+        open={drawerOpen}
+        theme={theme}
+        onThemeChange={setTheme}
       />
       <MapView
         trains={liveState.trains}
@@ -85,6 +110,7 @@ export function App() {
         selectedStationId={selectedStationId}
         flyToRequest={flyToRequest}
         recenterRequest={recenterRequest}
+        theme={theme}
       />
     </div>
   )

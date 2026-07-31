@@ -33,3 +33,10 @@ export interface DeltaResponse {
   changed: Train[]
   removed: string[]
 }
+
+export interface Attribution {
+  source: string
+  license: string
+  license_url: string
+  note: string
+}

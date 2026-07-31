@@ -1,39 +1,48 @@
 /* Global (not CSS Modules) -- MapLibre's Popup targets its own fixed
    class names (.maplibregl-popup-content etc.), which module hashing
-   would break. Same reasoning as trainMarkers.css. Dark styling matches
-   the train marker tooltip so on-map UI reads as one system. */
+   would break. Same reasoning as trainMarkers.css.
+
+   Tokens, not hardcoded colors (changed 2026-07-31) -- this used to be
+   permanently dark ("matches the train marker tooltip so on-map UI reads
+   as one system"), but the train tooltip was ALREADY token-based
+   (trainMarkers.css), so this was actually the odd one out: the two
+   on-map tooltips looked inconsistent with each other once the app
+   gained a real light/dark toggle, and this one didn't move with it.
+   CSS custom properties aren't module-scoped, so tokens.css's variables
+   work here exactly the same as anywhere else. */
 .station-popup .maplibregl-popup-content {
   padding: 0.6rem 0.7rem;
-  background: rgba(20, 22, 26, 0.95);
-  color: #ffffff;
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  background: var(--color-panel-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
 }
 
 .station-popup .maplibregl-popup-tip {
-  border-top-color: rgba(20, 22, 26, 0.95);
-  border-bottom-color: rgba(20, 22, 26, 0.95);
+  border-top-color: var(--color-panel-bg);
+  border-bottom-color: var(--color-panel-bg);
 }
 
 .station-popup-content {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  font-family: 'Inter Variable', system-ui, 'Segoe UI', Roboto, sans-serif;
-  font-size: 0.8rem;
+  font-family: var(--font-family);
+  font-size: var(--font-size-xs);
   white-space: nowrap;
 }
 
 .station-popup-title {
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
 .station-popup-row {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--color-text-dim);
 }
 
 .station-popup-swatch {

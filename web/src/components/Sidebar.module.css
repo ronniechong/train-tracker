@@ -32,3 +32,37 @@
   color: var(--color-accent);
   border-color: var(--color-accent);
 }
+
+.attribution {
+  margin: 0 0 var(--space-2);
+}
+
+.disclaimer {
+  margin: 0 0 var(--space-2);
+  font-style: italic;
+}
+
+.githubLine {
+  margin: 0;
+}
+
+/* Mobile: below this breakpoint the sidebar becomes an off-canvas drawer
+   (App.tsx's shell also collapses to a single grid column at the same
+   breakpoint, so the map gets the full width once the sidebar is out of
+   flow here). Overlays on top of the map rather than pushing it -- the
+   map stays the hero, per the milestone's own mobile spec. */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(85vw, 340px);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 30;
+    box-shadow: var(--shadow-md);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+}

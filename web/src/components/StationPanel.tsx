@@ -48,7 +48,7 @@ export function StationPanel({ stationId, trains, hideGhosts, onClear }: Station
   const nearby = station ? nearbyTrains(station.id, trains, hideGhosts) : []
 
   return (
-    <Section title="Station" className={styles.grow}>
+    <Section title="Station">
       {!station && <Placeholder>Click a station on the map, or search above</Placeholder>}
       {station && (
         <>

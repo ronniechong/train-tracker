@@ -1,11 +1,17 @@
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { geometry, routesByStationId, type Bounds } from '../geometry'
+import type { Theme } from '../hooks/useTheme'
 
 // OpenFreeMap: free, no API key, no published rate limits (chosen as the M4
 // MVP basemap — see work-docs milestones/04-map.md). Provisional; swap the
-// style URL here if it turns out to behave badly under real use.
-const OPENFREEMAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty'
+// style URLs here if it turns out to behave badly under real use. `dark`
+// confirmed live (2026-07-31) as a real, separate OpenFreeMap style (not a
+// CSS filter) -- same URL pattern as `liberty`.
+const OPENFREEMAP_STYLES: Record<Theme, string> = {
+  light: 'https://tiles.openfreemap.org/styles/liberty',
+  dark: 'https://tiles.openfreemap.org/styles/dark',
+}
 
 const ROUTES_SOURCE_ID = 'metro-routes'
 const STATIONS_SOURCE_ID = 'metro-stations'
@@ -71,16 +77,30 @@ export function isRouteHidden(routeId: string | null, hiddenRouteIds: ReadonlySe
   return routeId !== null && hiddenRouteIds.has(routeId)
 }
 
-export function initMap(container: HTMLElement): maplibregl.Map {
+export function initMap(container: HTMLElement, theme: Theme): maplibregl.Map {
   return new maplibregl.Map({
     container,
-    style: OPENFREEMAP_STYLE,
+    style: OPENFREEMAP_STYLES[theme],
     center: MELBOURNE_CBD,
     zoom: INITIAL_ZOOM,
     minZoom: 9,
     maxBounds: boundsToLngLatBounds(geometry.bounds),
     attributionControl: { compact: true },
   }).addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+}
+
+/** Swaps the basemap for a theme change on an already-mounted map.
+ * `setStyle` wipes every style-level source/layer we added (route lines,
+ * station points -- NOT markers/popups, which are plain DOM overlays
+ * outside the style entirely and survive untouched), so `onReady` is
+ * where the caller re-adds them via `addGeometryLayers`/
+ * `applyHiddenRoutes` -- `style.load` is MapLibre's real "safe to add
+ * layers again" event, not `load` (that only fires once, on initial
+ * mount). Camera position (center/zoom/bearing) is untouched by a style
+ * swap -- it's map state, not style state. */
+export function setMapStyle(map: maplibregl.Map, theme: Theme, onReady: () => void): void {
+  map.setStyle(OPENFREEMAP_STYLES[theme])
+  map.once('style.load', onReady)
 }
 
 /** MapLibre computes its initial center/zoom against the container's size
@@ -168,6 +188,17 @@ export function registerStationInteractions(
     map.getCanvas().style.cursor = ''
   })
   map.on('click', (event) => {
+    // Train markers are DOM elements layered above the map canvas (see
+    // trainMarkers.ts), not a MapLibre layer -- a click landing on one
+    // still bubbles up to this handler (found live, 2026-07-31: a train
+    // sitting on top of its own station opened both the train's hover
+    // tooltip AND the station's click popup, overlapping). Trains are
+    // already the foreground interactive element there (their own hover
+    // tooltip), so back off entirely rather than also resolving the
+    // station underneath.
+    const target = event.originalEvent.target
+    if (target instanceof Element && target.closest('.train-marker')) return
+
     const features = map.queryRenderedFeatures(event.point, { layers: [STATION_POINTS_LAYER_ID] })
     const stationId = (features[0]?.properties?.id as string | undefined) ?? null
     onStationClick(stationId)
