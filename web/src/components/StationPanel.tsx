@@ -29,6 +29,26 @@ function scheduleBadge(dep: ScheduledTrain): ScheduleBadge {
   return { label: `${Math.round(dep.delay_seconds / 60)} min early`, className: styles.delayBadge }
 }
 
+interface DirectionGroup {
+  label: string
+  departures: ScheduledTrain[]
+}
+
+// direction_id is a clean, reliable inbound/outbound signal here (M1
+// spike, confirmed across all 15 routes): 1 = city-bound, 0 = outbound to
+// terminus. `other` only ever catches the rare trip with no direction_id
+// at all -- kept as its own group rather than silently dropped or merged.
+function groupByDirection(departures: ScheduledTrain[]): DirectionGroup[] {
+  const inbound = departures.filter((d) => d.direction_id === 1)
+  const outbound = departures.filter((d) => d.direction_id === 0)
+  const other = departures.filter((d) => d.direction_id !== 0 && d.direction_id !== 1)
+  return [
+    { label: 'Inbound', departures: inbound },
+    { label: 'Outbound', departures: outbound },
+    { label: 'Other', departures: other },
+  ].filter((group) => group.departures.length > 0)
+}
+
 // The backend's own geofence check (service/state/station.py's
 // GEOFENCE_RADIUS_M = 100m) confirms a train is genuinely AT one specific
 // stop -- tight on purpose, for a different question. This panel answers a
@@ -95,22 +115,27 @@ export function StationPanel({ stationId, trains, hideGhosts, onClear, schedule 
           {!schedule.loading && !schedule.error && departures.length === 0 && (
             <p className={styles.empty}>No more services today.</p>
           )}
-          {!schedule.loading && departures.length > 0 && (
-            <ul className={styles.scheduleList}>
-              {departures.map((dep) => {
-                const badge = scheduleBadge(dep)
-                return (
-                  <li key={`${dep.trip_id}-${dep.scheduled_time}`} className={styles.scheduleRow}>
-                    <span className={styles.scheduleHeadsign}>{dep.headsign}</span>
-                    <span className={styles.scheduleTime}>
-                      {formatTime(dep.is_live && dep.predicted_time ? dep.predicted_time : dep.scheduled_time)}
-                    </span>
-                    <span className={badge.className}>{badge.label}</span>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
+          {!schedule.loading &&
+            departures.length > 0 &&
+            groupByDirection(departures).map((group) => (
+              <div key={group.label} className={styles.directionGroup}>
+                <h4 className={styles.directionLabel}>{group.label}</h4>
+                <ul className={styles.scheduleList}>
+                  {group.departures.map((dep) => {
+                    const badge = scheduleBadge(dep)
+                    return (
+                      <li key={`${dep.trip_id}-${dep.scheduled_time}`} className={styles.scheduleRow}>
+                        <span className={styles.scheduleHeadsign}>{dep.headsign}</span>
+                        <span className={styles.scheduleTime}>
+                          {formatTime(dep.is_live && dep.predicted_time ? dep.predicted_time : dep.scheduled_time)}
+                        </span>
+                        <span className={badge.className}>{badge.label}</span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            ))}
 
           <p className={styles.caption}>Trains within {NEARBY_RADIUS_M}m, by live position — not a schedule.</p>
           {nearby.length === 0 && <p className={styles.empty}>No trains currently near this station.</p>}

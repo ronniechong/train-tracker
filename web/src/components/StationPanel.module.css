@@ -81,49 +81,68 @@
   color: var(--color-text-dim);
 }
 
-.scheduleList {
-  list-style: none;
+.directionGroup {
   margin: 0 0 var(--space-2);
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
 }
 
-.scheduleRow {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
+.directionLabel {
+  margin: 0 0 0.2rem;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-dim);
+}
+
+/* Grid on the LIST, not each row -- combined with .scheduleRow's
+   `display: contents` below, every row's headsign/time/status become
+   direct children of this one grid, so columns line up across all rows
+   (the widest status badge sets that column's width for everyone)
+   instead of each row sizing its own columns independently. */
+.scheduleList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  column-gap: var(--space-2);
+  row-gap: 0.3rem;
   font-size: var(--font-size-base);
 }
 
+.scheduleRow {
+  display: contents;
+}
+
 .scheduleHeadsign {
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  align-self: center;
 }
 
 .scheduleTime {
-  flex-shrink: 0;
+  text-align: right;
   font-variant-numeric: tabular-nums;
+  align-self: center;
 }
 
 .scheduledBadge {
-  flex-shrink: 0;
+  text-align: right;
   font-size: var(--font-size-xs);
   color: var(--color-text-dim);
+  align-self: center;
 }
 
 .onTimeBadge {
-  flex-shrink: 0;
+  text-align: right;
   font-size: var(--font-size-xs);
   color: var(--color-success);
+  align-self: center;
 }
 
 .delayBadge {
-  flex-shrink: 0;
+  text-align: right;
   font-size: var(--font-size-xs);
   color: var(--color-warning);
+  align-self: center;
 }
