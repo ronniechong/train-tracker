@@ -61,8 +61,14 @@ def _terminus_arrived_stu(arrival_delay=None, arrival_time=None) -> StopTimeUpda
     # delay and time together for an already-passed stop, so this helper
     # derives a consistent arrival_time from arrival_delay when only the
     # delay is given, rather than leaving the gating field unset.
+    #
+    # `arrival_time` is passed as a STRING, deliberately -- protobuf's JSON
+    # mapping stringifies int64 fields (this one), unlike arrival_delay
+    # (int32, stays a real number). A real int here would have hidden the
+    # exact bug that crash-looped the poller live on the homeserver
+    # (2026-08-01): every test previously used a real int, none caught it.
     if arrival_time is None and arrival_delay is not None:
-        arrival_time = int((SCHEDULED_ARRIVAL + timedelta(seconds=arrival_delay)).timestamp())
+        arrival_time = str(int((SCHEDULED_ARRIVAL + timedelta(seconds=arrival_delay)).timestamp()))
     return StopTimeUpdate(
         stop_sequence=2, stop_id="PLAT_B1",
         arrival_delay=arrival_delay, arrival_time=arrival_time,
@@ -77,7 +83,7 @@ def test_on_time_completion_uses_the_raw_arrival_delay_field():
     tracker.tick({"t1": _snapshot(stop_time_updates=(_en_route_stu(),))}, _at(60))
     tracker.tick(
         {"t1": _snapshot(
-            stop_time_updates=(_terminus_arrived_stu(arrival_delay=120, arrival_time=int(_at(720).timestamp())),),
+            stop_time_updates=(_terminus_arrived_stu(arrival_delay=120, arrival_time=str(int(_at(720).timestamp()))),),
             schedule_updated_at=_at(720),
         )},
         _at(720),
@@ -126,7 +132,7 @@ def test_delay_falls_back_to_computing_from_arrival_time_when_delay_field_absent
 
     tracker.tick(
         {"t1": _snapshot(
-            stop_time_updates=(_terminus_arrived_stu(arrival_time=int(actual_arrival.timestamp())),),
+            stop_time_updates=(_terminus_arrived_stu(arrival_time=str(int(actual_arrival.timestamp()))),),
         )},
         _at(900),
     )
@@ -152,7 +158,7 @@ def test_a_stop_with_arrival_and_departure_is_not_treated_as_the_terminus():
     log = _FakeEventLog()
     tracker = TripCompletionTracker(log, _terminus_lookup())
     mid_journey_stu = StopTimeUpdate(
-        stop_sequence=2, stop_id="PLAT_B1", arrival_delay=0, arrival_time=int(_at(600).timestamp()),
+        stop_sequence=2, stop_id="PLAT_B1", arrival_delay=0, arrival_time=str(int(_at(600).timestamp())),
         departure_delay=0, departure_time=int(_at(650).timestamp()), schedule_relationship=None,
     )
 

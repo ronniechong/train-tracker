@@ -194,7 +194,16 @@ class TripCompletionTracker:
                 and terminus_stu.arrival_time is not None
                 and terminus_stu.departure_time is None
             ):
-                actual_arrival = datetime.fromtimestamp(terminus_stu.arrival_time, tz=timezone.utc)
+                # `StopTimeUpdate.arrival_time` is typed `int | None` but is
+                # actually a string at runtime -- protobuf's JSON mapping
+                # stringifies int64 fields (arrival_delay is int32, stays a
+                # real number). Same coercion station.py's `_epoch()` and
+                # api/app.py's `_scheduled_train` already apply for the
+                # identical reason -- missed here first, caught live on the
+                # homeserver (crash-looped the poller within seconds of the
+                # first real terminus arrival), not by any test, since every
+                # test fixture used a real int.
+                actual_arrival = datetime.fromtimestamp(int(terminus_stu.arrival_time), tz=timezone.utc)
                 delay = (
                     terminus_stu.arrival_delay
                     if terminus_stu.arrival_delay is not None
