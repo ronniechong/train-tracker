@@ -17,6 +17,12 @@ class TripRecord:
     trip_id: str
     service_id: str
     route_id: str
+    # direction_id is a clean, reliable inbound/outbound signal here (M1
+    # spike: confirmed consistent across all 15 routes, 1=city-bound,
+    # 0=outbound to terminus) -- unlike Vehicle Positions' own copy of the
+    # field, which is 0% populated and must never be used instead.
+    trip_headsign: str = ""
+    direction_id: int | None = None
 
 
 class StaticSnapshot:
@@ -57,6 +63,12 @@ class StaticSnapshot:
                 trip_id=row["trip_id"],
                 service_id=row["service_id"],
                 route_id=row["route_id"],
+                trip_headsign=row.get("trip_headsign", ""),
+                direction_id=(
+                    int(row["direction_id"])
+                    if row.get("direction_id") not in (None, "")
+                    else None
+                ),
             )
             for row in csv.DictReader(io.StringIO(trips_txt))
         ]

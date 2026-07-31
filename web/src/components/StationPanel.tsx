@@ -1,10 +1,33 @@
 import { stationsById } from '../geometry'
 import { lineNameForTrain, markerColor, STATUS_LABEL } from '../map/trainMarkers'
 import { relativeTime } from '../lib/relativeTime'
+import { formatTime } from '../lib/formatTime'
 import { haversineM } from '../lib/geo'
 import { Section, Placeholder } from './Section'
-import type { Train } from '../api-types'
+import type { Train, ScheduledTrain } from '../api-types'
+import type { StationScheduleState } from '../hooks/useStationSchedule'
 import styles from './StationPanel.module.css'
+
+// Below this, a live prediction reads as "on time" rather than delayed --
+// GTFS delay can be mildly negative (running early) too, so this is an
+// absolute-value band, not just a lower bound.
+const ON_TIME_BAND_S = 60
+
+interface ScheduleBadge {
+  label: string
+  className: string
+}
+
+function scheduleBadge(dep: ScheduledTrain): ScheduleBadge {
+  if (!dep.is_live) return { label: 'Scheduled', className: styles.scheduledBadge }
+  if (dep.delay_seconds === null || Math.abs(dep.delay_seconds) <= ON_TIME_BAND_S) {
+    return { label: 'On time', className: styles.onTimeBadge }
+  }
+  if (dep.delay_seconds > 0) {
+    return { label: `+${Math.round(dep.delay_seconds / 60)} min`, className: styles.delayBadge }
+  }
+  return { label: `${Math.round(dep.delay_seconds / 60)} min early`, className: styles.delayBadge }
+}
 
 // The backend's own geofence check (service/state/station.py's
 // GEOFENCE_RADIUS_M = 100m) confirms a train is genuinely AT one specific
@@ -37,15 +60,20 @@ interface StationPanelProps {
   trains: Map<string, Train>
   hideGhosts: boolean
   onClear: () => void
+  schedule: StationScheduleState
 }
 
 /** Station click / search select → persistent sidebar panel (M4 Stage 4
- * remainder, 2026-07-31). Computed client-side (geofence match against
- * live train positions) -- no API change, this is presentation logic over
- * data already public. */
-export function StationPanel({ stationId, trains, hideGhosts, onClear }: StationPanelProps) {
+ * remainder, 2026-07-31). "Nearby trains" is computed client-side (geofence
+ * match against live train positions, no API call). "Next trains" (added
+ * for the station-schedule feature) is the opposite: server-computed from
+ * the static timetable + a live Trip Updates overlay where available --
+ * fetched via `schedule` (lifted to App.tsx so the on-map popup can show
+ * the same data). */
+export function StationPanel({ stationId, trains, hideGhosts, onClear, schedule }: StationPanelProps) {
   const station = stationId ? stationsById.get(stationId) : undefined
   const nearby = station ? nearbyTrains(station.id, trains, hideGhosts) : []
+  const departures = schedule.data?.departures ?? []
 
   return (
     <Section title="Station">
@@ -58,6 +86,32 @@ export function StationPanel({ stationId, trains, hideGhosts, onClear }: Station
               ×
             </button>
           </div>
+
+          <h3 className={styles.subheading}>Next trains</h3>
+          {schedule.loading && <p className={styles.empty}>Loading schedule…</p>}
+          {!schedule.loading && schedule.error && (
+            <p className={styles.empty}>Schedule unavailable right now.</p>
+          )}
+          {!schedule.loading && !schedule.error && departures.length === 0 && (
+            <p className={styles.empty}>No more services today.</p>
+          )}
+          {!schedule.loading && departures.length > 0 && (
+            <ul className={styles.scheduleList}>
+              {departures.map((dep) => {
+                const badge = scheduleBadge(dep)
+                return (
+                  <li key={`${dep.trip_id}-${dep.scheduled_time}`} className={styles.scheduleRow}>
+                    <span className={styles.scheduleHeadsign}>{dep.headsign}</span>
+                    <span className={styles.scheduleTime}>
+                      {formatTime(dep.is_live && dep.predicted_time ? dep.predicted_time : dep.scheduled_time)}
+                    </span>
+                    <span className={badge.className}>{badge.label}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+
           <p className={styles.caption}>Trains within {NEARBY_RADIUS_M}m, by live position — not a schedule.</p>
           {nearby.length === 0 && <p className={styles.empty}>No trains currently near this station.</p>}
           {nearby.length > 0 && (

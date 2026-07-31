@@ -61,6 +61,30 @@ class HealthResponse(BaseModel):
     status: str
 
 
+class ScheduledTrain(BaseModel):
+    """One upcoming departure at a station: the static-schedule time is
+    always present; `predicted_time`/`delay_seconds` are only set when a
+    live Trip Updates prediction for this exact (trip_id, platform) exists
+    right now -- `is_live` makes that distinction explicit rather than
+    letting callers guess from nullability alone (same "label every
+    inference" spirit as the ghost/discrepancy schemas elsewhere)."""
+
+    trip_id: str
+    route_id: str
+    direction_id: int | None
+    headsign: str
+    scheduled_time: datetime
+    predicted_time: datetime | None
+    delay_seconds: int | None
+    is_live: bool
+
+
+class StationScheduleResponse(BaseModel):
+    station_id: str
+    generated_at: datetime
+    departures: list[ScheduledTrain]
+
+
 class AttributionResponse(BaseModel):
     """M3 finding #11: a license condition, not a nicety -- static content,
     deliberately its own endpoint rather than embedded in every `/api/state`/

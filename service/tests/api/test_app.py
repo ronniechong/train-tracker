@@ -1,3 +1,4 @@
+import hashlib
 import json
 from datetime import datetime, timedelta, timezone
 
@@ -5,13 +6,18 @@ import httpx
 import pytest
 from google.transit import gtfs_realtime_pb2
 
-from traintracker.api.app import _event_source, create_app
+from traintracker.api.app import _event_source, _scheduled_train, create_app
 from traintracker.api.limits import ConnectionTracker, RateLimiter
 from traintracker.gateway.client import GatewayClient
+from traintracker.gtfs.gtfstime import service_date_for_instant
+from traintracker.gtfs.pinning import PinManifest
+from traintracker.gtfs.schedule import ScheduledDeparture
+from traintracker.gtfs.schedule_cache import PinnedScheduleCache
 from traintracker.poller.breaker import CircuitBreaker
 from traintracker.poller.loop import PollerLoop
 from traintracker.state.eventhub import InProcessEventHub
 from traintracker.state.eventlog import InMemoryEventLog
+from traintracker.state.merge import StopTimeUpdate, TrainSnapshot
 from traintracker.state.store import StateStore
 
 
@@ -125,6 +131,7 @@ async def _client_for(
     connections: ConnectionTracker | None = None,
     rate_limiter: RateLimiter | None = None,
     heartbeat_interval_s: float = 20.0,
+    schedule_cache: PinnedScheduleCache | None = None,
 ) -> httpx.AsyncClient:
     app = create_app(
         loop=loop,
@@ -133,8 +140,22 @@ async def _client_for(
         connections=connections,
         rate_limiter=rate_limiter,
         heartbeat_interval_s=heartbeat_interval_s,
+        schedule_cache=schedule_cache,
     )
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
+
+
+def _pinned_schedule_cache(tmp_path, sample_static_zip_bytes) -> PinnedScheduleCache:
+    """A real `PinnedScheduleCache` over the shared `gtfs_static_sample`
+    fixture, pinned to whatever service_date real wall-clock `now` resolves
+    to -- the route handler itself calls `datetime.now()` internally (not
+    injectable), so this pins "today" rather than a fixed date, same as
+    `_running_loop`'s own "real now, not a fixed T0" convention above."""
+    digest = hashlib.sha256(sample_static_zip_bytes).hexdigest()
+    (tmp_path / f"{digest}.zip").write_bytes(sample_static_zip_bytes)
+    manifest = PinManifest(tmp_path / "pin_manifest.json")
+    manifest.pin_digest(service_date_for_instant(datetime.now(timezone.utc)), digest)
+    return PinnedScheduleCache(tmp_path, manifest)
 
 
 async def test_attribution_returns_cc_by_credit():
@@ -396,3 +417,170 @@ async def test_rate_limit_is_scoped_per_endpoint_and_client():
 
     assert a.status_code == 200
     assert b.status_code == 200
+
+
+def _departure(**overrides) -> ScheduledDeparture:
+    defaults = dict(
+        trip_id="T1",
+        route_id="R1",
+        direction_id=0,
+        headsign="Pakenham",
+        scheduled_time=datetime(2026, 7, 20, 22, 0, tzinfo=timezone.utc),
+        stop_id="PLAT_A1",
+    )
+    defaults.update(overrides)
+    return ScheduledDeparture(**defaults)
+
+
+def _empty_store() -> StateStore:
+    return StateStore(discrepancy_log=InMemoryEventLog(), ghost_log=InMemoryEventLog())
+
+
+def test_scheduled_train_is_schedule_only_when_no_live_snapshot():
+    train = _scheduled_train(_empty_store(), _departure())
+
+    assert train.is_live is False
+    assert train.predicted_time is None
+    assert train.delay_seconds is None
+    assert train.scheduled_time == datetime(2026, 7, 20, 22, 0, tzinfo=timezone.utc)
+
+
+def test_scheduled_train_overlays_live_predicted_time_and_delay():
+    store = _empty_store()
+    predicted_at = datetime(2026, 7, 20, 22, 4, tzinfo=timezone.utc)
+    store.latest_snapshots["T1"] = TrainSnapshot(
+        trip_id="T1",
+        route_id="R1",
+        start_time=None,
+        start_date=None,
+        schedule_relationship=None,
+        stop_time_updates=(
+            StopTimeUpdate(
+                stop_sequence=1,
+                stop_id="PLAT_A1",
+                arrival_delay=None,
+                arrival_time=None,
+                departure_delay=240,
+                departure_time=int(predicted_at.timestamp()),
+                schedule_relationship=None,
+            ),
+        ),
+        schedule_updated_at=datetime.now(timezone.utc),
+        latitude=None,
+        longitude=None,
+        bearing=None,
+        position_updated_at=None,
+    )
+
+    train = _scheduled_train(store, _departure())
+
+    assert train.is_live is True
+    assert train.delay_seconds == 240
+    assert train.predicted_time == predicted_at
+
+
+def test_scheduled_train_falls_back_to_delay_only_when_no_predicted_time():
+    store = _empty_store()
+    store.latest_snapshots["T1"] = TrainSnapshot(
+        trip_id="T1",
+        route_id="R1",
+        start_time=None,
+        start_date=None,
+        schedule_relationship=None,
+        stop_time_updates=(
+            StopTimeUpdate(
+                stop_sequence=1,
+                stop_id="PLAT_A1",
+                arrival_delay=None,
+                arrival_time=None,
+                departure_delay=90,
+                departure_time=None,
+                schedule_relationship=None,
+            ),
+        ),
+        schedule_updated_at=datetime.now(timezone.utc),
+        latitude=None,
+        longitude=None,
+        bearing=None,
+        position_updated_at=None,
+    )
+    dep = _departure()
+
+    train = _scheduled_train(store, dep)
+
+    assert train.is_live is True
+    assert train.delay_seconds == 90
+    assert train.predicted_time == dep.scheduled_time + timedelta(seconds=90)
+
+
+def test_scheduled_train_ignores_snapshot_for_a_different_platform():
+    store = _empty_store()
+    store.latest_snapshots["T1"] = TrainSnapshot(
+        trip_id="T1",
+        route_id="R1",
+        start_time=None,
+        start_date=None,
+        schedule_relationship=None,
+        stop_time_updates=(
+            StopTimeUpdate(
+                stop_sequence=1,
+                stop_id="SOME_OTHER_PLATFORM",
+                arrival_delay=30,
+                arrival_time=None,
+                departure_delay=30,
+                departure_time=None,
+                schedule_relationship=None,
+            ),
+        ),
+        schedule_updated_at=datetime.now(timezone.utc),
+        latitude=None,
+        longitude=None,
+        bearing=None,
+        position_updated_at=None,
+    )
+
+    train = _scheduled_train(store, _departure(stop_id="PLAT_A1"))
+
+    assert train.is_live is False
+
+
+async def test_station_schedule_returns_503_when_not_configured():
+    loop, store = await _running_loop()
+    async with await _client_for(loop, store) as client:
+        response = await client.get("/stations/STATION_A/schedule")
+
+    assert response.status_code == 503
+
+
+async def test_station_schedule_returns_404_for_unknown_station(tmp_path, sample_static_zip_bytes):
+    loop, store = await _running_loop()
+    schedule_cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+
+    async with await _client_for(loop, store, schedule_cache=schedule_cache) as client:
+        response = await client.get("/stations/NOT_A_REAL_STATION/schedule")
+
+    assert response.status_code == 404
+
+
+async def test_station_schedule_returns_well_formed_response_for_known_station(
+    tmp_path, sample_static_zip_bytes
+):
+    loop, store = await _running_loop()
+    schedule_cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+
+    async with await _client_for(loop, store, schedule_cache=schedule_cache) as client:
+        response = await client.get("/stations/STATION_A/schedule")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["station_id"] == "STATION_A"
+    assert isinstance(body["departures"], list)
+    # Whether any departures are actually present depends on the real time
+    # of day vs. the fixture's fixed ~08-09am schedule -- see
+    # gtfs/test_schedule.py's next_departures tests (fixed `after` values)
+    # for that coverage. This only verifies the route wires
+    # station_id -> cache -> response correctly and every entry matches
+    # the schema.
+    for train in body["departures"]:
+        assert train["trip_id"]
+        assert train["scheduled_time"]

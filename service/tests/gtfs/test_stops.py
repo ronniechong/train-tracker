@@ -26,3 +26,17 @@ def test_stops_from_zip_bytes_reads_stops_txt_member():
         zf.writestr("stops.txt", SAMPLE_STOPS_TXT)
     stops = stops_from_zip_bytes(buf.getvalue())
     assert stops["10920"].name == "Flagstaff Station"
+
+
+def test_parse_stops_extracts_parent_station_for_platform_rows():
+    stops = parse_stops(SAMPLE_STOPS_TXT)
+    assert stops["10920"].parent_station == "vic:rail:FGS"
+
+
+def test_parse_stops_parent_station_is_none_for_station_rows():
+    station_row = (
+        "stop_id,stop_name,stop_lat,stop_lon,location_type,parent_station\n"
+        '"vic:rail:FGS","Flagstaff Station","-37.812","144.956","1",""\n'
+    )
+    stops = parse_stops(station_row)
+    assert stops["vic:rail:FGS"].parent_station is None

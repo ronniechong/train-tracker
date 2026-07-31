@@ -20,17 +20,27 @@ class Stop:
     name: str
     latitude: float
     longitude: float
+    # Platform -> parent station grouping (location_type=1 rows are parent
+    # stations themselves and have no parent_station of their own). Needed
+    # by gtfs/schedule.py to map a station_id to the set of platform
+    # stop_ids that stop_times.txt actually keys its rows by -- mirrors
+    # build_web_geometry.py's own platform_to_station logic.
+    parent_station: str | None = None
 
 
 def parse_stops(stops_txt: str) -> dict[str, Stop]:
     stops = {}
     for row in csv.DictReader(io.StringIO(stops_txt)):
         stop_id = row["stop_id"]
+        parent_station = row.get("parent_station") or None
+        if row.get("location_type") == "1":
+            parent_station = None
         stops[stop_id] = Stop(
             stop_id=stop_id,
             name=row.get("stop_name", ""),
             latitude=float(row["stop_lat"]),
             longitude=float(row["stop_lon"]),
+            parent_station=parent_station,
         )
     return stops
 

@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 
 from traintracker.gtfs.snapshot import StaticSnapshot
+from traintracker.gtfs.stop_times import StopTimeRecord, stop_times_from_zip_bytes
+from traintracker.gtfs.stops import Stop, stops_from_zip_bytes
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "gtfs_static_sample"
 
@@ -25,3 +27,13 @@ def sample_static_zip_bytes() -> bytes:
 @pytest.fixture
 def sample_snapshot(sample_static_zip_bytes) -> StaticSnapshot:
     return StaticSnapshot.from_zip_bytes(sample_static_zip_bytes)
+
+
+@pytest.fixture
+def sample_stops(sample_static_zip_bytes) -> dict[str, Stop]:
+    return stops_from_zip_bytes(sample_static_zip_bytes)
+
+
+@pytest.fixture
+def sample_stop_times(sample_static_zip_bytes) -> list[StopTimeRecord]:
+    return stop_times_from_zip_bytes(sample_static_zip_bytes)

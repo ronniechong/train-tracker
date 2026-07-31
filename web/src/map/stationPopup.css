@@ -48,3 +48,26 @@
 .station-popup-swatch {
   flex-shrink: 0;
 }
+
+.station-popup-schedule-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding-top: 0.3rem;
+  margin-top: 0.15rem;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.station-popup-schedule-headsign {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.station-popup-schedule-time {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-dim);
+}

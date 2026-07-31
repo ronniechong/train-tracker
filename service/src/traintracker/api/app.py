@@ -15,13 +15,15 @@ import asyncio
 import logging
 import os
 from collections.abc import AsyncIterator, Awaitable, Callable
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from ..gateway.client import Feed
+from ..gtfs.schedule import ScheduledDeparture
+from ..gtfs.schedule_cache import NoPinnedSnapshotError, PinnedScheduleCache
 from ..metrics import STALENESS_THRESHOLD_S
 from ..poller.loop import ALL_FEEDS, PollerLoop
 from ..state.eventhub import EventHub
@@ -39,7 +41,9 @@ from .schemas import (
     DeltaResponse,
     FeedStatus,
     HealthResponse,
+    ScheduledTrain,
     StateResponse,
+    StationScheduleResponse,
     Train,
 )
 
@@ -130,6 +134,40 @@ def _train(store: StateStore, tracked: TrackedTrainView) -> Train:
         position_updated_at=None,
         schedule_updated_at=None,
         last_seen_at=tracked.last_seen_at,
+    )
+
+
+def _scheduled_train(store: StateStore, dep: ScheduledDeparture) -> ScheduledTrain:
+    """Overlays a live Trip Updates prediction onto one scheduled departure,
+    when this process's own StateStore happens to have one for the exact
+    (trip_id, platform) right now -- reads only already-polled in-memory
+    state, no upstream call (invariant #1), same as every other route."""
+    predicted_time: datetime | None = None
+    delay_seconds: int | None = None
+    snapshot = store.latest_snapshots.get(dep.trip_id)
+    if snapshot is not None:
+        stu = next(
+            (s for s in snapshot.stop_time_updates if s.stop_id == dep.stop_id), None
+        )
+        if stu is not None:
+            delay_seconds = (
+                stu.departure_delay if stu.departure_delay is not None else stu.arrival_delay
+            )
+            time_epoch = stu.departure_time if stu.departure_time is not None else stu.arrival_time
+            if time_epoch is not None:
+                predicted_time = datetime.fromtimestamp(time_epoch, tz=timezone.utc)
+            elif delay_seconds is not None:
+                predicted_time = dep.scheduled_time + timedelta(seconds=delay_seconds)
+
+    return ScheduledTrain(
+        trip_id=dep.trip_id,
+        route_id=dep.route_id,
+        direction_id=dep.direction_id,
+        headsign=dep.headsign,
+        scheduled_time=dep.scheduled_time,
+        predicted_time=predicted_time,
+        delay_seconds=delay_seconds,
+        is_live=predicted_time is not None or delay_seconds is not None,
     )
 
 
@@ -239,6 +277,7 @@ def create_app(
     connections: ConnectionTracker | None = None,
     rate_limiter: RateLimiter | None = None,
     heartbeat_interval_s: float = SSE_HEARTBEAT_INTERVAL_S,
+    schedule_cache: PinnedScheduleCache | None = None,
 ) -> FastAPI:
     connections = connections or ConnectionTracker()
     rate_limiter = rate_limiter or RateLimiter()
@@ -289,6 +328,31 @@ def create_app(
     )
     async def attribution() -> AttributionResponse:
         return DATA_ATTRIBUTION
+
+    @app.get(
+        "/stations/{station_id}/schedule",
+        response_model=StationScheduleResponse,
+        dependencies=[Depends(_rate_limit_dependency(rate_limiter, "schedule"))],
+    )
+    async def station_schedule(station_id: str) -> StationScheduleResponse:
+        # Reads only the already-pinned static snapshot (disk, refreshed
+        # nightly by a separate job) and this process's own in-memory
+        # StateStore -- no path to the upstream API from this request
+        # (invariant #1), same as every other route here.
+        if schedule_cache is None:
+            raise HTTPException(status_code=503, detail="schedule feature not configured")
+        now = datetime.now(timezone.utc)
+        try:
+            departures = schedule_cache.next_departures_for(station_id, now)
+        except NoPinnedSnapshotError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        if departures is None:
+            raise HTTPException(status_code=404, detail=f"unknown station_id: {station_id}")
+        return StationScheduleResponse(
+            station_id=station_id,
+            generated_at=now,
+            departures=[_scheduled_train(store, dep) for dep in departures],
+        )
 
     @app.get("/api/stream")
     async def stream(request: Request):

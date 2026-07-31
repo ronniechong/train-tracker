@@ -40,3 +40,20 @@ export interface Attribution {
   license_url: string
   note: string
 }
+
+export interface ScheduledTrain {
+  trip_id: string
+  route_id: string
+  direction_id: number | null
+  headsign: string
+  scheduled_time: string
+  predicted_time: string | null
+  delay_seconds: number | null
+  is_live: boolean
+}
+
+export interface StationScheduleResponse {
+  station_id: string
+  generated_at: string
+  departures: ScheduledTrain[]
+}

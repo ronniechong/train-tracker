@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar'
 import { MapView, type FlyToRequest } from './components/MapView'
 import { DrawerToggle } from './components/DrawerToggle'
 import { useLiveFeed } from './hooks/useLiveFeed'
+import { useStationSchedule } from './hooks/useStationSchedule'
 import { useTheme } from './hooks/useTheme'
 import { routesByStationId, stationsById, type Station } from './geometry'
 import styles from './App.module.css'
@@ -22,6 +23,10 @@ export function App() {
   // Shared by both station-selection entry points (search + map click) --
   // see M4 Stage 4 remainder, 2026-07-31.
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null)
+  // Lifted here (not called separately in Sidebar/MapView) for the same
+  // reason as theme above: StationPanel (sidebar) and the on-map popup
+  // both need the SAME schedule data for whichever station is selected.
+  const schedule = useStationSchedule(selectedStationId)
   const [flyToRequest, setFlyToRequest] = useState<FlyToRequest | null>(null)
   const [recenterRequest, setRecenterRequest] = useState<number | null>(null)
   // M4 Stage 5: mobile off-canvas drawer. Harmless to leave true above the
@@ -101,6 +106,7 @@ export function App() {
         open={drawerOpen}
         theme={theme}
         onThemeChange={setTheme}
+        schedule={schedule}
       />
       <MapView
         trains={liveState.trains}
@@ -111,6 +117,7 @@ export function App() {
         flyToRequest={flyToRequest}
         recenterRequest={recenterRequest}
         theme={theme}
+        schedule={schedule}
       />
     </div>
   )

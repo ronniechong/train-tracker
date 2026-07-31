@@ -71,3 +71,59 @@
   color: var(--color-text-dim);
   font-size: var(--font-size-xs);
 }
+
+.subheading {
+  margin: var(--space-2) 0 0.35rem;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-dim);
+}
+
+.scheduleList {
+  list-style: none;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.scheduleRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--font-size-base);
+}
+
+.scheduleHeadsign {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scheduleTime {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.scheduledBadge {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-dim);
+}
+
+.onTimeBadge {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-success);
+}
+
+.delayBadge {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-warning);
+}

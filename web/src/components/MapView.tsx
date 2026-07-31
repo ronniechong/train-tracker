@@ -14,6 +14,7 @@ import { createTrainMarkerManager, type TrainMarkerManager } from '../map/trainM
 import { createStationPopupManager, type StationPopupManager } from '../map/stationPopup'
 import { LoadingOverlay } from './LoadingOverlay'
 import type { Train } from '../api-types'
+import type { StationScheduleState } from '../hooks/useStationSchedule'
 import type { Theme } from '../hooks/useTheme'
 import styles from './MapView.module.css'
 
@@ -40,6 +41,7 @@ interface MapViewProps {
   // clicks each re-trigger the effect below.
   recenterRequest: number | null
   theme: Theme
+  schedule: StationScheduleState
 }
 
 /** Owns the MapLibre instance imperatively -- trains/routes update via
@@ -56,6 +58,7 @@ export function MapView({
   flyToRequest,
   recenterRequest,
   theme,
+  schedule,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
@@ -114,11 +117,13 @@ export function MapView({
   // Popup opens/closes in lockstep with selectedStationId -- same
   // click-same-station-again / click-elsewhere / close-button deselect
   // paths App.tsx already drives the sidebar panel with, see
-  // stationPopup.ts's sync() doc comment.
+  // stationPopup.ts's sync() doc comment. Also re-runs when `schedule`
+  // changes so the popup updates in place once the async fetch resolves,
+  // not just on the initial stationId change.
   useEffect(() => {
     if (!loaded) return
-    popupManagerRef.current?.sync(selectedStationId)
-  }, [loaded, selectedStationId])
+    popupManagerRef.current?.sync(selectedStationId, schedule.data)
+  }, [loaded, selectedStationId, schedule.data])
 
   // Only search selections request a fly (see App.tsx's selectStation vs.
   // handleSearchSelect) -- clicking a station directly shouldn't recentre

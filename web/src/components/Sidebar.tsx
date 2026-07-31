@@ -7,6 +7,7 @@ import { Section } from './Section'
 import { useAttribution } from '../hooks/useAttribution'
 import { cx } from '../lib/cx'
 import type { LiveState } from '../hooks/useLiveFeed'
+import type { StationScheduleState } from '../hooks/useStationSchedule'
 import type { Theme } from '../hooks/useTheme'
 import type { Station } from '../geometry'
 import styles from './Sidebar.module.css'
@@ -36,6 +37,7 @@ interface SidebarProps {
   open: boolean
   theme: Theme
   onThemeChange: (theme: Theme) => void
+  schedule: StationScheduleState
 }
 
 export function Sidebar({
@@ -51,6 +53,7 @@ export function Sidebar({
   open,
   theme,
   onThemeChange,
+  schedule,
 }: SidebarProps) {
   const attribution = useAttribution()
 
@@ -69,6 +72,7 @@ export function Sidebar({
         trains={liveState.trains}
         hideGhosts={hideGhosts}
         onClear={onClearStation}
+        schedule={schedule}
       />
       <StatusPanel liveState={liveState} hideGhosts={hideGhosts} onToggleHideGhosts={onToggleHideGhosts} grow />
       <Section as="footer" className={styles.footer}>

@@ -33,6 +33,7 @@ from prometheus_client import start_http_server
 from ..api.app import create_app
 from ..gateway.client import API_KEY_ENV, GatewayClient
 from ..gtfs.pinning import PinManifest
+from ..gtfs.schedule_cache import PinnedScheduleCache
 from ..history.store import HistoryStore
 from ..metrics import Metrics
 from ..redaction import configure_logging
@@ -106,10 +107,16 @@ async def main() -> int:
     # each service_date. `history.rotate(now)` (called once per cycle below)
     # is what routes each `.record(event)` call to the right day's file --
     # merge.py/ghost.py/breaker.py stay unaware partitioning exists at all.
+    gtfs_dir = DATA_DIR / "gtfs"
     history = HistoryStore(
         history_dir=DATA_DIR / "history",
-        pin_manifest=PinManifest(DATA_DIR / "gtfs" / "pin_manifest.json"),
+        pin_manifest=PinManifest(gtfs_dir / "pin_manifest.json"),
     )
+
+    # Station-schedule feature: its own PinManifest instance over the same
+    # file -- cheap and stateless (loads/saves the whole JSON per call), so
+    # a second instance is simpler than threading HistoryStore's through.
+    schedule_cache = PinnedScheduleCache(gtfs_dir, PinManifest(gtfs_dir / "pin_manifest.json"))
 
     # 2f: wrap 2e's persisting EventLogs with counting, same composable
     # pattern -- each `.record(event)` call now both increments a Prometheus
@@ -131,7 +138,7 @@ async def main() -> int:
     # consumer (the SSE route below) -- one hub instance, shared between
     # the poll loop (publishes) and the API (subscribes).
     hub = InProcessEventHub()
-    api = create_app(loop=loop, store=store, hub=hub)
+    api = create_app(loop=loop, store=store, hub=hub, schedule_cache=schedule_cache)
     server = uvicorn.Server(uvicorn.Config(api, host="0.0.0.0", port=API_PORT, log_level="info"))
 
     def handle_signal() -> None:
