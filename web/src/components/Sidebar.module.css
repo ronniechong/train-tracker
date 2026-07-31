@@ -14,3 +14,21 @@
   color: var(--color-text-dim);
   font-size: var(--font-size-xs);
 }
+
+.recenterButton {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.recenterButton:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}

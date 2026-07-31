@@ -1,6 +1,6 @@
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { geometry, type Bounds } from '../geometry'
+import { geometry, routesByStationId, type Bounds } from '../geometry'
 
 // OpenFreeMap: free, no API key, no published rate limits (chosen as the M4
 // MVP basemap — see work-docs milestones/04-map.md). Provisional; swap the
@@ -42,20 +42,6 @@ function routesToGeoJSON(): GeoJSON.FeatureCollection<GeoJSON.LineString> {
         properties: { id: route.id, name: route.name, color: route.color },
         geometry: { type: 'LineString', coordinates: route.shape },
       })),
-  }
-}
-
-// Which routes actually serve each station -- needed so toggling one line
-// off doesn't hide a station that's still served by another visible line
-// (e.g. Flinders Street, or any interchange). Pure lookup derived once from
-// the static geometry bundle -- unlike the map/marker state in this module
-// and in trainMarkers.ts, this never changes and isn't tied to any one map
-// instance, so it's safe to keep at module scope.
-const routesByStationId = new Map<string, Set<string>>()
-for (const route of geometry.routes) {
-  for (const stationId of route.stationIds) {
-    if (!routesByStationId.has(stationId)) routesByStationId.set(stationId, new Set())
-    routesByStationId.get(stationId)!.add(route.id)
   }
 }
 
@@ -111,6 +97,13 @@ export function resetInitialView(map: maplibregl.Map): void {
   map.jumpTo({ center: MELBOURNE_CBD, zoom: INITIAL_ZOOM })
 }
 
+/** User-facing "recenter map" action (sidebar CTA) -- animated, unlike
+ * `resetInitialView` above which is an instant jump used only to work
+ * around the load-time container-sizing race. */
+export function flyToDefaultView(map: maplibregl.Map): void {
+  map.flyTo({ center: MELBOURNE_CBD, zoom: INITIAL_ZOOM })
+}
+
 /** Adds the route-line and station-point layers. Call once after the map's
  * `load` event — GeoJSON sources can't be added before the style is ready. */
 export function addGeometryLayers(map: maplibregl.Map, hiddenRouteIds: ReadonlySet<string>): void {
@@ -155,4 +148,39 @@ export function applyHiddenRoutes(map: maplibregl.Map, hiddenRouteIds: ReadonlyS
   )
   const stationsSource = map.getSource(STATIONS_SOURCE_ID) as maplibregl.GeoJSONSource
   stationsSource.setData(stationsToGeoJSON(hiddenRouteIds))
+}
+
+/** Station click/hover wiring for M4 Stage 4. One `map`-level click handler
+ * that resolves hit-testing via `queryRenderedFeatures`, rather than a
+ * separate station-layer click handler racing a map-level "clicked empty
+ * space" handler -- single source of truth for what was actually clicked.
+ * `null` means the click missed every station (including stations not
+ * currently rendered below `STATION_MIN_ZOOM`), which the caller treats as
+ * "clear selection". Call once, after the map's `load` event. */
+export function registerStationInteractions(
+  map: maplibregl.Map,
+  onStationClick: (stationId: string | null) => void,
+): void {
+  map.on('mouseenter', STATION_POINTS_LAYER_ID, () => {
+    map.getCanvas().style.cursor = 'pointer'
+  })
+  map.on('mouseleave', STATION_POINTS_LAYER_ID, () => {
+    map.getCanvas().style.cursor = ''
+  })
+  map.on('click', (event) => {
+    const features = map.queryRenderedFeatures(event.point, { layers: [STATION_POINTS_LAYER_ID] })
+    const stationId = (features[0]?.properties?.id as string | undefined) ?? null
+    onStationClick(stationId)
+  })
+}
+
+// Fixed, decisive zoom rather than "at least the current zoom" -- a search
+// result should feel consistent regardless of where the camera happened to
+// be, and it's comfortably above STATION_MIN_ZOOM so the station itself
+// renders immediately.
+const STATION_FLY_ZOOM = 14
+
+/** Used by the search "jump to station" flow (App.tsx's flyToRequest). */
+export function flyToStation(map: maplibregl.Map, station: { lat: number; lon: number }): void {
+  map.flyTo({ center: [station.lon, station.lat], zoom: STATION_FLY_ZOOM })
 }

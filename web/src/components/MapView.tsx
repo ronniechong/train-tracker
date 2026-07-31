@@ -1,15 +1,42 @@
 import { useEffect, useRef, useState } from 'react'
 import type * as maplibregl from 'maplibre-gl'
-import { addGeometryLayers, applyHiddenRoutes, initMap, resetInitialView } from '../map/mapController'
+import {
+  addGeometryLayers,
+  applyHiddenRoutes,
+  flyToDefaultView,
+  flyToStation,
+  initMap,
+  registerStationInteractions,
+  resetInitialView,
+} from '../map/mapController'
 import { createTrainMarkerManager, type TrainMarkerManager } from '../map/trainMarkers'
+import { createStationPopupManager, type StationPopupManager } from '../map/stationPopup'
 import { LoadingOverlay } from './LoadingOverlay'
 import type { Train } from '../api-types'
 import styles from './MapView.module.css'
+
+// A search selection carries its own `nonce` so re-selecting the same
+// station still triggers a fly (object identity alone wouldn't repeat if
+// the fields were otherwise unchanged) -- App.tsx increments it on every
+// search select.
+export interface FlyToRequest {
+  stationId: string
+  lat: number
+  lon: number
+  nonce: number
+}
 
 interface MapViewProps {
   trains: Map<string, Train>
   hiddenRouteIds: ReadonlySet<string>
   hideGhosts: boolean
+  onStationClick: (stationId: string | null) => void
+  selectedStationId: string | null
+  flyToRequest: FlyToRequest | null
+  // null means "no request yet" -- App.tsx increments a counter on every
+  // recenter-button click, mirroring flyToRequest's nonce so repeated
+  // clicks each re-trigger the effect below.
+  recenterRequest: number | null
 }
 
 /** Owns the MapLibre instance imperatively -- trains/routes update via
@@ -17,14 +44,27 @@ interface MapViewProps {
  * not JSX diffing (see milestones/03b-web-react-design-system.md decision
  * #1: re-rendering ~200 markers through React state on every SSE delta
  * would undo M4's MapLibre-native-transition design). */
-export function MapView({ trains, hiddenRouteIds, hideGhosts }: MapViewProps) {
+export function MapView({
+  trains,
+  hiddenRouteIds,
+  hideGhosts,
+  onStationClick,
+  selectedStationId,
+  flyToRequest,
+  recenterRequest,
+}: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markerManagerRef = useRef<TrainMarkerManager | null>(null)
+  const popupManagerRef = useRef<StationPopupManager | null>(null)
   // Effects below read the latest hiddenRouteIds without re-running the
   // mount effect (which must only run once) when it changes.
   const hiddenRouteIdsRef = useRef(hiddenRouteIds)
   hiddenRouteIdsRef.current = hiddenRouteIds
+  // Same reason: registerStationInteractions is wired once, in the mount
+  // effect, but must always call the latest onStationClick from props.
+  const onStationClickRef = useRef(onStationClick)
+  onStationClickRef.current = onStationClick
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -37,7 +77,9 @@ export function MapView({ trains, hiddenRouteIds, hideGhosts }: MapViewProps) {
     map.on('load', () => {
       resetInitialView(map)
       addGeometryLayers(map, hiddenRouteIdsRef.current)
+      registerStationInteractions(map, (stationId) => onStationClickRef.current(stationId))
       markerManagerRef.current = createTrainMarkerManager(map)
+      popupManagerRef.current = createStationPopupManager(map)
       setLoaded(true)
     })
 
@@ -47,6 +89,8 @@ export function MapView({ trains, hiddenRouteIds, hideGhosts }: MapViewProps) {
     return () => {
       markerManagerRef.current?.destroy()
       markerManagerRef.current = null
+      popupManagerRef.current?.destroy()
+      popupManagerRef.current = null
       map.remove()
       mapRef.current = null
       setLoaded(false)
@@ -58,6 +102,29 @@ export function MapView({ trains, hiddenRouteIds, hideGhosts }: MapViewProps) {
     applyHiddenRoutes(mapRef.current, hiddenRouteIds)
     markerManagerRef.current?.sync(trains, hiddenRouteIds, hideGhosts)
   }, [loaded, hiddenRouteIds, trains, hideGhosts])
+
+  // Popup opens/closes in lockstep with selectedStationId -- same
+  // click-same-station-again / click-elsewhere / close-button deselect
+  // paths App.tsx already drives the sidebar panel with, see
+  // stationPopup.ts's sync() doc comment.
+  useEffect(() => {
+    if (!loaded) return
+    popupManagerRef.current?.sync(selectedStationId)
+  }, [loaded, selectedStationId])
+
+  // Only search selections request a fly (see App.tsx's selectStation vs.
+  // handleSearchSelect) -- clicking a station directly shouldn't recentre
+  // the camera on itself, the user is already looking right at it.
+  useEffect(() => {
+    if (!loaded || !mapRef.current || !flyToRequest) return
+    flyToStation(mapRef.current, flyToRequest)
+  }, [loaded, flyToRequest])
+
+  // Sidebar "recenter map" CTA.
+  useEffect(() => {
+    if (!loaded || !mapRef.current || recenterRequest === null) return
+    flyToDefaultView(mapRef.current)
+  }, [loaded, recenterRequest])
 
   return (
     <main className={styles.mapContainer}>

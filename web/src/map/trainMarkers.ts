@@ -1,11 +1,9 @@
 import * as maplibregl from 'maplibre-gl'
 import './trainMarkers.css'
-import { geometry } from '../geometry'
+import { routesById } from '../geometry'
+import { relativeTime } from '../lib/relativeTime'
 import { isRouteHidden } from './mapController'
 import type { Train } from '../api-types'
-
-const routeColorById = new Map(geometry.routes.map((route) => [route.id, route.color]))
-const routeNameById = new Map(geometry.routes.map((route) => [route.id, route.name]))
 
 // Deliberately not design tokens: these render on the map itself, not the
 // app's UI chrome, so they stay constant regardless of light/dark theme.
@@ -18,26 +16,22 @@ const OPACITY_BY_STATUS: Record<Train['status'], string> = {
   ghost: '0.4',
 }
 
-const STATUS_LABEL: Record<Train['status'], string> = {
+// Exported: StationPanel.tsx reuses this so a train's status reads the same
+// way in the map tooltip and the sidebar panel.
+export const STATUS_LABEL: Record<Train['status'], string> = {
   live: 'Live',
   coasting: 'Coasting',
   ghost: 'Ghost',
 }
 
-function markerColor(train: Train): string {
+// Exported: same reuse reason as STATUS_LABEL above.
+export function markerColor(train: Train): string {
   if (train.status === 'ghost') return GHOST_COLOR
-  return (train.route_id && routeColorById.get(train.route_id)) || UNKNOWN_ROUTE_COLOR
+  return (train.route_id && routesById.get(train.route_id)?.color) || UNKNOWN_ROUTE_COLOR
 }
 
-// Computed at the moment each update renders, not live-ticking while a
-// tooltip is open -- precise enough given the ~10s poll cadence this data
-// is refreshed at anyway.
-function relativeTime(iso: string | null): string {
-  if (!iso) return 'unknown'
-  const seconds = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000))
-  if (seconds < 5) return 'just now'
-  if (seconds < 60) return `${seconds}s ago`
-  return `${Math.round(seconds / 60)}m ago`
+export function lineNameForTrain(train: Train): string {
+  return (train.route_id && routesById.get(train.route_id)?.name) || 'Unknown line'
 }
 
 interface MarkerElements {
@@ -55,16 +49,24 @@ const SVG_NS = 'http://www.w3.org/2000/svg'
 
 // Plain DOM elements, not JSX -- MapLibre's Marker API wants a raw
 // HTMLElement, and re-rendering ~200 of these through React on every SSE
-// delta would undo the M4 decision to use MapLibre-native CSS transitions
-// for smooth movement (see mapController.ts / milestones/04-map.md). Class
-// names here are real global CSS classes (trainMarkers.css), NOT CSS
-// Modules -- a module would hash/rename them and break this string-based
-// wiring.
-/** Root carries MapLibre's own position transform+transition (smooth
- * movement, per the M4 spec-review steelman — no hand-rolled
- * interpolation). Pulse/dot/arrow/tooltip are independent children so
- * their own CSS animation/rotation/visibility never fights that. Tooltip
- * show/hide is pure CSS (`:hover`), no JS listeners needed. */
+// delta would be wasteful for what's ultimately just a `setLngLat()` call
+// per update. Class names here are real global CSS classes
+// (trainMarkers.css), NOT CSS Modules -- a module would hash/rename them
+// and break this string-based wiring.
+/** Root's position is set instantly on each update via MapLibre's own
+ * `transform` (no CSS transition -- tried an eased position transition
+ * (2026-07-31) but a straight-line interpolation between two correct
+ * real-world fixes visibly cuts corners across any curve in the track
+ * (shapes.txt curves, City Loop tunnels, coastal bends), since MapLibre
+ * only knows the screen-pixel position, not the route shape between two
+ * points; reverted rather than ship trains that visibly leave the rails.
+ * True path-following interpolation would need real engineering -- point-
+ * to-polyline projection + arc-length interpolation, driven by
+ * requestAnimationFrame rather than a plain CSS transition -- parked as a
+ * future option, not attempted here). Pulse/dot/arrow/tooltip are
+ * independent children so their own CSS animation/rotation/visibility
+ * never fights the position update. Tooltip show/hide is pure CSS
+ * (`:hover`), no JS listeners needed. */
 function createMarkerElements(): MarkerElements {
   const root = document.createElement('div')
   root.className = 'train-marker'
@@ -137,9 +139,8 @@ function styleMarkerElements(elements: MarkerElements, train: Train): void {
   // A swatch, not colored text -- some line colors (e.g. Belgrave/Lilydale's
   // dark navy) are unreadable as text on the tooltip's dark background.
   // Same fix the legend already uses.
-  const lineName = (train.route_id && routeNameById.get(train.route_id)) || 'Unknown line'
   elements.tooltipSwatch.setAttribute('fill', color)
-  elements.tooltipTitle.textContent = lineName
+  elements.tooltipTitle.textContent = lineNameForTrain(train)
   elements.tooltipMeta.textContent = `${STATUS_LABEL[train.status]} · confirmed ${relativeTime(train.last_seen_at)}`
 }
 
@@ -151,8 +152,6 @@ export interface TrainMarkerManager {
   destroy(): void
 }
 
-const INSTANT_CLASS = 'train-marker--instant'
-
 /** Owns all train marker state for one map instance. Instantiated once per
  * `MapView` mount (not a module singleton) so remounting the map — e.g.
  * React StrictMode's dev-only double-invoke — can't leave stale markers
@@ -160,24 +159,6 @@ const INSTANT_CLASS = 'train-marker--instant'
 export function createTrainMarkerManager(map: maplibregl.Map): TrainMarkerManager {
   const markers = new Map<string, maplibregl.Marker>()
   const elementsByTripId = new Map<string, MarkerElements>()
-  // While the camera is moving, MapLibre updates every marker's transform
-  // on each render frame -- the CSS position transition must be off for
-  // that duration (see trainMarkers.css's INSTANT_CLASS comment) or dots
-  // visibly lag behind a pan/zoom instead of tracking it.
-  let isMoving = false
-
-  function setInstant(elements: MarkerElements, instant: boolean): void {
-    elements.root.classList.toggle(INSTANT_CLASS, instant)
-  }
-
-  map.on('movestart', () => {
-    isMoving = true
-    for (const elements of elementsByTripId.values()) setInstant(elements, true)
-  })
-  map.on('moveend', () => {
-    isMoving = false
-    for (const elements of elementsByTripId.values()) setInstant(elements, false)
-  })
 
   function removeTrain(tripId: string): void {
     markers.get(tripId)?.remove()
@@ -199,7 +180,6 @@ export function createTrainMarkerManager(map: maplibregl.Map): TrainMarkerManage
     let elements = elementsByTripId.get(train.trip_id)
     if (!marker || !elements) {
       elements = createMarkerElements()
-      if (isMoving) setInstant(elements, true)
       elementsByTripId.set(train.trip_id, elements)
       marker = new maplibregl.Marker({ element: elements.root })
       marker.setLngLat([train.longitude, train.latitude])

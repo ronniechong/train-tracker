@@ -6,27 +6,57 @@
    they read consistently regardless of light/dark theme -- except the
    tooltip, which is app chrome floating over the map and does use tokens. */
 
-.train-marker {
-  position: relative;
+/* `div.` (not just `.train-marker`) is load-bearing, not decoration:
+   maplibre-gl.css unconditionally puts `.maplibregl-marker { position:
+   absolute; top:0; left:0; transition: opacity .2s }` on every Marker
+   element, custom element or not. Same specificity as a plain
+   `.train-marker` class selector, and property values don't merge across
+   rules of equal specificity -- whichever rule wins the cascade takes its
+   value for that property, full stop. Found live 2026-07-31 (Ronnie
+   reported "instant pop" instead of smooth movement): a fresh
+   `getComputedStyle` check showed only `opacity .2s` applied for
+   `transition`, meaning a transform transition added here had never
+   actually been active -- whichever of these two same-specificity rules
+   Vite's bundle happened to order last was silently winning. `div.train-
+   marker` bumps specificity so ours always wins regardless of import/
+   bundle order.
+
+   IMPORTANT, found live the same day: bumping specificity like this
+   applies to EVERY property in the rule, not just the one you meant to
+   fix. This rule used to also declare `position: relative` (harmless
+   before, since maplibre-gl.css's `position: absolute` was winning that
+   particular property anyway) -- once `div.train-marker` started
+   reliably winning, that `position: relative` started reliably
+   overriding maplibre-gl.css's REQUIRED `position: absolute` too, which
+   MapLibre's own positioning math depends on (it sets `transform:
+   translate(...)` on this element assuming the element is taken out of
+   normal document flow). With `position: relative`, markers stayed in
+   flow and stacked/wrapped based on DOM order instead of their real
+   geographic position, while the transform still tried to offset them
+   from there -- exactly the "trains floating off their routes" Ronnie
+   reported, and it hit ALL markers (confirmed via `getComputedStyle`
+   showing `position: "relative"` on live, not just ghost, trains), not
+   only ones near curves. Fix: don't declare `position` in this rule at
+   all -- there's nothing to fight over if we don't touch it, and
+   maplibre-gl.css's `position: absolute` is exactly what this element
+   needs anyway (it's also what gives `.train-dot`/`.train-pulse`/
+   `.train-arrow` a positioned ancestor to anchor their own `position:
+   absolute; inset: ...` to -- `absolute` and `relative` both work for
+   that, so removing `relative` doesn't break the children). Lesson: a
+   specificity bump is not surgical -- audit every property in the rule
+   it's applied to, not just the one under investigation, before shipping. */
+div.train-marker {
   width: 12px;
   height: 12px;
-  /* Only positional movement transitions here -- MapLibre sets `transform`
-     on this exact element on every setLngLat(). Pulse/dot/arrow below are
-     independent children so their own animation/rotation can't fight it. */
-  transition: transform 1.2s linear;
+  /* No `transform` transition, deliberately -- tried an 8s eased position
+     transition (2026-07-31), reverted the same session: a straight pixel-
+     space interpolation between two correct real-world fixes cuts corners
+     across any curve in the track (see trainMarkers.ts's doc comment on
+     `createMarkerElements` for the full reasoning). Positions update
+     instantly, exactly on each real fix, which is guaranteed accurate --
+     `opacity 0.2s` is kept for MapLibre's own marker-added fade-in. */
+  transition: opacity 0.2s;
   cursor: pointer;
-}
-
-/* MapLibre also sets `transform` on this same element every render frame
-   while the camera is panning/zooming, to keep the marker pinned to its
-   real geographic position -- with the transition above always active,
-   the browser eases toward each of those frames instead of snapping
-   instantly, so the dot visibly lags/floats away from its true position
-   during a drag (found live, 2026-07-31). trainMarkers.ts toggles this
-   class for the duration of any camera move so the transition only
-   applies to genuine SSE-driven position updates, never to panning. */
-.train-marker--instant {
-  transition: none;
 }
 
 .train-dot {

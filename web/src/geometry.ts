@@ -40,3 +40,18 @@ export interface Geometry {
 export const geometry = geometryData as Geometry
 
 export const stationsById = new Map(geometry.stations.map((s) => [s.id, s]))
+export const routesById = new Map(geometry.routes.map((r) => [r.id, r]))
+
+// Which routes actually serve each station -- needed so toggling one line
+// off doesn't hide a station still served by another visible line (e.g. an
+// interchange), and so selecting a station (search or map click) can tell
+// which of its lines, if any, are currently hidden. Shared by
+// map/mapController.ts and components/Search.tsx -- computed once here
+// rather than twice.
+export const routesByStationId = new Map<string, Set<string>>()
+for (const route of geometry.routes) {
+  for (const stationId of route.stationIds) {
+    if (!routesByStationId.has(stationId)) routesByStationId.set(stationId, new Set())
+    routesByStationId.get(stationId)!.add(route.id)
+  }
+}

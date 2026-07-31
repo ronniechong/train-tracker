@@ -1,0 +1,86 @@
+.section {
+  position: relative;
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.4rem 0.6rem;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.input:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+.results {
+  position: absolute;
+  z-index: 10;
+  top: 100%;
+  left: 0.9rem;
+  right: 0.9rem;
+  margin: 0.25rem 0 0;
+  padding: 0.25rem;
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--color-panel-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.result,
+.resultActive {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+}
+
+.resultActive {
+  background: var(--color-bg);
+}
+
+.empty {
+  padding: 0.35rem 0.5rem;
+  color: var(--color-text-dim);
+  font-size: var(--font-size-base);
+  font-style: italic;
+}
+
+.stationName {
+  font-weight: var(--font-weight-medium);
+}
+
+.lineList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.lineTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-dim);
+}
+
+.swatch {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 2px;
+  border: 1px solid #ffffff;
+  flex-shrink: 0;
+}
