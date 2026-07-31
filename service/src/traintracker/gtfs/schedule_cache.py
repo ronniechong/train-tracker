@@ -14,6 +14,7 @@ from pathlib import Path
 from ..state.merge import TrainSnapshot
 from .gtfstime import service_date_for_instant
 from .pinning import PinManifest
+from .routes import Route, routes_from_zip_bytes
 from .schedule import (
     ScheduledDeparture,
     added_departures,
@@ -37,6 +38,7 @@ class _ParsedSchedule:
     snapshot: StaticSnapshot
     stops: dict[str, Stop]
     stop_times: list[StopTimeRecord]
+    routes: dict[str, Route]
 
 
 class PinnedScheduleCache:
@@ -59,9 +61,32 @@ class PinnedScheduleCache:
             snapshot=StaticSnapshot.from_zip_bytes(data),
             stops=stops_from_zip_bytes(data),
             stop_times=stop_times_from_zip_bytes(data),
+            routes=routes_from_zip_bytes(data),
         )
         self._by_digest[digest] = parsed
         return parsed
+
+    def _load_for(self, now: datetime) -> _ParsedSchedule:
+        """Resolves "today"'s pin and loads its parsed snapshot -- the
+        pin-resolution step `next_departures_for` and `routes_for` both
+        need, factored out once routes.py gave this class a second
+        caller for it."""
+        service_date = service_date_for_instant(now)
+        pin = self._pin_manifest.get(service_date)
+        if pin is None:
+            raise NoPinnedSnapshotError(
+                f"no static snapshot pinned for service_date {service_date.isoformat()}"
+            )
+        return self._load(pin.digest)
+
+    def routes_for(self, now: datetime) -> dict[str, Route]:
+        """route_id -> Route (short/long name) for whichever static
+        snapshot is pinned for "today" -- the AI layer's tools (get_line_
+        status, get_active_alerts) use this to resolve a line NAME a user
+        or the LLM typed ("Belgrave") into the route_id(s) the realtime
+        feeds actually key on. Raises `NoPinnedSnapshotError` under the
+        same condition `next_departures_for` does."""
+        return self._load_for(now).routes
 
     def next_departures_for(
         self,
@@ -81,14 +106,8 @@ class PinnedScheduleCache:
         combined list re-sorted by time. Omitting it (the default) keeps
         this method's original static-only behaviour, e.g. for tests that
         don't care about the live overlay."""
+        parsed = self._load_for(now)
         service_date = service_date_for_instant(now)
-        pin = self._pin_manifest.get(service_date)
-        if pin is None:
-            raise NoPinnedSnapshotError(
-                f"no static snapshot pinned for service_date {service_date.isoformat()}"
-            )
-
-        parsed = self._load(pin.digest)
         platform_ids = platforms_for_station(parsed.stops, station_id)
         if not platform_ids:
             return None

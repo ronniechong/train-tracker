@@ -1,0 +1,4 @@
+route_id,agency_id,route_short_name,route_long_name,route_type,route_color,route_text_color
+2-PKM,1,Pakenham,Pakenham - City,400,152C6B,FFFFFF
+2-PKM-R,1,Replacement Bus,Pakenham - City,400,FE5000,FFFFFF
+2-CRB,1,Craigieburn,Craigieburn - City,400,FFBE00,000000

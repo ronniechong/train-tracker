@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from traintracker.gtfs.routes import Route, routes_from_zip_bytes
 from traintracker.gtfs.snapshot import StaticSnapshot
 from traintracker.gtfs.stop_times import StopTimeRecord, stop_times_from_zip_bytes
 from traintracker.gtfs.stops import Stop, stops_from_zip_bytes
@@ -37,3 +38,8 @@ def sample_stops(sample_static_zip_bytes) -> dict[str, Stop]:
 @pytest.fixture
 def sample_stop_times(sample_static_zip_bytes) -> list[StopTimeRecord]:
     return stop_times_from_zip_bytes(sample_static_zip_bytes)
+
+
+@pytest.fixture
+def sample_routes(sample_static_zip_bytes) -> dict[str, Route]:
+    return routes_from_zip_bytes(sample_static_zip_bytes)
