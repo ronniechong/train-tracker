@@ -34,8 +34,9 @@ VOLUME ["/data", "/backup"]
 
 # Intended to run with `read_only: true` at the compose/run level (see
 # deploy/docker-compose.yml) — nothing in this image writes outside /data or
-# /backup. `python -m traintracker.gateway` (2a's one-shot auth smoke check)
-# and `python -m traintracker.history` (2e's nightly sync/retention job)
+# /backup. `python -m traintracker.gateway` (2a's one-shot auth smoke check),
+# `python -m traintracker.history` (2e's nightly sync/retention job), and
+# `python -m traintracker.gtfs` (2c's nightly static-GTFS fetch + pin job)
 # remain available for manual/cron invocation via
 # `docker compose run --entrypoint ...`.
 ENTRYPOINT ["python", "-m", "traintracker.poller"]

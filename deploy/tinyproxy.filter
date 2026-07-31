@@ -1,7 +1,13 @@
-# Allowlist ONLY these two hosts. One host per line, matched as an FQDN
+# Allowlist ONLY these hosts. One host per line, matched as an FQDN
 # (see tinyproxy.conf: FilterExtended On).
 # 1. The upstream Metro Train GTFS-Realtime gateway (2a).
 ^api\.opendata\.transport\.vic\.gov\.au$
 # 2. The external dead-man's-switch ping target (2b) — deliberate, narrow
 # widening confirmed by Ronnie 2026-07-21, not the default upstream host.
 ^hc-ping\.com$
+# 3. The static GTFS schedule portal (2c/05a) — deliberately the PLAIN
+# host, not the `api.` gateway above: this is a different, unauthenticated
+# CKAN endpoint on the same parent domain. Confirmed 2026-07-31 this is the
+# actual download host, not a redirect target — see 05a session notes for
+# the live-container verification this line depends on.
+^opendata\.transport\.vic\.gov\.au$
