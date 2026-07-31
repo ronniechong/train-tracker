@@ -27,9 +27,16 @@ import signal
 from datetime import datetime, timezone
 from pathlib import Path
 
+import httpx
 import uvicorn
 from prometheus_client import start_http_server
 
+from ..ai.briefing import compose_briefing
+from ..ai.briefing_trigger import BriefingTrigger, TriggerReason
+from ..ai.budget import BudgetEnforcedLLMClient, BudgetTracker
+from ..ai.llm_client import AnthropicLLMClient, LLMClient
+from ..ai.tools import ToolContext
+from ..ai.tracing import LangfuseTracedLLMClient
 from ..api.app import create_app
 from ..gateway.client import API_KEY_ENV, GatewayClient
 from ..gtfs.pinning import PinManifest
@@ -41,6 +48,7 @@ from ..state.eventhub import InProcessEventHub
 from ..state.store import StateStore
 from .healthcheck import PING_URL_ENV
 from .loop import ALL_FEEDS, PollerLoop
+from .slack import post_message
 
 # Fixed container-internal mount point (see Dockerfile's `VOLUME` and
 # `deploy/docker-compose.yml`) -- `TT_DATA_DIR` only exists as a compose-level
@@ -90,6 +98,36 @@ async def _interruptible_sleep(loop: PollerLoop, seconds: float) -> None:
         remaining -= SHUTDOWN_CHECK_INTERVAL_S
 
 
+async def _send_briefing(
+    ai_client: LLMClient,
+    tool_context: ToolContext,
+    notify_client: httpx.AsyncClient,
+    trigger: BriefingTrigger,
+    metrics: Metrics,
+    reason: TriggerReason,
+    now: datetime,
+) -> None:
+    """05e: runs as a detached asyncio task (see call site below) so a
+    slow or failing LLM call can never delay the next feed fetch --
+    briefings are a best-effort side effect of the poll loop, not a
+    dependency of it. Any failure (budget cap, an Anthropic error, a
+    Slack outage) is logged and swallowed here, never left to propagate
+    into `_run_poll_loop`. `trigger.record_briefed()`/
+    `metrics.record_briefing_sent()` only fire once delivery actually
+    succeeds, not on every attempt."""
+    try:
+        text = await compose_briefing(ai_client, tool_context, reason)
+        sent = await post_message(notify_client, text)
+    except Exception:
+        logger.exception("briefing failed (%s)", reason.kind)
+        return
+    if not sent:
+        return
+    trigger.record_briefed(now)
+    metrics.record_briefing_sent(reason.kind)
+    logger.info("briefing sent (%s): %s", reason.kind, reason.detail)
+
+
 async def main() -> int:
     # The dead-man ping URL carries its own secret as a path segment (not a
     # header, like the API key) -- httpx's own request logging prints full
@@ -134,6 +172,29 @@ async def main() -> int:
     gateway = GatewayClient()
     loop = PollerLoop(gateway=gateway, store=store, gap_log=gap_log)
 
+    # 05e: budget-then-trace wrapper order matters -- BudgetEnforcedLLMClient
+    # is the INNER wrapper so its check runs immediately before the real
+    # Anthropic call, and LangfuseTracedLLMClient is OUTER so a budget-
+    # blocked attempt still lands as an ERROR span (useful observability
+    # in its own right: "would have called the LLM here but skipped").
+    # `AnthropicLLMClient()`/`Langfuse()` are both safe to construct with
+    # no key present (verified live) -- they only fail at actual call
+    # time, so this never turns a missing optional env var into a poller
+    # crash-loop.
+    budget_tracker = BudgetTracker(DATA_DIR / "ai" / "budget.db")
+    ai_client: LLMClient = LangfuseTracedLLMClient(
+        BudgetEnforcedLLMClient(AnthropicLLMClient(), budget_tracker),
+        name="disruption-briefing",
+    )
+    briefing_trigger = BriefingTrigger()
+    tool_context = ToolContext(store=store, schedule_cache=schedule_cache)
+    notify_client = httpx.AsyncClient()
+    # Strong refs for fire-and-forget tasks (see `_run_poll_loop` below) --
+    # asyncio only holds a weak reference to a task once nothing else does,
+    # so an unheld task can be GC'd mid-flight. Discarded via the task's
+    # own done-callback once it finishes.
+    background_tasks: set[asyncio.Task] = set()
+
     # M3: producer side of 2d's EventHub interface finally gets a
     # consumer (the SSE route below) -- one hub instance, shared between
     # the poll loop (publishes) and the API (subscribes).
@@ -170,6 +231,24 @@ async def main() -> int:
             # (see state/eventhub.py); every subscriber recomputes state
             # fresh from `loop`/`store` when it wakes up.
             hub.publish(cycle_start)
+
+            # 05e: cheap, LLM-free trigger check every cycle -- only a
+            # materially-changed network state (new/escalated alert, a
+            # cancellation burst) AND cooldown gets past `evaluate()` at
+            # all; the actual LLM call + Slack post run detached so a
+            # slow one never delays the next fetch.
+            briefing_reason = briefing_trigger.evaluate(store, cycle_start)
+            metrics.record_briefing_evaluation(briefing_reason.kind if briefing_reason else "none")
+            if briefing_reason is not None:
+                task = asyncio.create_task(
+                    _send_briefing(
+                        ai_client, tool_context, notify_client, briefing_trigger,
+                        metrics, briefing_reason, cycle_start,
+                    )
+                )
+                background_tasks.add(task)
+                task.add_done_callback(background_tasks.discard)
+
             interval = loop.next_interval(cycle_start)
             logger.info(
                 "cycle ok=%s changed=%s backoff_active=%s next_in=%.1fs",
@@ -212,6 +291,7 @@ async def main() -> int:
     await asyncio.gather(_run_poll_loop(), server._serve())
 
     await gateway.aclose()
+    await notify_client.aclose()
     history.close()
     logger.info("poller stopped")
     return 0

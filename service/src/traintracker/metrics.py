@@ -115,6 +115,24 @@ class Metrics:
             ["status"],
             registry=registry,
         )
+        self.briefing_trigger_evaluations_total = Counter(
+            "traintracker_briefing_trigger_evaluations_total",
+            "05e's cheap local trigger check (ai/briefing_trigger.py), run "
+            "every poll cycle -- 'none' for no trigger, else the reason "
+            "that fired, whether or not a briefing was actually sent "
+            "(cooldown/budget may still block it)",
+            ["reason"],
+            registry=registry,
+        )
+        self.briefings_sent_total = Counter(
+            "traintracker_briefings_sent_total",
+            "Disruption briefings actually composed AND delivered, by "
+            "trigger reason -- a strict subset of evaluations with a "
+            "non-'none' reason (cooldown/budget/LLM/Slack failures all "
+            "reduce this without appearing here as a separate label)",
+            ["reason"],
+            registry=registry,
+        )
 
     def event_logs(
         self, discrepancy_log: object, ghost_log: object, gap_log: object,
@@ -138,6 +156,12 @@ class Metrics:
             changed_at = last_changed_at(feed)
             if changed_at is not None:
                 self.feed_last_changed_timestamp.labels(feed=feed.value).set(changed_at.timestamp())
+
+    def record_briefing_evaluation(self, reason: str) -> None:
+        self.briefing_trigger_evaluations_total.labels(reason=reason).inc()
+
+    def record_briefing_sent(self, reason: str) -> None:
+        self.briefings_sent_total.labels(reason=reason).inc()
 
     def record_tracked_trips(self, tracked: tuple[TrackedTrainView, ...]) -> None:
         counts: dict[Status, int] = {"live": 0, "coasting": 0, "ghost": 0}

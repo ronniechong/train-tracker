@@ -51,6 +51,22 @@ services:
       # CORS origin" 400 path despite `.env` being set correctly, because
       # this line was missing since the FastAPI app first landed.
       TT_CORS_ORIGINS: ${TT_CORS_ORIGINS:-}
+      # 05e: same class of gap as TT_CORS_ORIGINS above -- all optional,
+      # by design (ai/llm_client.py's AnthropicLLMClient and
+      # ai/tracing.py's LangfuseTracedLLMClient both construct cleanly
+      # with these unset, verified live; they only fail at actual call
+      # time, and that failure is caught and logged, never left to crash
+      # the poller). NOT sufficient on its own to make the AI layer reach
+      # the outside world though -- egress-proxy's tinyproxy.filter still
+      # only allowlists the transport-data hosts, see ops/runbook.md for
+      # the widening this still needs before any of this can work
+      # deployed, unlike every live-verification so far (all ran locally,
+      # never inside this container/proxy).
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
+      TT_BRIEFING_WEBHOOK_URL: ${TT_BRIEFING_WEBHOOK_URL:-}
     volumes:
       - ${TT_DATA_DIR:-./data}:/data
       # 2e: nightly maintenance (`python -m traintracker.history`, run via

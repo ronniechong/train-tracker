@@ -163,3 +163,30 @@ def test_record_tracked_trips_overwrites_previous_call_not_accumulates():
     metrics.record_tracked_trips((_tracked("t1", "ghost"),))
 
     assert registry.get_sample_value("traintracker_tracked_trips", {"status": "ghost"}) == 1.0
+
+
+def test_record_briefing_evaluation_counts_by_reason():
+    registry = CollectorRegistry()
+    metrics = Metrics(registry)
+
+    metrics.record_briefing_evaluation("none")
+    metrics.record_briefing_evaluation("none")
+    metrics.record_briefing_evaluation("new_alert")
+
+    assert registry.get_sample_value(
+        "traintracker_briefing_trigger_evaluations_total", {"reason": "none"}
+    ) == 2.0
+    assert registry.get_sample_value(
+        "traintracker_briefing_trigger_evaluations_total", {"reason": "new_alert"}
+    ) == 1.0
+
+
+def test_record_briefing_sent_counts_by_reason():
+    registry = CollectorRegistry()
+    metrics = Metrics(registry)
+
+    metrics.record_briefing_sent("cancellation_threshold")
+
+    assert registry.get_sample_value(
+        "traintracker_briefings_sent_total", {"reason": "cancellation_threshold"}
+    ) == 1.0
