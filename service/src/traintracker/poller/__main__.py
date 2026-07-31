@@ -31,8 +31,6 @@ import httpx
 import uvicorn
 from prometheus_client import start_http_server
 
-from ..ai.briefing import compose_briefing
-from ..ai.briefing_trigger import BriefingTrigger, TriggerReason
 from ..ai.budget import BudgetEnforcedLLMClient, BudgetTracker
 from ..ai.llm_client import AnthropicLLMClient, LLMClient
 from ..ai.tools import ToolContext
@@ -44,11 +42,11 @@ from ..gtfs.schedule_cache import PinnedScheduleCache
 from ..history.store import HistoryStore
 from ..metrics import Metrics
 from ..redaction import configure_logging
+from ..state.completion import TripCompletionTracker
 from ..state.eventhub import InProcessEventHub
 from ..state.store import StateStore
 from .healthcheck import PING_URL_ENV
 from .loop import ALL_FEEDS, PollerLoop
-from .slack import post_message
 
 # Fixed container-internal mount point (see Dockerfile's `VOLUME` and
 # `deploy/docker-compose.yml`) -- `TT_DATA_DIR` only exists as a compose-level
@@ -98,36 +96,6 @@ async def _interruptible_sleep(loop: PollerLoop, seconds: float) -> None:
         remaining -= SHUTDOWN_CHECK_INTERVAL_S
 
 
-async def _send_briefing(
-    ai_client: LLMClient,
-    tool_context: ToolContext,
-    notify_client: httpx.AsyncClient,
-    trigger: BriefingTrigger,
-    metrics: Metrics,
-    reason: TriggerReason,
-    now: datetime,
-) -> None:
-    """05e: runs as a detached asyncio task (see call site below) so a
-    slow or failing LLM call can never delay the next feed fetch --
-    briefings are a best-effort side effect of the poll loop, not a
-    dependency of it. Any failure (budget cap, an Anthropic error, a
-    Slack outage) is logged and swallowed here, never left to propagate
-    into `_run_poll_loop`. `trigger.record_briefed()`/
-    `metrics.record_briefing_sent()` only fire once delivery actually
-    succeeds, not on every attempt."""
-    try:
-        text = await compose_briefing(ai_client, tool_context, reason)
-        sent = await post_message(notify_client, text)
-    except Exception:
-        logger.exception("briefing failed (%s)", reason.kind)
-        return
-    if not sent:
-        return
-    trigger.record_briefed(now)
-    metrics.record_briefing_sent(reason.kind)
-    logger.info("briefing sent (%s): %s", reason.kind, reason.detail)
-
-
 async def main() -> int:
     # The dead-man ping URL carries its own secret as a path segment (not a
     # header, like the API key) -- httpx's own request logging prints full
@@ -162,11 +130,17 @@ async def main() -> int:
     # merge.py/ghost.py/breaker.py.
     metrics = Metrics()
     start_http_server(METRICS_PORT)
-    discrepancy_log, ghost_log, gap_log = metrics.event_logs(
-        history.discrepancy_log, history.ghost_log, history.gap_log,
+    discrepancy_log, ghost_log, gap_log, completion_log = metrics.event_logs(
+        history.discrepancy_log, history.ghost_log, history.gap_log, history.completion_log,
     )
+    # 05-ai-layer (2026-08-01): real trip-completion tracking, Ronnie's
+    # explicit choice over a cheaper snapshot-based stat -- reuses the same
+    # `PinnedScheduleCache` instance the station-schedule feature already
+    # constructed above, so this needs no new I/O path of its own.
+    completion_tracker = TripCompletionTracker(completion_log, schedule_cache.terminus_for)
     store = StateStore(
         discrepancy_log=discrepancy_log, ghost_log=ghost_log, on_tick=metrics.record_tracked_trips,
+        completion_tracker=completion_tracker,
     )
 
     gateway = GatewayClient()
@@ -186,20 +160,22 @@ async def main() -> int:
         BudgetEnforcedLLMClient(AnthropicLLMClient(), budget_tracker),
         name="disruption-briefing",
     )
-    briefing_trigger = BriefingTrigger()
     tool_context = ToolContext(store=store, schedule_cache=schedule_cache)
     notify_client = httpx.AsyncClient()
-    # Strong refs for fire-and-forget tasks (see `_run_poll_loop` below) --
-    # asyncio only holds a weak reference to a task once nothing else does,
-    # so an unheld task can be GC'd mid-flight. Discarded via the task's
-    # own done-callback once it finishes.
-    background_tasks: set[asyncio.Task] = set()
 
     # M3: producer side of 2d's EventHub interface finally gets a
     # consumer (the SSE route below) -- one hub instance, shared between
     # the poll loop (publishes) and the API (subscribes).
     hub = InProcessEventHub()
-    api = create_app(loop=loop, store=store, hub=hub, schedule_cache=schedule_cache)
+    # 2026-08-01: briefings are on-demand only now (POST /briefing/trigger,
+    # cost control -- Ronnie's call, replacing automatic per-cycle
+    # triggering). The AI stack built above is handed to the API instead of
+    # driven from this poll loop.
+    api = create_app(
+        loop=loop, store=store, hub=hub, schedule_cache=schedule_cache,
+        ai_client=ai_client, ai_tool_context=tool_context, ai_notify_client=notify_client,
+        metrics=metrics,
+    )
     server = uvicorn.Server(uvicorn.Config(api, host="0.0.0.0", port=API_PORT, log_level="info"))
 
     def handle_signal() -> None:
@@ -232,23 +208,6 @@ async def main() -> int:
             # fresh from `loop`/`store` when it wakes up.
             hub.publish(cycle_start)
 
-            # 05e: cheap, LLM-free trigger check every cycle -- only a
-            # materially-changed network state (new/escalated alert, a
-            # cancellation burst) AND cooldown gets past `evaluate()` at
-            # all; the actual LLM call + Slack post run detached so a
-            # slow one never delays the next fetch.
-            briefing_reason = briefing_trigger.evaluate(store, cycle_start)
-            metrics.record_briefing_evaluation(briefing_reason.kind if briefing_reason else "none")
-            if briefing_reason is not None:
-                task = asyncio.create_task(
-                    _send_briefing(
-                        ai_client, tool_context, notify_client, briefing_trigger,
-                        metrics, briefing_reason, cycle_start,
-                    )
-                )
-                background_tasks.add(task)
-                task.add_done_callback(background_tasks.discard)
-
             interval = loop.next_interval(cycle_start)
             logger.info(
                 "cycle ok=%s changed=%s backoff_active=%s next_in=%.1fs",
@@ -262,11 +221,12 @@ async def main() -> int:
                 counts = history.counts()
                 logger.info(
                     "hourly summary (service_date=%s): discrepancies=%d ghost_episodes=%d "
-                    "breaker_gap_episodes=%d",
+                    "breaker_gap_episodes=%d trip_completions=%d",
                     history.service_date,
                     counts.get("discrepancy_events", 0),
                     counts.get("ghost_events", 0),
                     counts.get("poll_gap_events", 0),
+                    counts.get("trip_completion_events", 0),
                 )
                 last_summary_at = cycle_start
 

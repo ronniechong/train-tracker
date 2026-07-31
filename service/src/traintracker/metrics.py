@@ -59,6 +59,10 @@ def _ghost_labels(event: object) -> dict[str, str]:
     return {"loop_contained": str(event.loop_contained).lower()}
 
 
+def _completion_labels(event: object) -> dict[str, str]:
+    return {"status": event.status}
+
+
 class Metrics:
     def __init__(self, registry: CollectorRegistry = REGISTRY):
         self.poll_cycles_total = Counter(
@@ -115,34 +119,44 @@ class Metrics:
             ["status"],
             registry=registry,
         )
-        self.briefing_trigger_evaluations_total = Counter(
-            "traintracker_briefing_trigger_evaluations_total",
-            "05e's cheap local trigger check (ai/briefing_trigger.py), run "
-            "every poll cycle -- 'none' for no trigger, else the reason "
-            "that fired, whether or not a briefing was actually sent "
-            "(cooldown/budget may still block it)",
-            ["reason"],
-            registry=registry,
-        )
         self.briefings_sent_total = Counter(
             "traintracker_briefings_sent_total",
-            "Disruption briefings actually composed AND delivered, by "
-            "trigger reason -- a strict subset of evaluations with a "
-            "non-'none' reason (cooldown/budget/LLM/Slack failures all "
-            "reduce this without appearing here as a separate label)",
-            ["reason"],
+            "On-demand disruption briefings (POST /briefing/trigger, "
+            "2026-08-01) actually composed AND delivered -- automatic "
+            "per-cycle triggering was removed the same day this metric "
+            "lost its 'reason' label (cost control: every briefing is now "
+            "a deliberate request, not a heuristic-driven page)",
+            registry=registry,
+        )
+        self.trip_completions_total = Counter(
+            "traintracker_trip_completions_total",
+            "Trip-completion classifications (05-ai-layer's "
+            "TripCompletionEvent) by status -- on_time/late reuse PTV's "
+            "public 4:59 threshold (punctuality); cancelled is a separate "
+            "reliability outcome, never scored as a punctuality miss; "
+            "undetermined_gap is a trip lost to a coverage gap before "
+            "reaching its terminus, recorded honestly rather than "
+            "silently excluded, per this project's gap-honesty principle "
+            "-- whether a consuming digest surfaces that bucket is a "
+            "separate, later decision",
+            ["status"],
             registry=registry,
         )
 
     def event_logs(
-        self, discrepancy_log: object, ghost_log: object, gap_log: object,
-    ) -> tuple[CountingEventLog, CountingEventLog, CountingEventLog]:
+        self,
+        discrepancy_log: object,
+        ghost_log: object,
+        gap_log: object,
+        completion_log: object,
+    ) -> tuple[CountingEventLog, CountingEventLog, CountingEventLog, CountingEventLog]:
         """Wrap the given `EventLog`s (e.g. 2e's `HistoryStore` facades) with
         counting, preserving whatever persistence they already do."""
         return (
             CountingEventLog(discrepancy_log, self.discrepancy_events_total),
             CountingEventLog(ghost_log, self.ghost_events_total, _ghost_labels),
             CountingEventLog(gap_log, self.poll_gap_events_total),
+            CountingEventLog(completion_log, self.trip_completions_total, _completion_labels),
         )
 
     def record_cycle(self, result: CycleResult, breaker: CircuitBreaker) -> None:
@@ -157,11 +171,8 @@ class Metrics:
             if changed_at is not None:
                 self.feed_last_changed_timestamp.labels(feed=feed.value).set(changed_at.timestamp())
 
-    def record_briefing_evaluation(self, reason: str) -> None:
-        self.briefing_trigger_evaluations_total.labels(reason=reason).inc()
-
-    def record_briefing_sent(self, reason: str) -> None:
-        self.briefings_sent_total.labels(reason=reason).inc()
+    def record_briefing_sent(self) -> None:
+        self.briefings_sent_total.inc()
 
     def record_tracked_trips(self, tracked: tuple[TrackedTrainView, ...]) -> None:
         counts: dict[Status, int] = {"live": 0, "coasting": 0, "ghost": 0}

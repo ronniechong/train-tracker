@@ -17,15 +17,22 @@ import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import datetime, timedelta, timezone
 
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from ..ai.briefing import compose_briefing
+from ..ai.briefing_filter import has_briefable_alerts
+from ..ai.budget import BudgetExceededError
+from ..ai.llm_client import LLMClient
+from ..ai.tools import ToolContext
 from ..gateway.client import Feed
 from ..gtfs.schedule import ScheduledDeparture
 from ..gtfs.schedule_cache import NoPinnedSnapshotError, PinnedScheduleCache
-from ..metrics import STALENESS_THRESHOLD_S
+from ..metrics import STALENESS_THRESHOLD_S, Metrics
 from ..poller.loop import ALL_FEEDS, PollerLoop
+from ..poller.slack import post_message
 from ..state.alerts import Alert as AlertRecord
 from ..state.alerts import alerts_matching
 from ..state.eventhub import EventHub
@@ -44,6 +51,7 @@ from .schemas import (
     AlertInformedEntity,
     AlertsResponse,
     AttributionResponse,
+    BriefingTriggerResponse,
     DeltaResponse,
     FeedStatus,
     HealthResponse,
@@ -317,6 +325,15 @@ def create_app(
     rate_limiter: RateLimiter | None = None,
     heartbeat_interval_s: float = SSE_HEARTBEAT_INTERVAL_S,
     schedule_cache: PinnedScheduleCache | None = None,
+    # 2026-08-01: on-demand briefings replaced automatic per-cycle
+    # triggering (cost control -- Ronnie's call). All four None by
+    # default, same "feature not configured" 503 convention
+    # `schedule_cache` already uses -- lets tests/dev construct an app
+    # without wiring the whole AI stack when they don't need it.
+    ai_client: LLMClient | None = None,
+    ai_tool_context: ToolContext | None = None,
+    ai_notify_client: httpx.AsyncClient | None = None,
+    metrics: Metrics | None = None,
 ) -> FastAPI:
     connections = connections or ConnectionTracker()
     rate_limiter = rate_limiter or RateLimiter()
@@ -382,6 +399,44 @@ def create_app(
     )
     async def attribution() -> AttributionResponse:
         return DATA_ATTRIBUTION
+
+    @app.post(
+        "/briefing/trigger",
+        response_model=BriefingTriggerResponse,
+        dependencies=[Depends(_rate_limit_dependency(rate_limiter, "briefing_trigger"))],
+    )
+    async def trigger_briefing() -> BriefingTriggerResponse:
+        # Network-level isolation, not app-level: this route is only ever
+        # actually reachable through the tailnet-only Caddy listener
+        # (deploy/Caddyfile's :8081 block + `tailscale serve`, NOT the
+        # publicly-funnelled :8080) -- Ronnie's explicit choice over an
+        # app-level bearer token, so there's deliberately no auth check
+        # here. Security invariant #1 is unaffected either way: this only
+        # ever reads already-polled local state via `ai_tool_context`,
+        # same as every AI-layer tool.
+        if ai_client is None or ai_tool_context is None or ai_notify_client is None:
+            raise HTTPException(status_code=503, detail="briefing feature not configured")
+
+        now = datetime.now(timezone.utc)
+        if not has_briefable_alerts(store, now):
+            return BriefingTriggerResponse(
+                sent=False, reason="no active alerts with enough route/line detail to brief"
+            )
+
+        try:
+            text = await compose_briefing(ai_client, ai_tool_context)
+        except BudgetExceededError as exc:
+            return BriefingTriggerResponse(sent=False, reason=str(exc))
+        except Exception:
+            logger.exception("on-demand briefing composition failed")
+            return BriefingTriggerResponse(sent=False, reason="briefing composition failed")
+
+        sent = await post_message(ai_notify_client, text)
+        if sent and metrics is not None:
+            metrics.record_briefing_sent()
+        return BriefingTriggerResponse(
+            sent=sent, reason=None if sent else "Slack delivery failed", text=text if sent else None
+        )
 
     @app.get(
         "/stations/{station_id}/schedule",

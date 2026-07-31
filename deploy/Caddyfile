@@ -28,6 +28,15 @@
 		-Server
 	}
 
+	# 2026-08-01: this path only ever gets served on :8081 below (tailnet-
+	# only, never funnelled) — blocked here at the ingress rather than
+	# trusted to poller:8000 alone, so the public, funnelled port genuinely
+	# cannot reach it even if the app-level route exists underneath.
+	@briefing_trigger path /briefing/trigger
+	handle @briefing_trigger {
+		respond 404
+	}
+
 	# SSE must never be buffered — flush every write immediately so deltas
 	# reach the client as they're generated, not batched up.
 	@stream path /api/stream
@@ -39,5 +48,33 @@
 
 	handle {
 		reverse_proxy poller:8000
+	}
+}
+
+# 2026-08-01: on-demand briefing trigger (POST /briefing/trigger) —
+# tailnet-only via `tailscale serve` (deploy/tailscale-entrypoint.sh),
+# NEVER funnelled to the public internet. This route spends real LLM
+# budget and posts to Slack, a genuine first exception to :8080's
+# strictly GET-only/read-only surface (security invariant 3) — network-
+# level isolation was Ronnie's explicit choice over an app-level bearer
+# token. Nothing else is served on this port; tailnet-only doesn't mean
+# "trust everything", keep the surface as narrow as the public one.
+:8081 {
+	encode gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		Cache-Control no-store
+		-Server
+	}
+
+	@briefing_trigger path /briefing/trigger
+	handle @briefing_trigger {
+		reverse_proxy poller:8000
+	}
+
+	handle {
+		respond 404
 	}
 }

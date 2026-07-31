@@ -131,6 +131,18 @@ class AlertsResponse(BaseModel):
     alerts: list[Alert]
 
 
+class BriefingTriggerResponse(BaseModel):
+    """`sent=False` covers three distinct, deliberately-not-conflated
+    cases (see `reason`): nothing currently active is specific enough to
+    brief (ai/briefing_filter.py), the monthly budget cap is reached, or
+    composition/delivery failed -- a caller triggering this by hand wants
+    to know WHICH, not just that nothing arrived in Slack."""
+
+    sent: bool
+    reason: str | None = None
+    text: str | None = None
+
+
 class AttributionResponse(BaseModel):
     """M3 finding #11: a license condition, not a nicety -- static content,
     deliberately its own endpoint rather than embedded in every `/api/state`/

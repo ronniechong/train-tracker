@@ -6,6 +6,7 @@ from traintracker.gateway.client import Feed
 from traintracker.metrics import STALENESS_THRESHOLD_S, CountingEventLog, Metrics
 from traintracker.poller.breaker import CircuitBreaker
 from traintracker.poller.loop import CycleResult
+from traintracker.state.completion import TripCompletionEvent
 from traintracker.state.ghost import GhostEvent, TrackedTrainView
 from traintracker.state.merge import DiscrepancyEvent
 
@@ -61,24 +62,38 @@ def test_counting_event_log_applies_label_fn():
     assert len(inner.events) == 3
 
 
-def test_event_logs_wraps_all_three_and_still_persists():
+def _completion(status="on_time"):
+    return TripCompletionEvent(
+        trip_id="t1", route_id="2-BEG", service_date="2026-08-01",
+        scheduled_terminus_arrival=datetime.now(timezone.utc),
+        actual_terminus_arrival=datetime.now(timezone.utc),
+        delay_seconds=60, status=status,
+    )
+
+
+def test_event_logs_wraps_all_four_and_still_persists():
     registry = CollectorRegistry()
     metrics = Metrics(registry)
     discrepancy_inner = _FakeEventLog()
     ghost_inner = _FakeEventLog()
     gap_inner = _FakeEventLog()
+    completion_inner = _FakeEventLog()
 
-    discrepancy_log, ghost_log, gap_log = metrics.event_logs(
-        discrepancy_inner, ghost_inner, gap_inner,
+    discrepancy_log, ghost_log, gap_log, completion_log = metrics.event_logs(
+        discrepancy_inner, ghost_inner, gap_inner, completion_inner,
     )
     discrepancy_log.record(_discrepancy())
     ghost_log.record(_ghost(loop_contained=True))
+    completion_log.record(_completion(status="late"))
 
     assert registry.get_sample_value("traintracker_discrepancy_events_total") == 1.0
     assert registry.get_sample_value(
         "traintracker_ghost_events_total", {"loop_contained": "true"}
     ) == 1.0
-    assert discrepancy_inner.events and ghost_inner.events
+    assert registry.get_sample_value(
+        "traintracker_trip_completions_total", {"status": "late"}
+    ) == 1.0
+    assert discrepancy_inner.events and ghost_inner.events and completion_inner.events
     assert gap_inner.events == []  # untouched, nothing recorded on it yet
 
 
@@ -165,28 +180,11 @@ def test_record_tracked_trips_overwrites_previous_call_not_accumulates():
     assert registry.get_sample_value("traintracker_tracked_trips", {"status": "ghost"}) == 1.0
 
 
-def test_record_briefing_evaluation_counts_by_reason():
+def test_record_briefing_sent_counts():
     registry = CollectorRegistry()
     metrics = Metrics(registry)
 
-    metrics.record_briefing_evaluation("none")
-    metrics.record_briefing_evaluation("none")
-    metrics.record_briefing_evaluation("new_alert")
+    metrics.record_briefing_sent()
+    metrics.record_briefing_sent()
 
-    assert registry.get_sample_value(
-        "traintracker_briefing_trigger_evaluations_total", {"reason": "none"}
-    ) == 2.0
-    assert registry.get_sample_value(
-        "traintracker_briefing_trigger_evaluations_total", {"reason": "new_alert"}
-    ) == 1.0
-
-
-def test_record_briefing_sent_counts_by_reason():
-    registry = CollectorRegistry()
-    metrics = Metrics(registry)
-
-    metrics.record_briefing_sent("cancellation_threshold")
-
-    assert registry.get_sample_value(
-        "traintracker_briefings_sent_total", {"reason": "cancellation_threshold"}
-    ) == 1.0
+    assert registry.get_sample_value("traintracker_briefings_sent_total") == 2.0

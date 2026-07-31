@@ -5,7 +5,11 @@ from datetime import datetime, timedelta, timezone
 import httpx
 import pytest
 from google.transit import gtfs_realtime_pb2
+from prometheus_client import CollectorRegistry
 
+from traintracker.ai.budget import BudgetExceededError
+from traintracker.ai.llm_client import LLMResponse
+from traintracker.ai.tools import ToolContext
 from traintracker.api.app import _event_source, _scheduled_train, create_app
 from traintracker.api.limits import ConnectionTracker, RateLimiter
 from traintracker.gateway.client import GatewayClient
@@ -13,6 +17,7 @@ from traintracker.gtfs.gtfstime import service_date_for_instant
 from traintracker.gtfs.pinning import PinManifest
 from traintracker.gtfs.schedule import ScheduledDeparture
 from traintracker.gtfs.schedule_cache import PinnedScheduleCache
+from traintracker.metrics import Metrics
 from traintracker.poller.breaker import CircuitBreaker
 from traintracker.poller.loop import PollerLoop
 from traintracker.state.alerts import ActivePeriod, Alert, InformedEntity
@@ -133,6 +138,10 @@ async def _client_for(
     rate_limiter: RateLimiter | None = None,
     heartbeat_interval_s: float = 20.0,
     schedule_cache: PinnedScheduleCache | None = None,
+    ai_client=None,
+    ai_tool_context=None,
+    ai_notify_client=None,
+    metrics=None,
 ) -> httpx.AsyncClient:
     app = create_app(
         loop=loop,
@@ -142,6 +151,10 @@ async def _client_for(
         rate_limiter=rate_limiter,
         heartbeat_interval_s=heartbeat_interval_s,
         schedule_cache=schedule_cache,
+        ai_client=ai_client,
+        ai_tool_context=ai_tool_context,
+        ai_notify_client=ai_notify_client,
+        metrics=metrics,
     )
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
 
@@ -795,3 +808,152 @@ async def test_get_alerts_filters_by_route_id():
 
     assert response.status_code == 200
     assert {a["id"] for a in response.json()["alerts"]} == {"on-r1"}
+
+
+class _ScriptedLLMClient:
+    """Not a real tool-calling loop -- returns `end_turn` immediately, same
+    minimal shape `tests/ai/test_briefing.py` already uses, sufficient for
+    exercising the route's own sent/reason branching rather than the agent
+    loop itself (covered separately)."""
+
+    def __init__(self, text: str):
+        self._text = text
+        self.calls = 0
+
+    async def complete(self, *, system, messages, tools=None, max_tokens):
+        self.calls += 1
+        return LLMResponse(text=self._text, tool_uses=(), stop_reason="end_turn", input_tokens=1, output_tokens=1)
+
+
+class _RaisingLLMClient:
+    def __init__(self, exc: Exception):
+        self._exc = exc
+
+    async def complete(self, *, system, messages, tools=None, max_tokens):
+        raise self._exc
+
+
+def _briefable_alert() -> Alert:
+    return Alert(
+        id="A1", cause="OTHER_CAUSE", effect="SIGNIFICANT_DELAYS", header_text="Major Delay",
+        description_text=None, url=None, active_periods=(),
+        informed_entities=(InformedEntity(route_id="2-BEG", stop_id=None, direction_id=None),),
+    )
+
+
+async def test_trigger_briefing_returns_503_when_ai_stack_not_configured():
+    loop, store = await _running_loop()
+    async with await _client_for(loop, store) as client:  # no ai_* kwargs
+        response = await client.post("/briefing/trigger")
+
+    assert response.status_code == 503
+
+
+async def test_trigger_briefing_skips_the_llm_when_no_briefable_alerts():
+    loop, store = await _running_loop()
+    ai_client = _ScriptedLLMClient("should never be produced")
+
+    async with await _client_for(
+        loop, store, ai_client=ai_client, ai_tool_context=ToolContext(store=store, schedule_cache=None),
+        ai_notify_client=httpx.AsyncClient(),
+    ) as client:
+        response = await client.post("/briefing/trigger")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sent"] is False
+    assert "route/line" in body["reason"]
+    assert ai_client.calls == 0
+
+
+async def test_trigger_briefing_sends_and_records_the_metric_on_success(monkeypatch):
+    loop, store = await _running_loop()
+    store.latest_alerts = {"A1": _briefable_alert()}
+    ai_client = _ScriptedLLMClient("Belgrave line: major delays due to a signal fault.")
+    registry = CollectorRegistry()
+    metrics = Metrics(registry)
+
+    async def _fake_post_message(client, text, webhook_url=None):
+        return True
+
+    monkeypatch.setattr("traintracker.api.app.post_message", _fake_post_message)
+
+    async with await _client_for(
+        loop, store, ai_client=ai_client, ai_tool_context=ToolContext(store=store, schedule_cache=None),
+        ai_notify_client=httpx.AsyncClient(), metrics=metrics,
+    ) as client:
+        response = await client.post("/briefing/trigger")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sent"] is True
+    assert body["text"] == "Belgrave line: major delays due to a signal fault."
+    assert ai_client.calls == 1
+    assert registry.get_sample_value("traintracker_briefings_sent_total") == 1.0
+
+
+async def test_trigger_briefing_reports_slack_failure_without_crashing(monkeypatch):
+    loop, store = await _running_loop()
+    store.latest_alerts = {"A1": _briefable_alert()}
+    ai_client = _ScriptedLLMClient("Belgrave line: major delays due to a signal fault.")
+    registry = CollectorRegistry()
+    metrics = Metrics(registry)
+
+    async def _fake_post_message(client, text, webhook_url=None):
+        return False  # e.g. webhook not configured / Slack outage
+
+    monkeypatch.setattr("traintracker.api.app.post_message", _fake_post_message)
+
+    async with await _client_for(
+        loop, store, ai_client=ai_client, ai_tool_context=ToolContext(store=store, schedule_cache=None),
+        ai_notify_client=httpx.AsyncClient(), metrics=metrics,
+    ) as client:
+        response = await client.post("/briefing/trigger")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sent"] is False
+    assert "Slack" in body["reason"]
+    assert registry.get_sample_value("traintracker_briefings_sent_total") == 0.0  # never counted as sent
+
+
+async def test_trigger_briefing_reports_budget_exceeded_without_calling_slack(monkeypatch):
+    loop, store = await _running_loop()
+    store.latest_alerts = {"A1": _briefable_alert()}
+    ai_client = _RaisingLLMClient(BudgetExceededError("monthly AI budget ($20.00) reached for 2026-08"))
+    posted = []
+
+    async def _fake_post_message(client, text, webhook_url=None):
+        posted.append(text)
+        return True
+
+    monkeypatch.setattr("traintracker.api.app.post_message", _fake_post_message)
+
+    async with await _client_for(
+        loop, store, ai_client=ai_client, ai_tool_context=ToolContext(store=store, schedule_cache=None),
+        ai_notify_client=httpx.AsyncClient(),
+    ) as client:
+        response = await client.post("/briefing/trigger")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sent"] is False
+    assert "budget" in body["reason"].lower()
+    assert posted == []
+
+
+async def test_trigger_briefing_reports_a_generic_failure_without_leaking_internals(monkeypatch):
+    loop, store = await _running_loop()
+    store.latest_alerts = {"A1": _briefable_alert()}
+    ai_client = _RaisingLLMClient(RuntimeError("some internal detail that shouldn't reach the client"))
+
+    async with await _client_for(
+        loop, store, ai_client=ai_client, ai_tool_context=ToolContext(store=store, schedule_cache=None),
+        ai_notify_client=httpx.AsyncClient(),
+    ) as client:
+        response = await client.post("/briefing/trigger")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sent"] is False
+    assert "some internal detail" not in body["reason"]
