@@ -446,6 +446,15 @@ def test_scheduled_train_is_schedule_only_when_no_live_snapshot():
 
 
 def test_scheduled_train_overlays_live_predicted_time_and_delay():
+    # departure_time is a STRING here, not an int -- matches the real
+    # runtime shape (protobuf's JSON mapping stringifies int64 fields),
+    # despite StopTimeUpdate's own `int | None` type hint. Caught live
+    # (2026-07-31, first deploy of this feature): a plain
+    # `datetime.fromtimestamp(time_epoch, ...)` crashed with "'str' object
+    # cannot be interpreted as an integer" against the real deployed
+    # backend -- state/station.py already has an `_epoch()` helper for
+    # this exact reason, which this test would have caught had it used a
+    # realistic (string) value from the start.
     store = _empty_store()
     predicted_at = datetime(2026, 7, 20, 22, 4, tzinfo=timezone.utc)
     store.latest_snapshots["T1"] = TrainSnapshot(
@@ -461,7 +470,7 @@ def test_scheduled_train_overlays_live_predicted_time_and_delay():
                 arrival_delay=None,
                 arrival_time=None,
                 departure_delay=240,
-                departure_time=int(predicted_at.timestamp()),
+                departure_time=str(int(predicted_at.timestamp())),
                 schedule_relationship=None,
             ),
         ),

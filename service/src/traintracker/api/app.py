@@ -155,7 +155,12 @@ def _scheduled_train(store: StateStore, dep: ScheduledDeparture) -> ScheduledTra
             )
             time_epoch = stu.departure_time if stu.departure_time is not None else stu.arrival_time
             if time_epoch is not None:
-                predicted_time = datetime.fromtimestamp(time_epoch, tz=timezone.utc)
+                # `StopTimeUpdate.arrival_time`/`departure_time` are typed
+                # `int | None` but are actually strings at runtime --
+                # protobuf's JSON mapping stringifies int64 fields. Same
+                # `int(...)` coercion `state/station.py`'s `_epoch()`
+                # helper already applies for the same reason.
+                predicted_time = datetime.fromtimestamp(int(time_epoch), tz=timezone.utc)
             elif delay_seconds is not None:
                 predicted_time = dep.scheduled_time + timedelta(seconds=delay_seconds)
 
