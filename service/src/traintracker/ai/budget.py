@@ -16,7 +16,13 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .llm_client import HAIKU_INPUT_USD_PER_MTOK, HAIKU_OUTPUT_USD_PER_MTOK, LLMClient, LLMResponse
+from .llm_client import (
+    HAIKU_INPUT_USD_PER_MTOK,
+    HAIKU_OUTPUT_USD_PER_MTOK,
+    LLMClient,
+    LLMResponse,
+    estimate_cost_usd,
+)
 
 # First-cut value, not tuned against real usage -- revisit once 05e/05f
 # produce real traffic, matching this project's "first-cut constants,
@@ -83,9 +89,7 @@ class BudgetTracker:
         now: datetime | None = None,
     ) -> None:
         now = now or datetime.now(timezone.utc)
-        cost = (input_tokens / 1_000_000) * input_usd_per_mtok + (
-            output_tokens / 1_000_000
-        ) * output_usd_per_mtok
+        cost = estimate_cost_usd(input_tokens, output_tokens, input_usd_per_mtok, output_usd_per_mtok)
         self._conn.execute(
             """
             INSERT INTO monthly_spend (month, cost_usd, input_tokens, output_tokens, call_count)

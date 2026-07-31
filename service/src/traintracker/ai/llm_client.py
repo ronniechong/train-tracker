@@ -37,6 +37,21 @@ HAIKU_INPUT_USD_PER_MTOK = 1.00
 HAIKU_OUTPUT_USD_PER_MTOK = 5.00
 
 
+def estimate_cost_usd(
+    input_tokens: int,
+    output_tokens: int,
+    input_usd_per_mtok: float,
+    output_usd_per_mtok: float,
+) -> float:
+    """Shared by `ai/budget.py` (spend tracking) and `ai/tracing.py`
+    (Langfuse cost_details) -- both need the same token-count -> USD
+    conversion, so it lives once next to the pricing constants rather
+    than being duplicated in each wrapper."""
+    return (input_tokens / 1_000_000) * input_usd_per_mtok + (
+        output_tokens / 1_000_000
+    ) * output_usd_per_mtok
+
+
 @dataclass(frozen=True)
 class ToolUseBlock:
     id: str
