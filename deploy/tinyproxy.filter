@@ -11,3 +11,11 @@
 # actual download host, not a redirect target — see 05a session notes for
 # the live-container verification this line depends on.
 ^opendata\.transport\.vic\.gov\.au$
+# 4. Anthropic API (05b) — Haiku calls from ai/llm_client.py.
+^api\.anthropic\.com$
+# 5. Langfuse Cloud (05b-iii) — matches the actual configured
+# LANGFUSE_BASE_URL value, not assumed; confirmed 2026-07-31.
+^cloud\.langfuse\.com$
+# 6. Slack incoming webhooks (05e) — fixed host regardless of which
+# webhook/workspace/channel TT_BRIEFING_WEBHOOK_URL actually points at.
+^hooks\.slack\.com$
