@@ -6,6 +6,7 @@ import pytest
 from traintracker.gtfs.pinning import PinManifest
 from traintracker.history.store import HistoryStore
 from traintracker.poller.breaker import PollGapEvent
+from traintracker.state.completion import TripCompletionEvent
 from traintracker.state.ghost import GhostEvent
 from traintracker.state.merge import DiscrepancyEvent
 
@@ -156,7 +157,45 @@ def test_counts_reflects_currently_open_partition_only(tmp_path):
     store.rotate(_at(2026, 7, 21))  # rotate away -- new day starts empty
     assert store.counts() == {
         "discrepancy_events": 0, "ghost_events": 0, "poll_gap_events": 0,
+        "trip_completion_events": 0,
     }
+
+
+def test_trip_completion_event_round_trips(tmp_path):
+    store = HistoryStore(tmp_path)
+    store.rotate(_at(2026, 7, 20))
+    store.completion_log.record(
+        TripCompletionEvent(
+            trip_id="t1", route_id="2-BEG", service_date="2026-07-20",
+            scheduled_terminus_arrival=_at(2026, 7, 20, 10, 0),
+            actual_terminus_arrival=_at(2026, 7, 20, 10, 3),
+            delay_seconds=180, status="on_time",
+        )
+    )
+    conn = sqlite3.connect(store.partition_path(date(2026, 7, 20)))
+    row = conn.execute(
+        "SELECT trip_id, route_id, service_date, delay_seconds, status FROM trip_completion_events"
+    ).fetchone()
+    conn.close()
+    assert row == ("t1", "2-BEG", "2026-07-20", 180, "on_time")
+
+
+def test_trip_completion_event_round_trips_undetermined_gap(tmp_path):
+    store = HistoryStore(tmp_path)
+    store.rotate(_at(2026, 7, 20))
+    store.completion_log.record(
+        TripCompletionEvent(
+            trip_id="t2", route_id=None, service_date="2026-07-20",
+            scheduled_terminus_arrival=_at(2026, 7, 20, 10, 0),
+            actual_terminus_arrival=None, delay_seconds=None, status="undetermined_gap",
+        )
+    )
+    conn = sqlite3.connect(store.partition_path(date(2026, 7, 20)))
+    row = conn.execute(
+        "SELECT route_id, actual_terminus_arrival, delay_seconds, status FROM trip_completion_events"
+    ).fetchone()
+    conn.close()
+    assert row == (None, None, None, "undetermined_gap")
 
 
 def test_close_allows_a_fresh_rotate_afterward(tmp_path):

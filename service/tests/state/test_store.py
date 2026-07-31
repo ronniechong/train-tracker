@@ -98,3 +98,40 @@ def test_on_tick_hook_is_optional():
     vp = _vp_feed("1000000", "trip-1", "1000000")
 
     store.ingest(tu, vp, _at(0))  # no exception
+
+
+class _RecordingCompletionTracker:
+    def __init__(self):
+        self.tick_calls = []
+        self.flush_calls = []
+
+    def tick(self, snapshots, cycle_time):
+        self.tick_calls.append((snapshots, cycle_time))
+
+    def flush(self, at):
+        self.flush_calls.append(at)
+
+
+def test_completion_tracker_is_optional():
+    # Default None -- must not raise, same convention as on_tick.
+    store = StateStore(InMemoryEventLog(), InMemoryEventLog())
+    tu = _tu_feed("1000000", "trip-1")
+    vp = _vp_feed("1000000", "trip-1", "1000000")
+
+    store.ingest(tu, vp, _at(0))  # no exception
+    store.flush(_at(10))  # no exception
+
+
+def test_completion_tracker_ticks_on_ingest_and_flushes_on_flush():
+    tracker = _RecordingCompletionTracker()
+    store = StateStore(InMemoryEventLog(), InMemoryEventLog(), completion_tracker=tracker)
+    tu = _tu_feed("1000000", "trip-1")
+    vp = _vp_feed("1000000", "trip-1", "1000000")
+
+    store.ingest(tu, vp, _at(0))
+    store.flush(_at(10))
+
+    assert len(tracker.tick_calls) == 1
+    assert "trip-1" in tracker.tick_calls[0][0]
+    assert tracker.tick_calls[0][1] == _at(0)
+    assert tracker.flush_calls == [_at(10)]

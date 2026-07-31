@@ -1,14 +1,15 @@
 """SQLite-backed persistence for 2d's three `EventLog` outputs
-(`DiscrepancyEvent`, `GhostEvent`, `PollGapEvent`) — the concrete
-implementation `state/eventlog.py` forward-references as "2e ... owns a
-SQLite-backed implementation of this same Protocol."
+(`DiscrepancyEvent`, `GhostEvent`, `PollGapEvent`) plus 05-ai-layer's
+`TripCompletionEvent` — the concrete implementation `state/eventlog.py`
+forward-references as "2e ... owns a SQLite-backed implementation of this
+same Protocol."
 
 One SQLite file per service_date, not per event type: `discrepancy_events`,
-`ghost_events`, and `poll_gap_events` all live in the same file, alongside a
-`meta` row recording which static-snapshot digest (2c's `PinManifest`) was
-pinned to that service_date at the time the partition was opened — this is
-the "paired with that day's pinned static snapshot" requirement from
-milestone 2e.
+`ghost_events`, `poll_gap_events`, and `trip_completion_events` all live in
+the same file, alongside a `meta` row recording which static-snapshot digest
+(2c's `PinManifest`) was pinned to that service_date at the time the
+partition was opened — this is the "paired with that day's pinned static
+snapshot" requirement from milestone 2e.
 
 Routing a `.record(event)` call to the correct day's file is `rotate(now)`'s
 job, called once per poll cycle by the caller (`poller/__main__.py`) — this
@@ -33,6 +34,7 @@ from typing import Callable
 from ..gtfs.gtfstime import service_date_for_instant
 from ..gtfs.pinning import PinManifest
 from ..poller.breaker import PollGapEvent
+from ..state.completion import TripCompletionEvent
 from ..state.ghost import GhostEvent
 from ..state.merge import DiscrepancyEvent
 
@@ -90,6 +92,19 @@ def _poll_gap_row(event: PollGapEvent) -> tuple:
         event.reason,
         event.consecutive_failures,
         event.max_level_reached_s,
+    )
+
+
+def _trip_completion_row(event: TripCompletionEvent) -> tuple:
+    return (
+        datetime.now(timezone.utc).isoformat(),
+        event.trip_id,
+        event.route_id,
+        event.service_date,
+        _iso(event.scheduled_terminus_arrival),
+        _iso(event.actual_terminus_arrival),
+        event.delay_seconds,
+        event.status,
     )
 
 
@@ -163,7 +178,31 @@ POLL_GAP_TABLE = _TableSpec(
     to_row=_poll_gap_row,
 )
 
-_ALL_TABLES = (DISCREPANCY_TABLE, GHOST_TABLE, POLL_GAP_TABLE)
+TRIP_COMPLETION_TABLE = _TableSpec(
+    name="trip_completion_events",
+    create_sql="""
+        CREATE TABLE IF NOT EXISTS trip_completion_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recorded_at TEXT NOT NULL,
+            trip_id TEXT NOT NULL,
+            route_id TEXT,
+            service_date TEXT NOT NULL,
+            scheduled_terminus_arrival TEXT NOT NULL,
+            actual_terminus_arrival TEXT,
+            delay_seconds INTEGER,
+            status TEXT NOT NULL
+        )
+    """,
+    insert_sql="""
+        INSERT INTO trip_completion_events
+            (recorded_at, trip_id, route_id, service_date, scheduled_terminus_arrival,
+             actual_terminus_arrival, delay_seconds, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """,
+    to_row=_trip_completion_row,
+)
+
+_ALL_TABLES = (DISCREPANCY_TABLE, GHOST_TABLE, POLL_GAP_TABLE, TRIP_COMPLETION_TABLE)
 
 _META_CREATE_SQL = """
     CREATE TABLE IF NOT EXISTS meta (
@@ -200,6 +239,7 @@ class HistoryStore:
         self.discrepancy_log = _TableEventLog(self, DISCREPANCY_TABLE)
         self.ghost_log = _TableEventLog(self, GHOST_TABLE)
         self.gap_log = _TableEventLog(self, POLL_GAP_TABLE)
+        self.completion_log = _TableEventLog(self, TRIP_COMPLETION_TABLE)
 
     @property
     def service_date(self) -> date | None:

@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import Callable
 
 from .alerts import Alert, parse_alerts
+from .completion import TripCompletionTracker
 from .eventlog import EventLog
 from .ghost import TrackedTrainView, TrainLifecycleTracker
 from .merge import TrainSnapshot, merge
@@ -25,9 +26,16 @@ class StateStore:
         discrepancy_log: EventLog,
         ghost_log: EventLog,
         on_tick: Callable[[tuple[TrackedTrainView, ...]], None] | None = None,
+        completion_tracker: TripCompletionTracker | None = None,
     ):
         self._discrepancy_log = discrepancy_log
         self._lifecycle = TrainLifecycleTracker(ghost_log)
+        # Optional (05-ai-layer, trip-completion tracking): a fresh
+        # StateStore built without a static-schedule-backed terminus lookup
+        # (e.g. most existing tests) simply never tracks completions --
+        # every other feature keeps working unchanged, matching `on_tick`'s
+        # own optional-hook precedent.
+        self._completion_tracker = completion_tracker
         # Optional hook fired with the fresh `all_tracked()` result after
         # every `ingest()` -- lets a caller (e.g. metrics) observe tracked-
         # trip counts without this module knowing metrics exist at all,
@@ -70,6 +78,8 @@ class StateStore:
         self._active_discrepancies = current
 
         self._lifecycle.tick(snapshots, cycle_time, backoff_active=backoff_active)
+        if self._completion_tracker is not None:
+            self._completion_tracker.tick(snapshots, cycle_time)
         self.latest_snapshots = snapshots
         if self._on_tick is not None:
             self._on_tick(self._lifecycle.all_tracked())
@@ -83,3 +93,5 @@ class StateStore:
 
     def flush(self, at: datetime) -> None:
         self._lifecycle.flush(at)
+        if self._completion_tracker is not None:
+            self._completion_tracker.flush(at)

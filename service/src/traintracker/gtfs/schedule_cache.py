@@ -8,11 +8,11 @@ an in-memory cache.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 from ..state.merge import TrainSnapshot
-from .gtfstime import service_date_for_instant
+from .gtfstime import gtfs_time_to_utc, service_date_for_instant
 from .pinning import PinManifest
 from .routes import Route, routes_from_zip_bytes
 from .schedule import (
@@ -34,11 +34,27 @@ class NoPinnedSnapshotError(Exception):
 
 
 @dataclass(frozen=True)
+class TripTerminus:
+    """A trip's scheduled final stop -- the 05-ai-layer trip-completion
+    tracker's anchor for "did this trip arrive on time", per the official
+    Victorian definition (arrival AT THE TERMINUS, not mid-journey delay)."""
+
+    stop_id: str
+    scheduled_arrival: datetime  # absolute UTC
+
+
+@dataclass(frozen=True)
 class _ParsedSchedule:
     snapshot: StaticSnapshot
     stops: dict[str, Stop]
     stop_times: list[StopTimeRecord]
     routes: dict[str, Route]
+    # Lazily built, memoized alongside the rest of this digest's parse --
+    # trip_id -> its highest-stop_sequence StopTimeRecord. Built once per
+    # digest (content is immutable per digest, same reasoning `_by_digest`
+    # already relies on) rather than scanning the full stop_times list on
+    # every terminus_for() call.
+    termini_by_trip: dict[str, StopTimeRecord]
 
 
 class PinnedScheduleCache:
@@ -57,11 +73,18 @@ class PinnedScheduleCache:
         if cached is not None:
             return cached
         data = (self._gtfs_dir / f"{digest}.zip").read_bytes()
+        stop_times = stop_times_from_zip_bytes(data)
+        termini_by_trip: dict[str, StopTimeRecord] = {}
+        for record in stop_times:
+            current = termini_by_trip.get(record.trip_id)
+            if current is None or record.stop_sequence > current.stop_sequence:
+                termini_by_trip[record.trip_id] = record
         parsed = _ParsedSchedule(
             snapshot=StaticSnapshot.from_zip_bytes(data),
             stops=stops_from_zip_bytes(data),
-            stop_times=stop_times_from_zip_bytes(data),
+            stop_times=stop_times,
             routes=routes_from_zip_bytes(data),
+            termini_by_trip=termini_by_trip,
         )
         self._by_digest[digest] = parsed
         return parsed
@@ -78,6 +101,36 @@ class PinnedScheduleCache:
                 f"no static snapshot pinned for service_date {service_date.isoformat()}"
             )
         return self._load(pin.digest)
+
+    def terminus_for(self, trip_id: str, service_date: date) -> TripTerminus | None:
+        """The trip's scheduled final stop + absolute UTC arrival, resolved
+        against whichever static snapshot is pinned to `service_date` --
+        the trip's OWN service_date (Trip Updates' `trip.start_date`), not
+        "today", since a post-midnight trip's schedule can span the day
+        boundary this cache resolves "now" against.
+
+        Returns `None`, not an error, when: no snapshot is pinned for that
+        service_date yet, the trip_id has no static stop_times row at all
+        (a real-time-only ADDED trip, per CLAUDE.md's trip_id-join
+        convention -- has no static schedule to compare against by
+        construction), or its terminus row carries neither an arrival nor
+        departure time (malformed row; state/completion.py treats an
+        unresolvable terminus as "can't track this trip's completion",
+        not a crash)."""
+        pin = self._pin_manifest.get(service_date)
+        if pin is None:
+            return None
+        parsed = self._load(pin.digest)
+        terminus = parsed.termini_by_trip.get(trip_id)
+        if terminus is None:
+            return None
+        time_str = terminus.arrival_time or terminus.departure_time
+        if time_str is None:
+            return None
+        return TripTerminus(
+            stop_id=terminus.stop_id,
+            scheduled_arrival=gtfs_time_to_utc(service_date, time_str),
+        )
 
     def routes_for(self, now: datetime) -> dict[str, Route]:
         """route_id -> Route (short/long name) for whichever static
