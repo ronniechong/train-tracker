@@ -126,6 +126,11 @@
   align-self: center;
 }
 
+.scheduleTimeCancelled {
+  text-decoration: line-through;
+  color: var(--color-text-dim);
+}
+
 .scheduledBadge {
   text-align: right;
   font-size: var(--font-size-xs);
@@ -144,5 +149,13 @@
   text-align: right;
   font-size: var(--font-size-xs);
   color: var(--color-warning);
+  align-self: center;
+}
+
+.cancelledBadge {
+  text-align: right;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-danger);
   align-self: center;
 }

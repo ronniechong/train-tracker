@@ -144,12 +144,16 @@ def _scheduled_train(store: StateStore, dep: ScheduledDeparture) -> ScheduledTra
     state, no upstream call (invariant #1), same as every other route."""
     predicted_time: datetime | None = None
     delay_seconds: int | None = None
+    is_cancelled = False
     snapshot = store.latest_snapshots.get(dep.trip_id)
     if snapshot is not None:
+        is_cancelled = snapshot.schedule_relationship == "CANCELED"
         stu = next(
             (s for s in snapshot.stop_time_updates if s.stop_id == dep.stop_id), None
         )
         if stu is not None:
+            if stu.schedule_relationship == "SKIPPED":
+                is_cancelled = True
             delay_seconds = (
                 stu.departure_delay if stu.departure_delay is not None else stu.arrival_delay
             )
@@ -173,6 +177,7 @@ def _scheduled_train(store: StateStore, dep: ScheduledDeparture) -> ScheduledTra
         predicted_time=predicted_time,
         delay_seconds=delay_seconds,
         is_live=predicted_time is not None or delay_seconds is not None,
+        is_cancelled=is_cancelled,
     )
 
 

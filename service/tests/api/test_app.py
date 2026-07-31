@@ -440,6 +440,7 @@ def test_scheduled_train_is_schedule_only_when_no_live_snapshot():
     train = _scheduled_train(_empty_store(), _departure())
 
     assert train.is_live is False
+    assert train.is_cancelled is False
     assert train.predicted_time is None
     assert train.delay_seconds is None
     assert train.scheduled_time == datetime(2026, 7, 20, 22, 0, tzinfo=timezone.utc)
@@ -484,6 +485,7 @@ def test_scheduled_train_overlays_live_predicted_time_and_delay():
     train = _scheduled_train(store, _departure())
 
     assert train.is_live is True
+    assert train.is_cancelled is False
     assert train.delay_seconds == 240
     assert train.predicted_time == predicted_at
 
@@ -551,6 +553,63 @@ def test_scheduled_train_ignores_snapshot_for_a_different_platform():
     train = _scheduled_train(store, _departure(stop_id="PLAT_A1"))
 
     assert train.is_live is False
+
+
+def test_scheduled_train_is_cancelled_for_a_whole_trip_cancellation():
+    # TU's trip-level `schedule_relationship` (not the per-stop one below) --
+    # the entire trip is off, regardless of what any individual
+    # stop_time_update says.
+    store = _empty_store()
+    store.latest_snapshots["T1"] = TrainSnapshot(
+        trip_id="T1",
+        route_id="R1",
+        start_time=None,
+        start_date=None,
+        schedule_relationship="CANCELED",
+        stop_time_updates=(),
+        schedule_updated_at=datetime.now(timezone.utc),
+        latitude=None,
+        longitude=None,
+        bearing=None,
+        position_updated_at=None,
+    )
+
+    train = _scheduled_train(store, _departure())
+
+    assert train.is_cancelled is True
+
+
+def test_scheduled_train_is_cancelled_for_a_skipped_stop():
+    # 05a: a train that still runs but skips THIS platform -- the trip
+    # itself is "SCHEDULED", only this stop_time_update is "SKIPPED".
+    store = _empty_store()
+    store.latest_snapshots["T1"] = TrainSnapshot(
+        trip_id="T1",
+        route_id="R1",
+        start_time=None,
+        start_date=None,
+        schedule_relationship="SCHEDULED",
+        stop_time_updates=(
+            StopTimeUpdate(
+                stop_sequence=1,
+                stop_id="PLAT_A1",
+                arrival_delay=None,
+                arrival_time=None,
+                departure_delay=None,
+                departure_time=None,
+                schedule_relationship="SKIPPED",
+            ),
+        ),
+        schedule_updated_at=datetime.now(timezone.utc),
+        latitude=None,
+        longitude=None,
+        bearing=None,
+        position_updated_at=None,
+    )
+
+    train = _scheduled_train(store, _departure(stop_id="PLAT_A1"))
+
+    assert train.is_cancelled is True
 
 
 async def test_station_schedule_returns_503_when_not_configured():

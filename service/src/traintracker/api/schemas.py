@@ -67,7 +67,13 @@ class ScheduledTrain(BaseModel):
     live Trip Updates prediction for this exact (trip_id, platform) exists
     right now -- `is_live` makes that distinction explicit rather than
     letting callers guess from nullability alone (same "label every
-    inference" spirit as the ghost/discrepancy schemas elsewhere)."""
+    inference" spirit as the ghost/discrepancy schemas elsewhere).
+
+    `is_cancelled` (05a): true when TU's `schedule_relationship` marks
+    either the whole trip CANCELED or, more narrowly, just this platform's
+    stop SKIPPED (the train runs but doesn't call here) -- both mean "don't
+    expect this departure," so both collapse to one flag rather than
+    exposing the raw enum distinction to callers who don't need it."""
 
     trip_id: str
     route_id: str
@@ -77,6 +83,7 @@ class ScheduledTrain(BaseModel):
     predicted_time: datetime | None
     delay_seconds: int | None
     is_live: bool
+    is_cancelled: bool
 
 
 class StationScheduleResponse(BaseModel):

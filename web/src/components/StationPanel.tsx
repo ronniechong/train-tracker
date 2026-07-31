@@ -19,6 +19,7 @@ interface ScheduleBadge {
 }
 
 function scheduleBadge(dep: ScheduledTrain): ScheduleBadge {
+  if (dep.is_cancelled) return { label: 'Cancelled', className: styles.cancelledBadge }
   if (!dep.is_live) return { label: 'Scheduled', className: styles.scheduledBadge }
   if (dep.delay_seconds === null || Math.abs(dep.delay_seconds) <= ON_TIME_BAND_S) {
     return { label: 'On time', className: styles.onTimeBadge }
@@ -126,7 +127,13 @@ export function StationPanel({ stationId, trains, hideGhosts, onClear, schedule 
                     return (
                       <li key={`${dep.trip_id}-${dep.scheduled_time}`} className={styles.scheduleRow}>
                         <span className={styles.scheduleHeadsign}>{dep.headsign}</span>
-                        <span className={styles.scheduleTime}>
+                        <span
+                          className={
+                            dep.is_cancelled
+                              ? `${styles.scheduleTime} ${styles.scheduleTimeCancelled}`
+                              : styles.scheduleTime
+                          }
+                        >
                           {formatTime(dep.is_live && dep.predicted_time ? dep.predicted_time : dep.scheduled_time)}
                         </span>
                         <span className={badge.className}>{badge.label}</span>

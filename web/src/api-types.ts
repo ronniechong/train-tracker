@@ -50,6 +50,7 @@ export interface ScheduledTrain {
   predicted_time: string | null
   delay_seconds: number | null
   is_live: boolean
+  is_cancelled: boolean
 }
 
 export interface StationScheduleResponse {

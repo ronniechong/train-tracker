@@ -71,3 +71,13 @@
   font-variant-numeric: tabular-nums;
   color: var(--color-text-dim);
 }
+
+.station-popup-schedule-time-cancelled {
+  text-decoration: line-through;
+}
+
+.station-popup-schedule-cancelled-label {
+  flex-shrink: 0;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-danger);
+}

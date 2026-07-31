@@ -83,9 +83,17 @@ function buildStationPopupContent(
       headsign.className = 'station-popup-schedule-headsign'
       headsign.textContent = dep.headsign
       const time = document.createElement('span')
-      time.className = 'station-popup-schedule-time'
+      time.className = dep.is_cancelled
+        ? 'station-popup-schedule-time station-popup-schedule-time-cancelled'
+        : 'station-popup-schedule-time'
       time.textContent = formatTime(dep.is_live && dep.predicted_time ? dep.predicted_time : dep.scheduled_time)
       row.append(headsign, time)
+      if (dep.is_cancelled) {
+        const cancelled = document.createElement('span')
+        cancelled.className = 'station-popup-schedule-cancelled-label'
+        cancelled.textContent = 'Cancelled'
+        row.append(cancelled)
+      }
       content.append(row)
     }
   }
