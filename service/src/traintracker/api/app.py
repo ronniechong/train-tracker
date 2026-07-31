@@ -26,6 +26,8 @@ from ..gtfs.schedule import ScheduledDeparture
 from ..gtfs.schedule_cache import NoPinnedSnapshotError, PinnedScheduleCache
 from ..metrics import STALENESS_THRESHOLD_S
 from ..poller.loop import ALL_FEEDS, PollerLoop
+from ..state.alerts import Alert as AlertRecord
+from ..state.alerts import alerts_matching
 from ..state.eventhub import EventHub
 from ..state.ghost import MAX_GHOST_AGE_S, TrackedTrainView
 from ..state.store import StateStore
@@ -37,6 +39,10 @@ from .limits import (
     RateLimiter,
 )
 from .schemas import (
+    Alert,
+    AlertActivePeriod,
+    AlertInformedEntity,
+    AlertsResponse,
     AttributionResponse,
     DeltaResponse,
     FeedStatus,
@@ -145,9 +151,11 @@ def _scheduled_train(store: StateStore, dep: ScheduledDeparture) -> ScheduledTra
     predicted_time: datetime | None = None
     delay_seconds: int | None = None
     is_cancelled = False
+    is_added = False
     snapshot = store.latest_snapshots.get(dep.trip_id)
     if snapshot is not None:
         is_cancelled = snapshot.schedule_relationship == "CANCELED"
+        is_added = snapshot.schedule_relationship == "ADDED"
         stu = next(
             (s for s in snapshot.stop_time_updates if s.stop_id == dep.stop_id), None
         )
@@ -178,6 +186,27 @@ def _scheduled_train(store: StateStore, dep: ScheduledDeparture) -> ScheduledTra
         delay_seconds=delay_seconds,
         is_live=predicted_time is not None or delay_seconds is not None,
         is_cancelled=is_cancelled,
+        is_added=is_added,
+    )
+
+
+def _alert_response(alert: AlertRecord) -> Alert:
+    return Alert(
+        id=alert.id,
+        cause=alert.cause,
+        effect=alert.effect,
+        header_text=alert.header_text,
+        description_text=alert.description_text,
+        url=alert.url,
+        active_periods=[
+            AlertActivePeriod(start=p.start, end=p.end) for p in alert.active_periods
+        ],
+        informed_entities=[
+            AlertInformedEntity(
+                route_id=e.route_id, stop_id=e.stop_id, direction_id=e.direction_id
+            )
+            for e in alert.informed_entities
+        ],
     )
 
 
@@ -332,6 +361,21 @@ def create_app(
         return _current_state(loop, store)
 
     @app.get(
+        "/api/alerts",
+        response_model=AlertsResponse,
+        dependencies=[Depends(_rate_limit_dependency(rate_limiter, "alerts"))],
+    )
+    async def get_alerts(route_id: str | None = None) -> AlertsResponse:
+        # Reads only the in-process StateStore's latest parsed SA snapshot
+        # (see state/alerts.py + poller/loop.py) -- no upstream call
+        # (invariant #1), same as every other route here. `route_id` is an
+        # optional coarse filter, not a precise per-trip match (see
+        # AlertInformedEntity's docstring).
+        now = datetime.now(timezone.utc)
+        matched = alerts_matching(store.latest_alerts, now, route_id=route_id)
+        return AlertsResponse(generated_at=now, alerts=[_alert_response(a) for a in matched])
+
+    @app.get(
         "/attribution",
         response_model=AttributionResponse,
         dependencies=[Depends(_rate_limit_dependency(rate_limiter, "attribution"))],
@@ -353,7 +397,9 @@ def create_app(
             raise HTTPException(status_code=503, detail="schedule feature not configured")
         now = datetime.now(timezone.utc)
         try:
-            departures = schedule_cache.next_departures_for(station_id, now)
+            departures = schedule_cache.next_departures_for(
+                station_id, now, live_snapshots=store.latest_snapshots
+            )
         except NoPinnedSnapshotError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         if departures is None:

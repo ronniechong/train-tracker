@@ -81,3 +81,9 @@
   font-weight: var(--font-weight-semibold);
   color: var(--color-danger);
 }
+
+.station-popup-schedule-added-label {
+  flex-shrink: 0;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent);
+}

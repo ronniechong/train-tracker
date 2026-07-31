@@ -15,6 +15,7 @@ from traintracker.gtfs.schedule import ScheduledDeparture
 from traintracker.gtfs.schedule_cache import PinnedScheduleCache
 from traintracker.poller.breaker import CircuitBreaker
 from traintracker.poller.loop import PollerLoop
+from traintracker.state.alerts import ActivePeriod, Alert, InformedEntity
 from traintracker.state.eventhub import InProcessEventHub
 from traintracker.state.eventlog import InMemoryEventLog
 from traintracker.state.merge import StopTimeUpdate, TrainSnapshot
@@ -652,3 +653,145 @@ async def test_station_schedule_returns_well_formed_response_for_known_station(
     for train in body["departures"]:
         assert train["trip_id"]
         assert train["scheduled_time"]
+
+
+def test_scheduled_train_is_added_for_a_real_time_only_trip():
+    # 05a pass 3: TU schedule_relationship ADDED means a real-time-only
+    # extra service (no static row) -- `_scheduled_train` reads it off the
+    # same live-snapshot lookup `is_cancelled` already uses.
+    store = _empty_store()
+    store.latest_snapshots["EXTRA1"] = TrainSnapshot(
+        trip_id="EXTRA1",
+        route_id="R1",
+        start_time=None,
+        start_date=None,
+        schedule_relationship="ADDED",
+        stop_time_updates=(),
+        schedule_updated_at=datetime.now(timezone.utc),
+        latitude=None,
+        longitude=None,
+        bearing=None,
+        position_updated_at=None,
+    )
+
+    train = _scheduled_train(store, _departure(trip_id="EXTRA1"))
+
+    assert train.is_added is True
+    assert train.is_cancelled is False
+
+
+async def test_station_schedule_folds_in_added_trip_via_live_snapshots(
+    tmp_path, sample_static_zip_bytes
+):
+    loop, store = await _running_loop()
+    schedule_cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+    now = datetime.now(timezone.utc)
+    departs_in_5_min = str(int((now + timedelta(minutes=5)).timestamp()))
+    store.latest_snapshots["EXTRA1"] = TrainSnapshot(
+        trip_id="EXTRA1",
+        route_id="R1",
+        start_time=None,
+        start_date=None,
+        schedule_relationship="ADDED",
+        stop_time_updates=(
+            StopTimeUpdate(
+                stop_sequence=1,
+                stop_id="PLAT_A1",
+                arrival_delay=None,
+                arrival_time=None,
+                departure_delay=None,
+                departure_time=departs_in_5_min,
+                schedule_relationship="SCHEDULED",
+            ),
+            StopTimeUpdate(
+                stop_sequence=2,
+                stop_id="PLAT_B1",
+                arrival_delay=None,
+                arrival_time=departs_in_5_min,
+                departure_delay=None,
+                departure_time=None,
+                schedule_relationship="SCHEDULED",
+            ),
+        ),
+        schedule_updated_at=now,
+        latitude=None,
+        longitude=None,
+        bearing=None,
+        position_updated_at=None,
+    )
+
+    async with await _client_for(loop, store, schedule_cache=schedule_cache) as client:
+        response = await client.get("/stations/STATION_A/schedule")
+
+    assert response.status_code == 200
+    departures = response.json()["departures"]
+    extra = next(d for d in departures if d["trip_id"] == "EXTRA1")
+    assert extra["is_added"] is True
+    assert extra["headsign"] == "B Station Platform 1"
+    assert extra["is_live"] is True
+
+
+async def test_get_alerts_returns_currently_active_alerts():
+    loop, store = await _running_loop()
+    now = datetime.now(timezone.utc)
+    store.latest_alerts = {
+        "active-alert": Alert(
+            id="active-alert",
+            cause="CONSTRUCTION",
+            effect="MODIFIED_SERVICE",
+            header_text="Buses replace trains",
+            description_text="Details",
+            url="https://example.invalid/d/1",
+            active_periods=(),  # no active_period => always active
+            informed_entities=(InformedEntity(route_id="R1", stop_id=None, direction_id=None),),
+        ),
+        "expired-alert": Alert(
+            id="expired-alert",
+            cause="OTHER_CAUSE",
+            effect="OTHER_EFFECT",
+            header_text="Old disruption",
+            description_text=None,
+            url=None,
+            active_periods=(
+                ActivePeriod(
+                    start=now - timedelta(days=2), end=now - timedelta(days=1)
+                ),
+            ),
+            informed_entities=(),
+        ),
+    }
+
+    async with await _client_for(loop, store) as client:
+        response = await client.get("/api/alerts")
+
+    assert response.status_code == 200
+    body = response.json()
+    ids = {a["id"] for a in body["alerts"]}
+    assert ids == {"active-alert"}
+    alert = body["alerts"][0]
+    assert alert["header_text"] == "Buses replace trains"
+    assert alert["informed_entities"] == [
+        {"route_id": "R1", "stop_id": None, "direction_id": None}
+    ]
+
+
+async def test_get_alerts_filters_by_route_id():
+    loop, store = await _running_loop()
+    store.latest_alerts = {
+        "on-r1": Alert(
+            id="on-r1", cause=None, effect=None, header_text=None, description_text=None,
+            url=None, active_periods=(),
+            informed_entities=(InformedEntity(route_id="R1", stop_id=None, direction_id=None),),
+        ),
+        "on-r2": Alert(
+            id="on-r2", cause=None, effect=None, header_text=None, description_text=None,
+            url=None, active_periods=(),
+            informed_entities=(InformedEntity(route_id="R2", stop_id=None, direction_id=None),),
+        ),
+    }
+
+    async with await _client_for(loop, store) as client:
+        response = await client.get("/api/alerts", params={"route_id": "R1"})
+
+    assert response.status_code == 200
+    assert {a["id"] for a in response.json()["alerts"]} == {"on-r1"}

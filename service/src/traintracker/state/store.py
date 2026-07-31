@@ -13,6 +13,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Callable
 
+from .alerts import Alert, parse_alerts
 from .eventlog import EventLog
 from .ghost import TrackedTrainView, TrainLifecycleTracker
 from .merge import TrainSnapshot, merge
@@ -33,6 +34,11 @@ class StateStore:
         # same separation `merge.py`/`ghost.py` already keep.
         self._on_tick = on_tick
         self.latest_snapshots: dict[str, TrainSnapshot] = {}
+        # Replaced wholesale on each `sa_feed`-bearing ingest, not merged
+        # incrementally - the SA feed itself is a full current-alert
+        # snapshot each poll (see alerts.py), so this store just mirrors
+        # that, same as `latest_snapshots` mirrors the latest TU/VP merge.
+        self.latest_alerts: dict[str, Alert] = {}
         # (trip_id, discrepancy_type) pairs active as of the last ingest.
         # `merge()` is a deliberately memoryless, single-cycle function (see
         # its own docstring), so a discrepancy that persists across many
@@ -45,8 +51,16 @@ class StateStore:
 
     def ingest(
         self, tu_feed: dict, vp_feed: dict, cycle_time: datetime, backoff_active: bool = False,
+        sa_feed: dict | None = None,
     ) -> dict[str, TrainSnapshot]:
         snapshots, discrepancies = merge(tu_feed, vp_feed)
+
+        # `None` means "no SA content cached yet this process" (poller
+        # hasn't completed a first successful SA poll) - distinct from an
+        # actually-empty feed, which legitimately means zero active
+        # alerts. Only the former should leave `latest_alerts` untouched.
+        if sa_feed is not None:
+            self.latest_alerts = parse_alerts(sa_feed)
 
         current = {(d.trip_id, d.discrepancy_type) for d in discrepancies}
         for discrepancy in discrepancies:

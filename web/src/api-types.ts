@@ -51,10 +51,41 @@ export interface ScheduledTrain {
   delay_seconds: number | null
   is_live: boolean
   is_cancelled: boolean
+  is_added: boolean
 }
 
 export interface StationScheduleResponse {
   station_id: string
   generated_at: string
   departures: ScheduledTrain[]
+}
+
+export interface AlertActivePeriod {
+  start: string | null
+  end: string | null
+}
+
+// No trip_id here at all -- any field can be null, meaning "unspecified"
+// on that axis. This is a coarse route/stop/direction join from the
+// upstream feed, never confirmation that a specific train is affected.
+export interface AlertInformedEntity {
+  route_id: string | null
+  stop_id: string | null
+  direction_id: number | null
+}
+
+export interface Alert {
+  id: string
+  cause: string | null
+  effect: string | null
+  header_text: string | null
+  description_text: string | null
+  url: string | null
+  active_periods: AlertActivePeriod[]
+  informed_entities: AlertInformedEntity[]
+}
+
+export interface AlertsResponse {
+  generated_at: string
+  alerts: Alert[]
 }

@@ -125,10 +125,15 @@ class PollerLoop:
         else:
             self._breaker.record_failure(now)
 
-        if Feed.TRIP_UPDATES in self._cache.last_decoded or Feed.VEHICLE_POSITIONS in self._cache.last_decoded:
+        if (
+            Feed.TRIP_UPDATES in self._cache.last_decoded
+            or Feed.VEHICLE_POSITIONS in self._cache.last_decoded
+            or Feed.SERVICE_ALERTS in self._cache.last_decoded
+        ):
             self._store.ingest(
                 tu_feed=self._cache.last_decoded.get(Feed.TRIP_UPDATES, {}),
                 vp_feed=self._cache.last_decoded.get(Feed.VEHICLE_POSITIONS, {}),
+                sa_feed=self._cache.last_decoded.get(Feed.SERVICE_ALERTS),
                 cycle_time=now,
                 backoff_active=self._breaker.backoff_active,
             )

@@ -20,6 +20,7 @@ interface ScheduleBadge {
 
 function scheduleBadge(dep: ScheduledTrain): ScheduleBadge {
   if (dep.is_cancelled) return { label: 'Cancelled', className: styles.cancelledBadge }
+  if (dep.is_added) return { label: 'Extra service', className: styles.addedBadge }
   if (!dep.is_live) return { label: 'Scheduled', className: styles.scheduledBadge }
   if (dep.delay_seconds === null || Math.abs(dep.delay_seconds) <= ON_TIME_BAND_S) {
     return { label: 'On time', className: styles.onTimeBadge }

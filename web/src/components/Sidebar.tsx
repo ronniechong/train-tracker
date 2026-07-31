@@ -3,6 +3,7 @@ import { Legend } from './Legend'
 import { Search } from './Search'
 import { StatusPanel } from './StatusPanel'
 import { StationPanel } from './StationPanel'
+import { AlertsPanel } from './AlertsPanel'
 import { Section } from './Section'
 import { useAttribution } from '../hooks/useAttribution'
 import { cx } from '../lib/cx'
@@ -67,6 +68,7 @@ export function Sidebar({
           Recenter map
         </button>
       </Section>
+      <AlertsPanel />
       <StationPanel
         stationId={selectedStationId}
         trains={liveState.trains}

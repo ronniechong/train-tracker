@@ -1,8 +1,9 @@
 from datetime import date, datetime, timezone
 
 from traintracker.gtfs.gtfstime import gtfs_time_to_utc
-from traintracker.gtfs.schedule import next_departures, platforms_for_station
+from traintracker.gtfs.schedule import added_departures, next_departures, platforms_for_station
 from traintracker.gtfs.stops import Stop
+from traintracker.state.merge import StopTimeUpdate, TrainSnapshot
 
 
 def test_platforms_for_station_groups_by_parent_station(sample_stops):
@@ -93,3 +94,115 @@ def test_next_departures_excludes_inactive_service(sample_snapshot, sample_stop_
     deps = next_departures(trips, sample_stop_times, platform_ids, weekday, after)
     trip_ids = {d.trip_id for d in deps}
     assert trip_ids.issubset({"WEEKDAY_TRIP_1", "WEEKDAY_TRIP_2"})
+
+
+def _added_snapshot(
+    trip_id="EXTRA1", route_id="R1", stop_time_updates=(), schedule_relationship="ADDED"
+) -> TrainSnapshot:
+    return TrainSnapshot(
+        trip_id=trip_id,
+        route_id=route_id,
+        start_time="08:00:00",
+        start_date="20260720",
+        schedule_relationship=schedule_relationship,
+        stop_time_updates=stop_time_updates,
+        schedule_updated_at=datetime(2026, 7, 20, 7, 0, tzinfo=timezone.utc),
+        latitude=None,
+        longitude=None,
+        bearing=None,
+        position_updated_at=None,
+    )
+
+
+def _stu(stop_id, departure_time=None, arrival_time=None) -> StopTimeUpdate:
+    return StopTimeUpdate(
+        stop_sequence=1,
+        stop_id=stop_id,
+        arrival_delay=None,
+        arrival_time=arrival_time,
+        departure_delay=None,
+        departure_time=departure_time,
+        schedule_relationship="SCHEDULED",
+    )
+
+
+def test_added_departures_includes_added_trip_calling_at_the_platform(sample_stops):
+    after = datetime(2026, 7, 20, 7, 55, tzinfo=timezone.utc)
+    snapshot = _added_snapshot(
+        stop_time_updates=(
+            _stu("PLAT_A1", departure_time="1784700000"),
+            _stu("PLAT_B1", arrival_time="1784700300"),
+        )
+    )
+
+    deps = added_departures({"EXTRA1": snapshot}, sample_stops, frozenset({"PLAT_A1"}), after)
+
+    assert len(deps) == 1
+    dep = deps[0]
+    assert dep.trip_id == "EXTRA1"
+    assert dep.route_id == "R1"
+    assert dep.direction_id is None
+    assert dep.stop_id == "PLAT_A1"
+    # Headsign is derived from the trip's FINAL stop -- PLAT_B1, not the
+    # matched platform itself.
+    assert dep.headsign == "B Station Platform 1"
+
+
+def test_added_departures_ignores_non_added_trips(sample_stops):
+    after = datetime(2026, 7, 20, 7, 55, tzinfo=timezone.utc)
+    scheduled = _added_snapshot(
+        stop_time_updates=(_stu("PLAT_A1", departure_time="1784700000"),),
+        schedule_relationship="SCHEDULED",
+    )
+
+    deps = added_departures({"T1": scheduled}, sample_stops, frozenset({"PLAT_A1"}), after)
+
+    assert deps == []
+
+
+def test_added_departures_ignores_trips_not_calling_at_this_platform(sample_stops):
+    after = datetime(2026, 7, 20, 7, 55, tzinfo=timezone.utc)
+    snapshot = _added_snapshot(stop_time_updates=(_stu("PLAT_B1", departure_time="1784700000"),))
+
+    deps = added_departures({"EXTRA1": snapshot}, sample_stops, frozenset({"PLAT_A1"}), after)
+
+    assert deps == []
+
+
+def test_added_departures_filters_past_departures(sample_stops):
+    after = datetime(2026, 7, 20, 23, 0, tzinfo=timezone.utc)
+    # 1784584800 == 2026-07-20T22:00:00Z, before `after`.
+    snapshot = _added_snapshot(stop_time_updates=(_stu("PLAT_A1", departure_time="1784584800"),))
+
+    deps = added_departures({"EXTRA1": snapshot}, sample_stops, frozenset({"PLAT_A1"}), after)
+
+    assert deps == []
+
+
+def test_added_departures_falls_back_to_stop_id_when_final_stop_unknown(sample_stops):
+    after = datetime(2026, 7, 20, 7, 55, tzinfo=timezone.utc)
+    snapshot = _added_snapshot(
+        stop_time_updates=(
+            _stu("PLAT_A1", departure_time="1784700000"),
+            _stu("NOT_A_KNOWN_STOP", arrival_time="1784700300"),
+        )
+    )
+
+    deps = added_departures({"EXTRA1": snapshot}, sample_stops, frozenset({"PLAT_A1"}), after)
+
+    assert deps[0].headsign == "NOT_A_KNOWN_STOP"
+
+
+def test_added_departures_respects_limit_per_direction(sample_stops):
+    after = datetime(2026, 7, 20, 7, 55, tzinfo=timezone.utc)
+    snapshots = {
+        f"EXTRA{i}": _added_snapshot(
+            trip_id=f"EXTRA{i}",
+            stop_time_updates=(_stu("PLAT_A1", departure_time=str(1784700000 + i * 60)),),
+        )
+        for i in range(5)
+    }
+
+    deps = added_departures(snapshots, sample_stops, frozenset({"PLAT_A1"}), after, limit_per_direction=2)
+
+    assert len(deps) == 2

@@ -93,6 +93,11 @@ function buildStationPopupContent(
         cancelled.className = 'station-popup-schedule-cancelled-label'
         cancelled.textContent = 'Cancelled'
         row.append(cancelled)
+      } else if (dep.is_added) {
+        const added = document.createElement('span')
+        added.className = 'station-popup-schedule-added-label'
+        added.textContent = 'Extra'
+        row.append(added)
       }
       content.append(row)
     }

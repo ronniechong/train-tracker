@@ -37,10 +37,15 @@ def _vp_bytes(timestamp: int, trip_id: str = "T1", lat: float = -37.81) -> bytes
     return feed.SerializeToString()
 
 
-def _sa_bytes(timestamp: int) -> bytes:
+def _sa_bytes(timestamp: int, with_alert: bool = False) -> bytes:
     feed = gtfs_realtime_pb2.FeedMessage()
     feed.header.gtfs_realtime_version = "2.0"
     feed.header.timestamp = timestamp
+    if with_alert:
+        entity = feed.entity.add()
+        entity.id = "alert-1"
+        entity.alert.cause = gtfs_realtime_pb2.Alert.CONSTRUCTION
+        entity.alert.effect = gtfs_realtime_pb2.Alert.MODIFIED_SERVICE
     return feed.SerializeToString()
 
 
@@ -53,6 +58,7 @@ class ScriptedGateway:
         self.tu_ts = 1000
         self.vp_ts = 1000
         self.sa_ts = 1000
+        self.sa_has_alert = False
         self.fail_feeds: set[str] = set()
         self.rate_limit_remaining: int | None = None
 
@@ -70,7 +76,8 @@ class ScriptedGateway:
             if "vehicle-positions" in path:
                 return httpx.Response(200, content=_vp_bytes(self.vp_ts), headers=headers)
             if "service-alerts" in path:
-                return httpx.Response(200, content=_sa_bytes(self.sa_ts), headers=headers)
+                content = _sa_bytes(self.sa_ts, with_alert=self.sa_has_alert)
+                return httpx.Response(200, content=content, headers=headers)
             raise AssertionError(f"unexpected path {path}")
 
         self.client = GatewayClient(api_key="test-key")
@@ -101,6 +108,17 @@ async def test_successful_cycle_ingests_all_three_feeds_and_pings():
     assert result.changed_feeds == frozenset(ALL_FEEDS)
     assert "T1" in store.latest_snapshots
     assert store.status_of("T1") == "live"
+
+
+async def test_sa_alert_reaches_the_store():
+    scripted = ScriptedGateway()
+    scripted.sa_has_alert = True
+    loop, store = _new_loop(scripted)
+
+    await loop.run_cycle(T0)
+
+    assert "alert-1" in store.latest_alerts
+    assert store.latest_alerts["alert-1"].cause == "CONSTRUCTION"
 
 
 async def test_unchanged_header_is_deduped_but_store_still_ticks_forward():

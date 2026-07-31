@@ -159,3 +159,11 @@
   color: var(--color-danger);
   align-self: center;
 }
+
+.addedBadge {
+  text-align: right;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent);
+  align-self: center;
+}

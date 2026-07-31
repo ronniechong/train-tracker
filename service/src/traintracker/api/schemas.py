@@ -69,11 +69,16 @@ class ScheduledTrain(BaseModel):
     letting callers guess from nullability alone (same "label every
     inference" spirit as the ghost/discrepancy schemas elsewhere).
 
-    `is_cancelled` (05a): true when TU's `schedule_relationship` marks
+    `is_cancelled` (05a pass 2): true when TU's `schedule_relationship` marks
     either the whole trip CANCELED or, more narrowly, just this platform's
     stop SKIPPED (the train runs but doesn't call here) -- both mean "don't
     expect this departure," so both collapse to one flag rather than
-    exposing the raw enum distinction to callers who don't need it."""
+    exposing the raw enum distinction to callers who don't need it.
+
+    `is_added` (05a pass 3): true for a real-time-only extra service --
+    TU's `schedule_relationship` is ADDED, meaning it has no static
+    `stop_times.txt` row at all. `headsign` for these is derived (final
+    stop's name), not schedule fact, since ADDED trips carry none."""
 
     trip_id: str
     route_id: str
@@ -84,12 +89,46 @@ class ScheduledTrain(BaseModel):
     delay_seconds: int | None
     is_live: bool
     is_cancelled: bool
+    is_added: bool
 
 
 class StationScheduleResponse(BaseModel):
     station_id: str
     generated_at: datetime
     departures: list[ScheduledTrain]
+
+
+class AlertActivePeriod(BaseModel):
+    start: datetime | None
+    end: datetime | None
+
+
+class AlertInformedEntity(BaseModel):
+    """One route/stop/direction this alert's scope covers -- any field can
+    be null, meaning "unspecified" (applies broadly on that axis), per the
+    upstream feed. There is no trip_id here at all: this is a coarse join,
+    never confirmation that a specific train is affected -- see
+    `state/alerts.py`."""
+
+    route_id: str | None
+    stop_id: str | None
+    direction_id: int | None
+
+
+class Alert(BaseModel):
+    id: str
+    cause: str | None
+    effect: str | None
+    header_text: str | None
+    description_text: str | None
+    url: str | None
+    active_periods: list[AlertActivePeriod]
+    informed_entities: list[AlertInformedEntity]
+
+
+class AlertsResponse(BaseModel):
+    generated_at: datetime
+    alerts: list[Alert]
 
 
 class AttributionResponse(BaseModel):

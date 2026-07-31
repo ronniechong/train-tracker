@@ -11,9 +11,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from ..state.merge import TrainSnapshot
 from .gtfstime import service_date_for_instant
 from .pinning import PinManifest
-from .schedule import ScheduledDeparture, next_departures, platforms_for_station
+from .schedule import (
+    ScheduledDeparture,
+    added_departures,
+    next_departures,
+    platforms_for_station,
+)
 from .snapshot import StaticSnapshot
 from .stop_times import StopTimeRecord, stop_times_from_zip_bytes
 from .stops import Stop, stops_from_zip_bytes
@@ -58,12 +64,23 @@ class PinnedScheduleCache:
         return parsed
 
     def next_departures_for(
-        self, station_id: str, now: datetime, limit_per_direction: int = 3
+        self,
+        station_id: str,
+        now: datetime,
+        limit_per_direction: int = 3,
+        live_snapshots: dict[str, TrainSnapshot] | None = None,
     ) -> list[ScheduledDeparture] | None:
         """Returns `None` if `station_id` has no known platforms (caller
         should treat as 404). Raises `NoPinnedSnapshotError` if no snapshot
         is pinned yet for today (caller should treat as a distinct
-        service-not-ready condition, not a client error)."""
+        service-not-ready condition, not a client error).
+
+        `live_snapshots` (05a pass 3, optional) is the caller's
+        `StateStore.latest_snapshots` -- when given, ADDED (real-time-only,
+        no static row) trips calling at this station are folded in and the
+        combined list re-sorted by time. Omitting it (the default) keeps
+        this method's original static-only behaviour, e.g. for tests that
+        don't care about the live overlay."""
         service_date = service_date_for_instant(now)
         pin = self._pin_manifest.get(service_date)
         if pin is None:
@@ -78,7 +95,7 @@ class PinnedScheduleCache:
 
         active_trip_ids = parsed.snapshot.trip_ids_for_service_date(service_date)
         active_trips = [t for t in parsed.snapshot.trips if t.trip_id in active_trip_ids]
-        return next_departures(
+        departures = next_departures(
             active_trips,
             parsed.stop_times,
             platform_ids,
@@ -86,3 +103,9 @@ class PinnedScheduleCache:
             now,
             limit_per_direction=limit_per_direction,
         )
+        if live_snapshots:
+            extra = added_departures(
+                live_snapshots, parsed.stops, platform_ids, now, limit_per_direction=limit_per_direction
+            )
+            departures = sorted(departures + extra, key=lambda d: d.scheduled_time)
+        return departures
