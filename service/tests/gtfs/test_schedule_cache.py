@@ -34,6 +34,7 @@ def test_terminus_for_returns_the_highest_stop_sequence_row(tmp_path, sample_sta
 
     assert terminus is not None
     assert terminus.stop_id == "PLAT_B1"  # fixture's stop_sequence 2, no departure_time
+    assert terminus.stop_sequence == 2
     # gtfs_time_to_utc is the module's own conversion primitive (tested for
     # DST correctness in test_gtfstime.py) -- this test is about
     # terminus_for's wiring (right row picked, right time string used), not

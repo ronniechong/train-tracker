@@ -15,6 +15,7 @@ from typing import Callable
 
 from .alerts import Alert, parse_alerts
 from .completion import TripCompletionTracker
+from .delay_observation import DelayObservationTracker
 from .eventlog import EventLog
 from .ghost import TrackedTrainView, TrainLifecycleTracker
 from .merge import TrainSnapshot, merge
@@ -27,6 +28,7 @@ class StateStore:
         ghost_log: EventLog,
         on_tick: Callable[[tuple[TrackedTrainView, ...]], None] | None = None,
         completion_tracker: TripCompletionTracker | None = None,
+        delay_observation_tracker: DelayObservationTracker | None = None,
     ):
         self._discrepancy_log = discrepancy_log
         self._lifecycle = TrainLifecycleTracker(ghost_log)
@@ -36,6 +38,14 @@ class StateStore:
         # every other feature keeps working unchanged, matching `on_tick`'s
         # own optional-hook precedent.
         self._completion_tracker = completion_tracker
+        # Optional (05-ai-layer, delay/ETA-prediction observation logging,
+        # 2026-08-01): same optional-hook convention as completion_tracker
+        # above. Needs `self.latest_alerts` for its active_alert_flag
+        # feature, which is why it's ticked from inside ingest() (below)
+        # rather than by a separate caller -- that's the one place both
+        # a fresh `snapshots` and a fresh `latest_alerts` are in hand
+        # together at the same cycle_time.
+        self._delay_observation_tracker = delay_observation_tracker
         # Optional hook fired with the fresh `all_tracked()` result after
         # every `ingest()` -- lets a caller (e.g. metrics) observe tracked-
         # trip counts without this module knowing metrics exist at all,
@@ -80,6 +90,8 @@ class StateStore:
         self._lifecycle.tick(snapshots, cycle_time, backoff_active=backoff_active)
         if self._completion_tracker is not None:
             self._completion_tracker.tick(snapshots, cycle_time)
+        if self._delay_observation_tracker is not None:
+            self._delay_observation_tracker.tick(snapshots, cycle_time, self.latest_alerts)
         self.latest_snapshots = snapshots
         if self._on_tick is not None:
             self._on_tick(self._lifecycle.all_tracked())

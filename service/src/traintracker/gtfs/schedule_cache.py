@@ -37,10 +37,18 @@ class NoPinnedSnapshotError(Exception):
 class TripTerminus:
     """A trip's scheduled final stop -- the 05-ai-layer trip-completion
     tracker's anchor for "did this trip arrive on time", per the official
-    Victorian definition (arrival AT THE TERMINUS, not mid-journey delay)."""
+    Victorian definition (arrival AT THE TERMINUS, not mid-journey delay).
+
+    `stop_sequence` added 2026-08-01 for the delay/ETA-prediction
+    observation logger's `stops_remaining` feature (terminus's
+    stop_sequence minus the current stop's) -- purely additive,
+    `state/completion.py`'s own separate `TripTerminus` (duck-typed
+    against this one via `.stop_id`/`.scheduled_arrival` only, see
+    `poller/__main__.py`'s wiring) is unaffected by the new field."""
 
     stop_id: str
     scheduled_arrival: datetime  # absolute UTC
+    stop_sequence: int
 
 
 @dataclass(frozen=True)
@@ -130,6 +138,7 @@ class PinnedScheduleCache:
         return TripTerminus(
             stop_id=terminus.stop_id,
             scheduled_arrival=gtfs_time_to_utc(service_date, time_str),
+            stop_sequence=terminus.stop_sequence,
         )
 
     def routes_for(self, now: datetime) -> dict[str, Route]:

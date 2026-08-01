@@ -7,6 +7,7 @@ from traintracker.gtfs.pinning import PinManifest
 from traintracker.history.store import HistoryStore
 from traintracker.poller.breaker import PollGapEvent
 from traintracker.state.completion import TripCompletionEvent
+from traintracker.state.delay_observation import DelayObservationEvent
 from traintracker.state.ghost import GhostEvent
 from traintracker.state.merge import DiscrepancyEvent
 
@@ -157,7 +158,7 @@ def test_counts_reflects_currently_open_partition_only(tmp_path):
     store.rotate(_at(2026, 7, 21))  # rotate away -- new day starts empty
     assert store.counts() == {
         "discrepancy_events": 0, "ghost_events": 0, "poll_gap_events": 0,
-        "trip_completion_events": 0,
+        "trip_completion_events": 0, "delay_observation_events": 0,
     }
 
 
@@ -292,3 +293,53 @@ def test_read_completion_events_does_not_touch_the_live_writer_connection(tmp_pa
         )
     )
     assert store.counts()["discrepancy_events"] == 1
+
+
+def test_delay_observation_event_round_trips(tmp_path):
+    store = HistoryStore(tmp_path)
+    store.rotate(_at(2026, 7, 20))
+    store.delay_observation_log.record(
+        DelayObservationEvent(
+            trip_id="t1", route_id="2-BEG", service_date="2026-07-20",
+            observed_at=_at(2026, 7, 20, 10, 2),
+            current_delay_s=90, stops_remaining=3, active_alert_flag=True,
+        )
+    )
+    conn = sqlite3.connect(store.partition_path(date(2026, 7, 20)))
+    row = conn.execute(
+        "SELECT trip_id, route_id, service_date, current_delay_s, stops_remaining, "
+        "active_alert_flag FROM delay_observation_events"
+    ).fetchone()
+    conn.close()
+    assert row == ("t1", "2-BEG", "2026-07-20", 90, 3, 1)
+
+
+def test_delay_observation_event_round_trips_no_route_id_no_alert(tmp_path):
+    store = HistoryStore(tmp_path)
+    store.rotate(_at(2026, 7, 20))
+    store.delay_observation_log.record(
+        DelayObservationEvent(
+            trip_id="t2", route_id=None, service_date="2026-07-20",
+            observed_at=_at(2026, 7, 20, 10, 4),
+            current_delay_s=0, stops_remaining=1, active_alert_flag=False,
+        )
+    )
+    conn = sqlite3.connect(store.partition_path(date(2026, 7, 20)))
+    row = conn.execute(
+        "SELECT route_id, active_alert_flag FROM delay_observation_events"
+    ).fetchone()
+    conn.close()
+    assert row == (None, 0)
+
+
+def test_counts_includes_delay_observation_events(tmp_path):
+    store = HistoryStore(tmp_path)
+    store.rotate(_at(2026, 7, 20))
+    store.delay_observation_log.record(
+        DelayObservationEvent(
+            trip_id="t1", route_id="2-BEG", service_date="2026-07-20",
+            observed_at=_at(2026, 7, 20, 10, 2),
+            current_delay_s=90, stops_remaining=3, active_alert_flag=False,
+        )
+    )
+    assert store.counts()["delay_observation_events"] == 1

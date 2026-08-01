@@ -45,6 +45,7 @@ from ..history.store import HistoryStore
 from ..metrics import Metrics
 from ..redaction import configure_logging
 from ..state.completion import TripCompletionTracker
+from ..state.delay_observation import DelayObservationTracker
 from ..state.eventhub import InProcessEventHub
 from ..state.store import StateStore
 from .healthcheck import PING_URL_ENV
@@ -219,17 +220,24 @@ async def main() -> int:
     # merge.py/ghost.py/breaker.py.
     metrics = Metrics()
     start_http_server(METRICS_PORT)
-    discrepancy_log, ghost_log, gap_log, completion_log = metrics.event_logs(
+    discrepancy_log, ghost_log, gap_log, completion_log, delay_observation_log = metrics.event_logs(
         history.discrepancy_log, history.ghost_log, history.gap_log, history.completion_log,
+        history.delay_observation_log,
     )
     # 05-ai-layer (2026-08-01): real trip-completion tracking, Ronnie's
     # explicit choice over a cheaper snapshot-based stat -- reuses the same
     # `PinnedScheduleCache` instance the station-schedule feature already
     # constructed above, so this needs no new I/O path of its own.
     completion_tracker = TripCompletionTracker(completion_log, schedule_cache.terminus_for)
+    # 05-ai-layer delay/ETA-prediction, step one (2026-08-01): the
+    # observation logger training data for that feature doesn't exist
+    # anywhere yet -- see milestones/05-ai-layer.md's "Delay/ETA
+    # prediction" section. Same terminus lookup as completion_tracker,
+    # no new I/O path here either.
+    delay_observation_tracker = DelayObservationTracker(delay_observation_log, schedule_cache.terminus_for)
     store = StateStore(
         discrepancy_log=discrepancy_log, ghost_log=ghost_log, on_tick=metrics.record_tracked_trips,
-        completion_tracker=completion_tracker,
+        completion_tracker=completion_tracker, delay_observation_tracker=delay_observation_tracker,
     )
 
     gateway = GatewayClient()
@@ -335,12 +343,13 @@ async def main() -> int:
                 counts = history.counts()
                 logger.info(
                     "hourly summary (service_date=%s): discrepancies=%d ghost_episodes=%d "
-                    "breaker_gap_episodes=%d trip_completions=%d",
+                    "breaker_gap_episodes=%d trip_completions=%d delay_observations=%d",
                     history.service_date,
                     counts.get("discrepancy_events", 0),
                     counts.get("ghost_events", 0),
                     counts.get("poll_gap_events", 0),
                     counts.get("trip_completion_events", 0),
+                    counts.get("delay_observation_events", 0),
                 )
                 last_summary_at = cycle_start
 

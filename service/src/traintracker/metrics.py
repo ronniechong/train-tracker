@@ -142,6 +142,14 @@ class Metrics:
             ["status"],
             registry=registry,
         )
+        self.delay_observations_total = Counter(
+            "traintracker_delay_observations_total",
+            "Mid-journey delay observations logged (05-ai-layer's "
+            "DelayObservationEvent, 2026-08-01) -- the delay/ETA-"
+            "prediction feature's training-data collection step, distinct "
+            "from trip_completions_total's once-per-trip terminus outcome",
+            registry=registry,
+        )
 
     def event_logs(
         self,
@@ -149,7 +157,10 @@ class Metrics:
         ghost_log: object,
         gap_log: object,
         completion_log: object,
-    ) -> tuple[CountingEventLog, CountingEventLog, CountingEventLog, CountingEventLog]:
+        delay_observation_log: object,
+    ) -> tuple[
+        CountingEventLog, CountingEventLog, CountingEventLog, CountingEventLog, CountingEventLog,
+    ]:
         """Wrap the given `EventLog`s (e.g. 2e's `HistoryStore` facades) with
         counting, preserving whatever persistence they already do."""
         return (
@@ -157,6 +168,7 @@ class Metrics:
             CountingEventLog(ghost_log, self.ghost_events_total, _ghost_labels),
             CountingEventLog(gap_log, self.poll_gap_events_total),
             CountingEventLog(completion_log, self.trip_completions_total, _completion_labels),
+            CountingEventLog(delay_observation_log, self.delay_observations_total),
         )
 
     def record_cycle(self, result: CycleResult, breaker: CircuitBreaker) -> None:

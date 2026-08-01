@@ -71,20 +71,22 @@ def _completion(status="on_time"):
     )
 
 
-def test_event_logs_wraps_all_four_and_still_persists():
+def test_event_logs_wraps_all_five_and_still_persists():
     registry = CollectorRegistry()
     metrics = Metrics(registry)
     discrepancy_inner = _FakeEventLog()
     ghost_inner = _FakeEventLog()
     gap_inner = _FakeEventLog()
     completion_inner = _FakeEventLog()
+    delay_observation_inner = _FakeEventLog()
 
-    discrepancy_log, ghost_log, gap_log, completion_log = metrics.event_logs(
-        discrepancy_inner, ghost_inner, gap_inner, completion_inner,
+    discrepancy_log, ghost_log, gap_log, completion_log, delay_observation_log = metrics.event_logs(
+        discrepancy_inner, ghost_inner, gap_inner, completion_inner, delay_observation_inner,
     )
     discrepancy_log.record(_discrepancy())
     ghost_log.record(_ghost(loop_contained=True))
     completion_log.record(_completion(status="late"))
+    delay_observation_log.record(object())
 
     assert registry.get_sample_value("traintracker_discrepancy_events_total") == 1.0
     assert registry.get_sample_value(
@@ -93,7 +95,9 @@ def test_event_logs_wraps_all_four_and_still_persists():
     assert registry.get_sample_value(
         "traintracker_trip_completions_total", {"status": "late"}
     ) == 1.0
+    assert registry.get_sample_value("traintracker_delay_observations_total") == 1.0
     assert discrepancy_inner.events and ghost_inner.events and completion_inner.events
+    assert delay_observation_inner.events
     assert gap_inner.events == []  # untouched, nothing recorded on it yet
 
 

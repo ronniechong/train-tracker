@@ -135,3 +135,38 @@ def test_completion_tracker_ticks_on_ingest_and_flushes_on_flush():
     assert "trip-1" in tracker.tick_calls[0][0]
     assert tracker.tick_calls[0][1] == _at(0)
     assert tracker.flush_calls == [_at(10)]
+
+
+class _RecordingDelayObservationTracker:
+    def __init__(self):
+        self.tick_calls = []
+
+    def tick(self, snapshots, cycle_time, latest_alerts):
+        self.tick_calls.append((snapshots, cycle_time, latest_alerts))
+
+
+def test_delay_observation_tracker_is_optional():
+    # Default None -- must not raise, same convention as completion_tracker.
+    store = StateStore(InMemoryEventLog(), InMemoryEventLog())
+    tu = _tu_feed("1000000", "trip-1")
+    vp = _vp_feed("1000000", "trip-1", "1000000")
+
+    store.ingest(tu, vp, _at(0))  # no exception
+
+
+def test_delay_observation_tracker_ticks_on_ingest_with_fresh_alerts():
+    tracker = _RecordingDelayObservationTracker()
+    store = StateStore(InMemoryEventLog(), InMemoryEventLog(), delay_observation_tracker=tracker)
+    tu = _tu_feed("1000000", "trip-1")
+    vp = _vp_feed("1000000", "trip-1", "1000000")
+    sa = {"header": {"timestamp": "1000000"}, "entity": []}
+
+    store.ingest(tu, vp, _at(0), sa_feed=sa)
+
+    assert len(tracker.tick_calls) == 1
+    assert "trip-1" in tracker.tick_calls[0][0]
+    assert tracker.tick_calls[0][1] == _at(0)
+    # The SAME dict this ingest() call just set from the SA feed, not a
+    # stale/empty one -- the whole reason this tracker is ticked from
+    # inside ingest() rather than by a separate caller.
+    assert tracker.tick_calls[0][2] is store.latest_alerts

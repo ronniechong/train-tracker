@@ -1,15 +1,20 @@
 """SQLite-backed persistence for 2d's three `EventLog` outputs
 (`DiscrepancyEvent`, `GhostEvent`, `PollGapEvent`) plus 05-ai-layer's
-`TripCompletionEvent` — the concrete implementation `state/eventlog.py`
-forward-references as "2e ... owns a SQLite-backed implementation of this
-same Protocol."
+`TripCompletionEvent` and `DelayObservationEvent` — the concrete
+implementation `state/eventlog.py` forward-references as "2e ... owns a
+SQLite-backed implementation of this same Protocol."
 
 One SQLite file per service_date, not per event type: `discrepancy_events`,
-`ghost_events`, `poll_gap_events`, and `trip_completion_events` all live in
-the same file, alongside a `meta` row recording which static-snapshot digest
-(2c's `PinManifest`) was pinned to that service_date at the time the
-partition was opened — this is the "paired with that day's pinned static
-snapshot" requirement from milestone 2e.
+`ghost_events`, `poll_gap_events`, `trip_completion_events`, and
+`delay_observation_events` all live in the same file, alongside a `meta`
+row recording which static-snapshot digest (2c's `PinManifest`) was pinned
+to that service_date at the time the partition was opened — this is the
+"paired with that day's pinned static snapshot" requirement from milestone
+2e. `delay_observation_events` (2026-08-01) deliberately keeps the SAME
+60-day rolling retention as everything else here, unlike the weekly
+digest's separate `WeeklyDigestStore` -- this data's value decays as soon
+as a fresher model has been retrained on more recent conditions, so the
+existing cap is the right fit, not an exception to it.
 
 Routing a `.record(event)` call to the correct day's file is `rotate(now)`'s
 job, called once per poll cycle by the caller (`poller/__main__.py`) — this
@@ -36,6 +41,7 @@ from ..gtfs.gtfstime import service_date_for_instant
 from ..gtfs.pinning import PinManifest
 from ..poller.breaker import PollGapEvent
 from ..state.completion import TripCompletionEvent
+from ..state.delay_observation import DelayObservationEvent
 from ..state.ghost import GhostEvent
 from ..state.merge import DiscrepancyEvent
 
@@ -50,6 +56,19 @@ def _parse_iso(value: str | None) -> datetime | None:
 
 def _bool_to_int(value: bool) -> int:
     return 1 if value else 0
+
+
+def _delay_observation_row(event: DelayObservationEvent) -> tuple:
+    return (
+        datetime.now(timezone.utc).isoformat(),
+        event.trip_id,
+        event.route_id,
+        event.service_date,
+        _iso(event.observed_at),
+        event.current_delay_s,
+        event.stops_remaining,
+        _bool_to_int(event.active_alert_flag),
+    )
 
 
 @dataclass(frozen=True)
@@ -207,7 +226,34 @@ TRIP_COMPLETION_TABLE = _TableSpec(
     to_row=_trip_completion_row,
 )
 
-_ALL_TABLES = (DISCREPANCY_TABLE, GHOST_TABLE, POLL_GAP_TABLE, TRIP_COMPLETION_TABLE)
+DELAY_OBSERVATION_TABLE = _TableSpec(
+    name="delay_observation_events",
+    create_sql="""
+        CREATE TABLE IF NOT EXISTS delay_observation_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recorded_at TEXT NOT NULL,
+            trip_id TEXT NOT NULL,
+            route_id TEXT,
+            service_date TEXT NOT NULL,
+            observed_at TEXT NOT NULL,
+            current_delay_s INTEGER NOT NULL,
+            stops_remaining INTEGER NOT NULL,
+            active_alert_flag INTEGER NOT NULL
+        )
+    """,
+    insert_sql="""
+        INSERT INTO delay_observation_events
+            (recorded_at, trip_id, route_id, service_date, observed_at,
+             current_delay_s, stops_remaining, active_alert_flag)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """,
+    to_row=_delay_observation_row,
+)
+
+_ALL_TABLES = (
+    DISCREPANCY_TABLE, GHOST_TABLE, POLL_GAP_TABLE, TRIP_COMPLETION_TABLE,
+    DELAY_OBSERVATION_TABLE,
+)
 
 
 def _row_to_completion_event(row: tuple) -> TripCompletionEvent:
@@ -274,6 +320,7 @@ class HistoryStore:
         self.ghost_log = _TableEventLog(self, GHOST_TABLE)
         self.gap_log = _TableEventLog(self, POLL_GAP_TABLE)
         self.completion_log = _TableEventLog(self, TRIP_COMPLETION_TABLE)
+        self.delay_observation_log = _TableEventLog(self, DELAY_OBSERVATION_TABLE)
 
     @property
     def service_date(self) -> date | None:
