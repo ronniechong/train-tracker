@@ -14,9 +14,18 @@ const require = createRequire(import.meta.url)
 // fine (Vite serves node_modules files on demand), but `vite build` never
 // copies it into dist/assets/, so it silently 404s ONLY in production --
 // this was never caught until this project's first-ever live deploy (the
-// map hangs on "Loading live map..." forever: no console error, since it's
-// a Worker-type request, not a script exception). Copies the file into
-// dist/assets/ under its exact expected (un-hashed) filename after build.
+// map hangs on "Loading live map..." forever: no console error visible in
+// the main-thread console, since load failures inside a dedicated Worker
+// surface as an opaque `ErrorEvent` on the Worker object itself, not a
+// normal thrown exception -- confirmed via `new Worker(...).onerror` in a
+// live debugging session, not assumed).
+//
+// The worker file ALSO has its own relative import --
+// `import ... from "./maplibre-gl-shared.mjs"` (grepped from the actual
+// file, not guessed) -- a second static sibling dependency that's
+// separately invisible to Rollup for the exact same reason. Copying only
+// the worker file (this fix's first attempt) still 404s on ITS import,
+// same failure mode one level deeper. Both files must be copied together.
 function copyMaplibreWorker(): Plugin {
   let outDir = 'dist'
   return {
@@ -26,10 +35,11 @@ function copyMaplibreWorker(): Plugin {
       outDir = config.build.outDir
     },
     closeBundle() {
-      const src = require.resolve('maplibre-gl/dist/maplibre-gl-worker.mjs')
       const assetsDir = join(outDir, 'assets')
       mkdirSync(assetsDir, { recursive: true })
-      copyFileSync(src, join(assetsDir, 'maplibre-gl-worker.mjs'))
+      for (const file of ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs']) {
+        copyFileSync(require.resolve(`maplibre-gl/dist/${file}`), join(assetsDir, file))
+      }
     },
   }
 }
