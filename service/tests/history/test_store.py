@@ -343,3 +343,23 @@ def test_counts_includes_delay_observation_events(tmp_path):
         )
     )
     assert store.counts()["delay_observation_events"] == 1
+
+
+def test_read_completion_events_treats_a_partition_predating_the_table_as_missing(tmp_path):
+    # Caught live in production (2026-08-01): a real partition file
+    # from before trip_completion_events existed, never reopened by
+    # rotate() since, so the table was never created in it. Must be
+    # treated the same as a missing file -- an honest gap, not a crash.
+    history_dir = tmp_path / "history"
+    history_dir.mkdir()
+    old_partition = history_dir / "2026-07-20.db"
+    conn = sqlite3.connect(old_partition)
+    conn.execute("CREATE TABLE discrepancy_events (id INTEGER PRIMARY KEY)")
+    conn.close()
+
+    store = HistoryStore(history_dir)
+    window = store.read_completion_events([date(2026, 7, 20)])
+
+    assert window.days_covered == ()
+    assert window.days_missing == (date(2026, 7, 20),)
+    assert window.events == ()

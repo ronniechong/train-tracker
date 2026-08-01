@@ -399,6 +399,15 @@ class HistoryStore:
                     "SELECT trip_id, route_id, service_date, scheduled_terminus_arrival, "
                     "actual_terminus_arrival, delay_seconds, status FROM trip_completion_events"
                 ).fetchall()
+            except sqlite3.OperationalError:
+                # The partition file exists but predates
+                # `trip_completion_events` (e.g. a day from before that
+                # table shipped, never reopened by rotate() since --
+                # caught live in production on this feature's first
+                # post-deploy cycle, 2026-08-01) -- same honest "no real
+                # data here" signal as a missing file entirely, not a crash.
+                missing.append(service_date)
+                continue
             finally:
                 conn.close()
             covered.append(service_date)
