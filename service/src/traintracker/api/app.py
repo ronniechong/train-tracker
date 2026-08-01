@@ -39,6 +39,7 @@ from ..state.alerts import alerts_matching
 from ..state.eventhub import EventHub
 from ..state.ghost import MAX_GHOST_AGE_S, TrackedTrainView
 from ..state.store import StateStore
+from .http_metrics import HttpMetricsMiddleware
 from .limits import (
     RATE_LIMIT_WINDOW_S,
     ConnectionLimitExceeded,
@@ -359,6 +360,11 @@ def create_app(
         allow_methods=["GET"],
         allow_headers=["*"],
     )
+    # Added AFTER CORSMiddleware deliberately -- Starlette's add_middleware
+    # makes the LAST-added layer the OUTERMOST one, so this wraps CORS too
+    # and sees the true end-to-end status/latency a client experiences,
+    # not just what reaches the router.
+    app.add_middleware(HttpMetricsMiddleware, metrics=metrics)
 
     @app.exception_handler(Exception)
     async def _unhandled_exception(request: Request, exc: Exception) -> JSONResponse:

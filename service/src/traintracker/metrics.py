@@ -16,7 +16,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Callable
 
-from prometheus_client import REGISTRY, CollectorRegistry, Counter, Gauge
+from prometheus_client import REGISTRY, CollectorRegistry, Counter, Gauge, Histogram
 
 from .gateway.client import Feed
 from .poller.breaker import CircuitBreaker
@@ -150,6 +150,29 @@ class Metrics:
             "from trip_completions_total's once-per-trip terminus outcome",
             registry=registry,
         )
+        self.http_requests_total = Counter(
+            "traintracker_http_requests_total",
+            "HTTP requests by route template, method, and status code "
+            "(M3, reopened 2026-08-01) -- 'route' is the FastAPI route "
+            "template (e.g. /stations/{station_id}/schedule), not the "
+            "raw path, so per-station hits don't create unbounded label "
+            "cardinality",
+            ["route", "method", "status"],
+            registry=registry,
+        )
+        self.http_request_duration_seconds = Histogram(
+            "traintracker_http_request_duration_seconds",
+            "Time to first byte (response start, not full completion -- "
+            "deliberate: /api/stream is a long-lived SSE connection that "
+            "would otherwise show up as an hours-long outlier) by route "
+            "template and method",
+            ["route", "method"],
+            registry=registry,
+        )
+
+    def record_http_request(self, route: str, method: str, status: int, duration_s: float) -> None:
+        self.http_requests_total.labels(route=route, method=method, status=str(status)).inc()
+        self.http_request_duration_seconds.labels(route=route, method=method).observe(duration_s)
 
     def event_logs(
         self,

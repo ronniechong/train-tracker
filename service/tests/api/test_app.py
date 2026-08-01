@@ -1034,3 +1034,90 @@ async def test_weekly_digests_respects_the_limit_query_param(tmp_path):
     body = response.json()
     assert len(body["digests"]) == 1
     assert body["digests"][0]["week_start"] == "2026-08-03"  # most recent first
+
+
+async def test_http_metrics_records_count_and_status_for_a_simple_route():
+    loop, store = await _running_loop()
+    registry = CollectorRegistry()
+    metrics = Metrics(registry)
+
+    async with await _client_for(loop, store, metrics=metrics) as client:
+        response = await client.get("/healthz")
+
+    assert response.status_code == 200
+    assert registry.get_sample_value(
+        "traintracker_http_requests_total",
+        {"route": "/healthz", "method": "GET", "status": "200"},
+    ) == 1.0
+
+
+async def test_http_metrics_records_duration():
+    loop, store = await _running_loop()
+    registry = CollectorRegistry()
+    metrics = Metrics(registry)
+
+    async with await _client_for(loop, store, metrics=metrics) as client:
+        await client.get("/healthz")
+
+    count = registry.get_sample_value(
+        "traintracker_http_request_duration_seconds_count",
+        {"route": "/healthz", "method": "GET"},
+    )
+    assert count == 1.0
+
+
+async def test_http_metrics_uses_the_route_template_not_the_raw_path(tmp_path, sample_static_zip_bytes):
+    # /stations/STATION_A/schedule must be labelled as the TEMPLATE
+    # /stations/{station_id}/schedule -- a raw-path label would create
+    # unbounded cardinality (one series per station ever queried).
+    loop, store = await _running_loop()
+    schedule_cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+    registry = CollectorRegistry()
+    metrics = Metrics(registry)
+
+    async with await _client_for(loop, store, schedule_cache=schedule_cache, metrics=metrics) as client:
+        await client.get("/stations/NOT_A_REAL_STATION/schedule")
+
+    assert registry.get_sample_value(
+        "traintracker_http_requests_total",
+        {"route": "/stations/{station_id}/schedule", "method": "GET", "status": "404"},
+    ) == 1.0
+    assert registry.get_sample_value(
+        "traintracker_http_requests_total",
+        {"route": "/stations/NOT_A_REAL_STATION/schedule", "method": "GET", "status": "404"},
+    ) is None
+
+
+async def test_http_metrics_labels_a_genuinely_unmatched_path(tmp_path):
+    loop, store = await _running_loop()
+    registry = CollectorRegistry()
+    metrics = Metrics(registry)
+
+    async with await _client_for(loop, store, metrics=metrics) as client:
+        response = await client.get("/this/route/does/not/exist")
+
+    assert response.status_code == 404
+    assert registry.get_sample_value(
+        "traintracker_http_requests_total",
+        {"route": "unmatched", "method": "GET", "status": "404"},
+    ) == 1.0
+
+
+async def test_http_metrics_is_a_noop_without_a_metrics_instance():
+    # metrics=None (the default) -- must not raise, same "feature not
+    # wired" convention as ai_client/digest_store elsewhere in this app.
+    loop, store = await _running_loop()
+
+    async with await _client_for(loop, store) as client:  # no metrics kwarg
+        response = await client.get("/healthz")
+
+    assert response.status_code == 200
+
+
+# No end-to-end /api/stream HTTP test here -- `_event_source`'s own
+# docstring documents why: httpx's ASGITransport fully awaits an ASGI app
+# to completion before returning anything, so it cannot drive an infinite
+# SSE generator at all (confirmed the hard way: an early version of this
+# test hung indefinitely). `tests/api/test_http_metrics.py` verifies the
+# middleware's no-buffering behavior directly against a scripted ASGI
+# send sequence instead, without needing a real streaming transport.

@@ -155,6 +155,42 @@ groups:
               from: 0
               to: 0
 
+      - uid: http-5xx-rate
+        title: "Sustained HTTP 5xx error rate"
+        condition: C
+        for: 2m
+        labels:
+          severity: warning
+          project: train-tracker
+        annotations:
+          summary: "More than 10 5xx responses across all API routes in the last 5 minutes (M3, reopened 2026-08-01 -- traintracker_http_requests_total, see http_metrics.py) -- every route already returns a scrubbed generic error body on failure (finding #8), so a sustained rise here means something is genuinely broken server-side, not just a noisy client. First-cut threshold, not tuned against real post-launch traffic yet."
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            model:
+              # Same `or vector(0)` reasoning as rate-limit-abuse above --
+              # the {status=~"5.."} label combination doesn't exist in
+              # Prometheus at all until the first 5xx actually happens.
+              expr: "sum(increase(traintracker_http_requests_total{status=~\"5..\"}[5m])) or vector(0)"
+              instant: true
+              refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [10]
+              refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+
       - uid: disk-headroom
         title: "Disk headroom below 15% free"
         condition: C
