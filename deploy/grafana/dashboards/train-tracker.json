@@ -518,6 +518,52 @@
           "refId": "B"
         }
       ]
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "HTTP 5xx count (last 5m)",
+      "description": "Alert (http-5xx-rate): fires when this exceeds 10 for 2m straight. Same query as the alert rule, incl. the `or vector(0)` fallback -- the {status=~\"5..\"} series doesn't exist in Prometheus until the first 5xx happens.",
+      "gridPos": {
+        "x": 0,
+        "y": 76,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(traintracker_http_requests_total{status=~\"5..\"}[5m])) or vector(0)",
+          "legendFormat": "5xx count",
+          "refId": "A"
+        }
+      ]
     }
   ]
 }
