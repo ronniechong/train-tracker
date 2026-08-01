@@ -18,7 +18,7 @@ export function Header({ theme, onThemeChange }: HeaderProps) {
         <h1 className={styles.title}>Melbourne Train Tracker</h1>
       </div>
       <div className={styles.taglineRow}>
-        <p className={styles.tagline}>Melbourne Metro, close to real-time 😅</p>
+        <p className={styles.tagline}>Tracking trains, almost real-time 😅</p>
         {/* A plain wrapper doesn't make Toggle's checkbox clickable -- its
             input is intentionally zero-size (Toggle.module.css), relying
             on a real <label> ancestor for the browser's native implicit
