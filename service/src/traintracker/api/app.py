@@ -27,6 +27,7 @@ from ..ai.briefing_filter import has_briefable_alerts
 from ..ai.budget import BudgetExceededError
 from ..ai.llm_client import LLMClient
 from ..ai.tools import ToolContext
+from ..digests.store import WeeklyDigestStore
 from ..gateway.client import Feed
 from ..gtfs.schedule import ScheduledDeparture
 from ..gtfs.schedule_cache import NoPinnedSnapshotError, PinnedScheduleCache
@@ -59,6 +60,9 @@ from .schemas import (
     StateResponse,
     StationScheduleResponse,
     Train,
+    WeeklyDigest,
+    WeeklyDigestListResponse,
+    WeeklyLineStat,
 )
 
 # M3 finding #11: both the static GTFS schedule and the realtime feeds are
@@ -334,6 +338,9 @@ def create_app(
     ai_tool_context: ToolContext | None = None,
     ai_notify_client: httpx.AsyncClient | None = None,
     metrics: Metrics | None = None,
+    # 05-ai-layer weekly digest (locked 2026-08-01): None by default, same
+    # "feature not configured" 503 convention as the AI-stack params above.
+    digest_store: WeeklyDigestStore | None = None,
 ) -> FastAPI:
     connections = connections or ConnectionTracker()
     rate_limiter = rate_limiter or RateLimiter()
@@ -436,6 +443,47 @@ def create_app(
             metrics.record_briefing_sent()
         return BriefingTriggerResponse(
             sent=sent, reason=None if sent else "Slack delivery failed", text=text if sent else None
+        )
+
+    @app.get(
+        "/digests/weekly",
+        response_model=WeeklyDigestListResponse,
+        dependencies=[Depends(_rate_limit_dependency(rate_limiter, "digests_weekly"))],
+    )
+    async def get_weekly_digests(limit: int = 20) -> WeeklyDigestListResponse:
+        # Read-only public history (invariant 3: GET-only, derived state) --
+        # no tailnet isolation needed here, unlike /briefing/trigger, since
+        # this never triggers spend, only serves what a poll-loop-driven
+        # trigger already generated and stored.
+        if digest_store is None:
+            raise HTTPException(status_code=503, detail="weekly digest feature not configured")
+        stored = digest_store.list_digests(limit=limit)
+        return WeeklyDigestListResponse(
+            digests=[
+                WeeklyDigest(
+                    week_start=d.record.week_start,
+                    week_end=d.record.week_end,
+                    days_covered=d.record.days_covered,
+                    on_time_count=d.record.on_time_count,
+                    late_count=d.record.late_count,
+                    cancelled_count=d.record.cancelled_count,
+                    on_time_pct=d.record.on_time_pct,
+                    narrative=d.record.narrative,
+                    slack_delivered=d.record.slack_delivered,
+                    line_stats=[
+                        WeeklyLineStat(
+                            route_id=line.route_id,
+                            trip_count=line.trip_count,
+                            on_time_count=line.on_time_count,
+                            late_count=line.late_count,
+                            cancelled_count=line.cancelled_count,
+                            on_time_pct=line.on_time_pct,
+                        )
+                        for line in d.record.line_stats
+                    ],
+                )
+                for d in stored
+            ]
         )
 
     @app.get(

@@ -10,7 +10,7 @@ into the public API, not just live on the internal dashboard.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -141,6 +141,38 @@ class BriefingTriggerResponse(BaseModel):
     sent: bool
     reason: str | None = None
     text: str | None = None
+
+
+class WeeklyLineStat(BaseModel):
+    route_id: str
+    trip_count: int
+    on_time_count: int
+    late_count: int
+    cancelled_count: int
+    on_time_pct: float
+
+
+class WeeklyDigest(BaseModel):
+    """One week's performance digest (05-ai-layer, locked 2026-08-01).
+    `days_covered` surfaces a partial window honestly (cold start / a
+    mid-week outage day) rather than presenting fewer than 7 days of data
+    as if it were a complete week -- same gap-honesty convention as
+    `ScheduledTrain.is_live`/`is_added` elsewhere in this schema module."""
+
+    week_start: date
+    week_end: date
+    days_covered: int
+    on_time_count: int
+    late_count: int
+    cancelled_count: int
+    on_time_pct: float
+    narrative: str
+    slack_delivered: bool
+    line_stats: list[WeeklyLineStat]
+
+
+class WeeklyDigestListResponse(BaseModel):
+    digests: list[WeeklyDigest]
 
 
 class AttributionResponse(BaseModel):

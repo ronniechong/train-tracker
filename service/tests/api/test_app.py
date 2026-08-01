@@ -1,6 +1,6 @@
 import hashlib
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import httpx
 import pytest
@@ -12,6 +12,7 @@ from traintracker.ai.llm_client import LLMResponse
 from traintracker.ai.tools import ToolContext
 from traintracker.api.app import _event_source, _scheduled_train, create_app
 from traintracker.api.limits import ConnectionTracker, RateLimiter
+from traintracker.digests.store import LineStat, WeeklyDigestRecord, WeeklyDigestStore
 from traintracker.gateway.client import GatewayClient
 from traintracker.gtfs.gtfstime import service_date_for_instant
 from traintracker.gtfs.pinning import PinManifest
@@ -142,6 +143,7 @@ async def _client_for(
     ai_tool_context=None,
     ai_notify_client=None,
     metrics=None,
+    digest_store=None,
 ) -> httpx.AsyncClient:
     app = create_app(
         loop=loop,
@@ -155,6 +157,7 @@ async def _client_for(
         ai_tool_context=ai_tool_context,
         ai_notify_client=ai_notify_client,
         metrics=metrics,
+        digest_store=digest_store,
     )
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
 
@@ -957,3 +960,77 @@ async def test_trigger_briefing_reports_a_generic_failure_without_leaking_intern
     body = response.json()
     assert body["sent"] is False
     assert "some internal detail" not in body["reason"]
+
+
+def _digest_store(tmp_path):
+    store = WeeklyDigestStore(tmp_path / "weekly.db")
+    store.record(
+        WeeklyDigestRecord(
+            week_start=date(2026, 7, 27), week_end=date(2026, 8, 2), days_covered=7,
+            on_time_count=305, late_count=6, cancelled_count=0, on_time_pct=98.07,
+            narrative="A solid week overall.", slack_delivered=True,
+            line_stats=(
+                LineStat(
+                    route_id="2-BEG", trip_count=25, on_time_count=20, late_count=5,
+                    cancelled_count=0, on_time_pct=80.0,
+                ),
+            ),
+        )
+    )
+    return store
+
+
+async def test_weekly_digests_returns_503_when_not_configured():
+    loop, store = await _running_loop()
+    async with await _client_for(loop, store) as client:  # no digest_store kwarg
+        response = await client.get("/digests/weekly")
+
+    assert response.status_code == 503
+
+
+async def test_weekly_digests_returns_the_stored_list(tmp_path):
+    loop, store = await _running_loop()
+    digest_store = _digest_store(tmp_path)
+
+    async with await _client_for(loop, store, digest_store=digest_store) as client:
+        response = await client.get("/digests/weekly")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["digests"]) == 1
+    digest = body["digests"][0]
+    assert digest["week_start"] == "2026-07-27"
+    assert digest["week_end"] == "2026-08-02"
+    assert digest["days_covered"] == 7
+    assert digest["on_time_count"] == 305
+    assert digest["late_count"] == 6
+    assert digest["cancelled_count"] == 0
+    assert digest["on_time_pct"] == 98.07
+    assert digest["narrative"] == "A solid week overall."
+    assert digest["slack_delivered"] is True
+    assert digest["line_stats"] == [
+        {
+            "route_id": "2-BEG", "trip_count": 25, "on_time_count": 20,
+            "late_count": 5, "cancelled_count": 0, "on_time_pct": 80.0,
+        }
+    ]
+
+
+async def test_weekly_digests_respects_the_limit_query_param(tmp_path):
+    loop, store = await _running_loop()
+    digest_store = _digest_store(tmp_path)
+    digest_store.record(
+        WeeklyDigestRecord(
+            week_start=date(2026, 8, 3), week_end=date(2026, 8, 9), days_covered=7,
+            on_time_count=310, late_count=4, cancelled_count=1, on_time_pct=98.73,
+            narrative="Another good week.", slack_delivered=True, line_stats=(),
+        )
+    )
+
+    async with await _client_for(loop, store, digest_store=digest_store) as client:
+        response = await client.get("/digests/weekly", params={"limit": 1})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["digests"]) == 1
+    assert body["digests"][0]["week_start"] == "2026-08-03"  # most recent first

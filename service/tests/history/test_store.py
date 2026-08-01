@@ -205,3 +205,90 @@ def test_close_allows_a_fresh_rotate_afterward(tmp_path):
     assert store.service_date is None
     store.rotate(_at(2026, 7, 20))
     assert store.counts()["discrepancy_events"] == 0
+
+
+def test_read_completion_events_spans_multiple_partitions(tmp_path):
+    store = HistoryStore(tmp_path)
+    store.rotate(_at(2026, 7, 20))
+    store.completion_log.record(
+        TripCompletionEvent(
+            trip_id="t1", route_id="2-BEG", service_date="2026-07-20",
+            scheduled_terminus_arrival=_at(2026, 7, 20, 10, 0),
+            actual_terminus_arrival=_at(2026, 7, 20, 10, 3),
+            delay_seconds=180, status="on_time",
+        )
+    )
+    store.rotate(_at(2026, 7, 21))
+    store.completion_log.record(
+        TripCompletionEvent(
+            trip_id="t2", route_id="2-CRB", service_date="2026-07-21",
+            scheduled_terminus_arrival=_at(2026, 7, 21, 9, 0),
+            actual_terminus_arrival=None, delay_seconds=None, status="cancelled",
+        )
+    )
+
+    window = store.read_completion_events([date(2026, 7, 20), date(2026, 7, 21)])
+
+    assert {e.trip_id for e in window.events} == {"t1", "t2"}
+    assert window.days_covered == (date(2026, 7, 20), date(2026, 7, 21))
+    assert window.days_missing == ()
+    # Full round trip, not just presence -- datetimes and None fields intact.
+    t1 = next(e for e in window.events if e.trip_id == "t1")
+    assert t1.scheduled_terminus_arrival == _at(2026, 7, 20, 10, 0)
+    assert t1.actual_terminus_arrival == _at(2026, 7, 20, 10, 3)
+    assert t1.status == "on_time"
+    t2 = next(e for e in window.events if e.trip_id == "t2")
+    assert t2.actual_terminus_arrival is None
+    assert t2.status == "cancelled"
+
+
+def test_read_completion_events_reports_a_missing_partition_honestly(tmp_path):
+    store = HistoryStore(tmp_path)
+    store.rotate(_at(2026, 7, 20))
+    store.completion_log.record(
+        TripCompletionEvent(
+            trip_id="t1", route_id="2-BEG", service_date="2026-07-20",
+            scheduled_terminus_arrival=_at(2026, 7, 20, 10, 0),
+            actual_terminus_arrival=_at(2026, 7, 20, 10, 3),
+            delay_seconds=180, status="on_time",
+        )
+    )
+    # 2026-07-21's partition was never opened at all -- e.g. the poller was
+    # down that whole service_date. A real gap, distinct from "opened but
+    # zero events."
+
+    window = store.read_completion_events([date(2026, 7, 20), date(2026, 7, 21)])
+
+    assert window.days_covered == (date(2026, 7, 20),)
+    assert window.days_missing == (date(2026, 7, 21),)
+    assert [e.trip_id for e in window.events] == ["t1"]
+
+
+def test_read_completion_events_counts_an_opened_but_empty_partition_as_covered(tmp_path):
+    store = HistoryStore(tmp_path)
+    store.rotate(_at(2026, 7, 20))  # opened, but nothing ever recorded that day
+
+    window = store.read_completion_events([date(2026, 7, 20)])
+
+    assert window.days_covered == (date(2026, 7, 20),)
+    assert window.days_missing == ()
+    assert window.events == ()
+
+
+def test_read_completion_events_does_not_touch_the_live_writer_connection(tmp_path):
+    # The currently-open (today's) partition must remain fully writable
+    # after a cross-partition read touches an EARLIER, already-closed
+    # partition -- the read-only connections must not interfere with it.
+    store = HistoryStore(tmp_path)
+    store.rotate(_at(2026, 7, 20))
+    store.rotate(_at(2026, 7, 21))
+
+    store.read_completion_events([date(2026, 7, 20)])
+
+    store.discrepancy_log.record(
+        DiscrepancyEvent(
+            trip_id="t1", observed_at=_at(2026, 7, 21), discrepancy_type="vp_without_tu",
+            tu_value=None, vp_value="2",
+        )
+    )
+    assert store.counts()["discrepancy_events"] == 1

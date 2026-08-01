@@ -26,6 +26,7 @@ self-contained file with no `-wal`/`-shm` sidecars for `sync.py`'s plain
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -41,6 +42,10 @@ from ..state.merge import DiscrepancyEvent
 
 def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value is not None else None
+
+
+def _parse_iso(value: str | None) -> datetime | None:
+    return datetime.fromisoformat(value) if value is not None else None
 
 
 def _bool_to_int(value: bool) -> int:
@@ -204,6 +209,35 @@ TRIP_COMPLETION_TABLE = _TableSpec(
 
 _ALL_TABLES = (DISCREPANCY_TABLE, GHOST_TABLE, POLL_GAP_TABLE, TRIP_COMPLETION_TABLE)
 
+
+def _row_to_completion_event(row: tuple) -> TripCompletionEvent:
+    trip_id, route_id, service_date, scheduled_arrival, actual_arrival, delay_seconds, status = row
+    return TripCompletionEvent(
+        trip_id=trip_id,
+        route_id=route_id,
+        service_date=service_date,
+        scheduled_terminus_arrival=_parse_iso(scheduled_arrival),
+        actual_terminus_arrival=_parse_iso(actual_arrival),
+        delay_seconds=delay_seconds,
+        status=status,
+    )
+
+
+@dataclass(frozen=True)
+class CompletionEventsWindow:
+    """The result of reading `trip_completion_events` across multiple
+    day-partitions at once (05-ai-layer's weekly digest -- the first
+    feature needing this; see milestones/05-ai-layer.md). `days_covered`
+    vs `days_missing` is the honesty distinction the digest's cold-start
+    and gap-day handling depends on: a partition file existing (however
+    few events it holds) means genuine coverage; a missing file means an
+    unknown -- the poller wasn't running that service_date at all, not
+    "zero trips ran"."""
+
+    events: tuple[TripCompletionEvent, ...]
+    days_covered: tuple[date, ...]
+    days_missing: tuple[date, ...]
+
 _META_CREATE_SQL = """
     CREATE TABLE IF NOT EXISTS meta (
         service_date TEXT PRIMARY KEY,
@@ -286,6 +320,46 @@ class HistoryStore:
         if self._conn is None:
             raise RuntimeError("HistoryStore.rotate(now) must be called before recording events")
         self._conn.execute(spec.insert_sql, row)
+
+    def read_completion_events(self, service_dates: Sequence[date]) -> CompletionEventsWindow:
+        """Read `trip_completion_events` across multiple day-partitions at
+        once -- unlike every other method on this class, this never touches
+        `self._conn` (the live writer's currently-open partition). Each
+        requested service_date's file is opened as its own independent
+        READ-ONLY connection (`mode=ro` -- refuses to create a missing
+        file, which is exactly the signal used to populate `days_missing`)
+        and closed again immediately after.
+
+        Safe against the live writer by construction for this call's only
+        real caller (the weekly digest, firing Monday 8am over the
+        previous Mon-Sun): every requested partition is from a fully
+        elapsed service_date, already rotated past by the time this runs,
+        so there is never a partition in the requested window still open
+        for writes."""
+        events: list[TripCompletionEvent] = []
+        covered: list[date] = []
+        missing: list[date] = []
+
+        for service_date in service_dates:
+            path = self.partition_path(service_date)
+            try:
+                conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+            except sqlite3.OperationalError:
+                missing.append(service_date)
+                continue
+            try:
+                rows = conn.execute(
+                    "SELECT trip_id, route_id, service_date, scheduled_terminus_arrival, "
+                    "actual_terminus_arrival, delay_seconds, status FROM trip_completion_events"
+                ).fetchall()
+            finally:
+                conn.close()
+            covered.append(service_date)
+            events.extend(_row_to_completion_event(row) for row in rows)
+
+        return CompletionEventsWindow(
+            events=tuple(events), days_covered=tuple(covered), days_missing=tuple(missing),
+        )
 
     def counts(self) -> dict[str, int]:
         """Row counts per table for the currently-open partition (i.e.

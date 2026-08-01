@@ -24,7 +24,7 @@ import asyncio
 import logging
 import os
 import signal
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
@@ -35,10 +35,12 @@ from ..ai.budget import BudgetEnforcedLLMClient, BudgetTracker
 from ..ai.llm_client import AnthropicLLMClient, LLMClient
 from ..ai.tools import ToolContext
 from ..ai.tracing import LangfuseTracedLLMClient
+from ..ai.weekly_digest import aggregate_weekly_stats, compose_weekly_digest
 from ..api.app import create_app
+from ..digests.store import LineStat, WeeklyDigestRecord, WeeklyDigestStore
 from ..gateway.client import API_KEY_ENV, GatewayClient
 from ..gtfs.pinning import PinManifest
-from ..gtfs.schedule_cache import PinnedScheduleCache
+from ..gtfs.schedule_cache import NoPinnedSnapshotError, PinnedScheduleCache
 from ..history.store import HistoryStore
 from ..metrics import Metrics
 from ..redaction import configure_logging
@@ -47,6 +49,8 @@ from ..state.eventhub import InProcessEventHub
 from ..state.store import StateStore
 from .healthcheck import PING_URL_ENV
 from .loop import ALL_FEEDS, PollerLoop
+from .slack import post_message
+from .weekly_digest_trigger import WeeklyDigestTrigger
 
 # Fixed container-internal mount point (see Dockerfile's `VOLUME` and
 # `deploy/docker-compose.yml`) -- `TT_DATA_DIR` only exists as a compose-level
@@ -94,6 +98,91 @@ async def _interruptible_sleep(loop: PollerLoop, seconds: float) -> None:
     while remaining > 0 and not loop.stopped:
         await asyncio.sleep(min(SHUTDOWN_CHECK_INTERVAL_S, remaining))
         remaining -= SHUTDOWN_CHECK_INTERVAL_S
+
+
+async def _maybe_send_weekly_digest(
+    trigger: WeeklyDigestTrigger,
+    history: HistoryStore,
+    schedule_cache: PinnedScheduleCache,
+    digest_store: WeeklyDigestStore,
+    ai_client: LLMClient,
+    notify_client: httpx.AsyncClient,
+    now: datetime,
+) -> None:
+    """Checked once per poll cycle (cheap: a JSON-file read behind
+    `should_fire`) -- fires at most once per Monday-8am-Melbourne boundary.
+    Never lets a digest failure affect the poll loop it runs inside, same
+    discipline `poller/slack.py`'s `post_message` already follows for
+    Slack outages specifically; this wraps the whole generation path.
+
+    Crash-safety ordering (milestones/05-ai-layer.md, locked 2026-08-01):
+    `trigger.mark_fired()` is the LAST thing this function does, only
+    after both the Slack post attempt and the `WeeklyDigestStore` write
+    have completed -- a crash or exception anywhere before that point
+    leaves the boundary unmarked, so the next cycle simply retries rather
+    than silently losing the week.
+    """
+    boundary = trigger.should_fire(now)
+    if boundary is None:
+        return
+
+    week_start = boundary - timedelta(days=7)
+    week_end = boundary - timedelta(days=1)
+    service_dates = [week_start + timedelta(days=i) for i in range(7)]
+
+    try:
+        window = history.read_completion_events(service_dates)
+        stats = aggregate_weekly_stats(window, week_start, week_end)
+        try:
+            routes = schedule_cache.routes_for(now)
+        except NoPinnedSnapshotError:
+            # No static snapshot pinned yet -- degrade to raw route_ids in
+            # the narrative rather than skip the digest entirely over a
+            # cosmetic naming gap.
+            routes = {}
+        narrative = await compose_weekly_digest(ai_client, stats, routes)
+    except Exception:
+        logger.exception("weekly digest generation failed, will retry next cycle")
+        return
+
+    sent = await post_message(notify_client, narrative)
+
+    record = WeeklyDigestRecord(
+        week_start=week_start,
+        week_end=week_end,
+        days_covered=stats.days_covered,
+        on_time_count=stats.on_time_count,
+        late_count=stats.late_count,
+        cancelled_count=stats.cancelled_count,
+        on_time_pct=stats.on_time_pct,
+        narrative=narrative,
+        slack_delivered=sent,
+        line_stats=tuple(
+            LineStat(
+                route_id=line.route_id,
+                trip_count=line.trip_count,
+                on_time_count=line.on_time_count,
+                late_count=line.late_count,
+                cancelled_count=line.cancelled_count,
+                on_time_pct=line.on_time_pct,
+            )
+            for line in stats.line_stats
+        ),
+    )
+    try:
+        digest_store.record(record)
+    except Exception:
+        logger.exception(
+            "weekly digest DB write failed after Slack delivery attempt "
+            "(sent=%s) -- will retry next cycle, may double-post", sent,
+        )
+        return
+
+    trigger.mark_fired(boundary)
+    logger.info(
+        "weekly digest sent for %s to %s (days_covered=%d, on_time_pct=%.1f, slack_delivered=%s)",
+        week_start, week_end, stats.days_covered, stats.on_time_pct, sent,
+    )
 
 
 async def main() -> int:
@@ -156,12 +245,27 @@ async def main() -> int:
     # time, so this never turns a missing optional env var into a poller
     # crash-loop.
     budget_tracker = BudgetTracker(DATA_DIR / "ai" / "budget.db")
-    ai_client: LLMClient = LangfuseTracedLLMClient(
-        BudgetEnforcedLLMClient(AnthropicLLMClient(), budget_tracker),
-        name="disruption-briefing",
-    )
+    # Shared inner layer -- ONE budget-enforced Anthropic client, so the
+    # monthly cap is genuinely global across every AI-layer caller, not
+    # tracked separately per feature. Each caller wraps it in its OWN
+    # LangfuseTracedLLMClient instance with its own `name` (tracing.py's
+    # own documented convention -- `name` is fixed per-instance, not
+    # threaded per-call), so briefings and the weekly digest still show up
+    # as distinct call sites in the Langfuse dashboard.
+    budget_enforced_client = BudgetEnforcedLLMClient(AnthropicLLMClient(), budget_tracker)
+    ai_client: LLMClient = LangfuseTracedLLMClient(budget_enforced_client, name="disruption-briefing")
+    weekly_digest_client: LLMClient = LangfuseTracedLLMClient(budget_enforced_client, name="weekly-digest")
     tool_context = ToolContext(store=store, schedule_cache=schedule_cache)
     notify_client = httpx.AsyncClient()
+
+    # 05-ai-layer weekly performance digest (locked 2026-08-01, see
+    # milestones/05-ai-layer.md): its own SQLite content store (indefinite
+    # retention, unlike HistoryStore's 60-day cap) and its own trigger
+    # sidecar, both under a new digests/ subdirectory alongside ai/ and
+    # gtfs/.
+    digests_dir = DATA_DIR / "digests"
+    digest_store = WeeklyDigestStore(digests_dir / "weekly.db")
+    digest_trigger = WeeklyDigestTrigger(digests_dir / "digest_trigger_state.json")
 
     # M3: producer side of 2d's EventHub interface finally gets a
     # consumer (the SSE route below) -- one hub instance, shared between
@@ -174,7 +278,7 @@ async def main() -> int:
     api = create_app(
         loop=loop, store=store, hub=hub, schedule_cache=schedule_cache,
         ai_client=ai_client, ai_tool_context=tool_context, ai_notify_client=notify_client,
-        metrics=metrics,
+        metrics=metrics, digest_store=digest_store,
     )
     server = uvicorn.Server(uvicorn.Config(api, host="0.0.0.0", port=API_PORT, log_level="info"))
 
@@ -207,6 +311,16 @@ async def main() -> int:
             # (see state/eventhub.py); every subscriber recomputes state
             # fresh from `loop`/`store` when it wakes up.
             hub.publish(cycle_start)
+
+            # Cheap check every cycle (a JSON-file read behind should_fire);
+            # actually generates+delivers a digest at most once per Monday-
+            # 8am-Melbourne boundary. Never allowed to affect the core
+            # cycle above -- see the helper's own docstring for the crash-
+            # safety ordering this depends on.
+            await _maybe_send_weekly_digest(
+                digest_trigger, history, schedule_cache, digest_store,
+                weekly_digest_client, notify_client, cycle_start,
+            )
 
             interval = loop.next_interval(cycle_start)
             logger.info(
@@ -253,6 +367,7 @@ async def main() -> int:
     await gateway.aclose()
     await notify_client.aclose()
     history.close()
+    digest_store.close()
     logger.info("poller stopped")
     return 0
 
