@@ -27,8 +27,3 @@
 .headerText {
   color: var(--color-text);
 }
-
-.link {
-  align-self: flex-start;
-  font-size: var(--font-size-xs);
-}

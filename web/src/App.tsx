@@ -103,6 +103,7 @@ export function App() {
           setRecenterRequest((n) => (n ?? 0) + 1)
           setDrawerOpen(false)
         }}
+        onCloseDrawer={() => setDrawerOpen(false)}
         open={drawerOpen}
         theme={theme}
         onThemeChange={setTheme}

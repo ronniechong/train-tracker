@@ -33,6 +33,24 @@
   border-color: var(--color-accent);
 }
 
+.announcementsButton {
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: 0.45rem 0.6rem;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: #fff;
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.announcementsButton:hover {
+  filter: brightness(1.08);
+}
+
 .attribution {
   margin: 0 0 var(--space-2);
 }

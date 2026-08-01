@@ -39,11 +39,6 @@ export function AlertsPanel() {
               {(alert.effect && EFFECT_LABEL[alert.effect]) ?? 'Disruption'}
             </span>
             <span className={styles.headerText}>{alert.header_text ?? 'Service alert'}</span>
-            {alert.url && (
-              <a className={styles.link} href={alert.url} target="_blank" rel="noopener noreferrer">
-                Details
-              </a>
-            )}
           </li>
         ))}
       </ul>

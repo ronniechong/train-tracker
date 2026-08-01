@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { Header } from './Header'
 import { Legend } from './Legend'
 import { Search } from './Search'
 import { StatusPanel } from './StatusPanel'
 import { StationPanel } from './StationPanel'
 import { AlertsPanel } from './AlertsPanel'
+import { WeeklyDigestPanel } from './WeeklyDigestPanel'
+import { Modal } from './Modal'
 import { Section } from './Section'
 import { useAttribution } from '../hooks/useAttribution'
 import { cx } from '../lib/cx'
@@ -33,6 +36,11 @@ interface SidebarProps {
   selectedStationId: string | null
   onClearStation: () => void
   onRecenter: () => void
+  /** Closes the mobile off-canvas drawer -- same purpose as `onRecenter`'s
+   * own inline close, needed here so opening the Announcements modal (which
+   * sits behind the drawer in stacking order on mobile, see Modal.module.css)
+   * doesn't leave it hidden under a still-open drawer. */
+  onCloseDrawer: () => void
   /** Only meaningful below the mobile breakpoint -- see Sidebar.module.css.
    * Ignored (sidebar always visible) above it. */
   open: boolean
@@ -51,12 +59,18 @@ export function Sidebar({
   selectedStationId,
   onClearStation,
   onRecenter,
+  onCloseDrawer,
   open,
   theme,
   onThemeChange,
   schedule,
 }: SidebarProps) {
   const attribution = useAttribution()
+  // Service Alerts + Weekly Performance were crowding the always-visible
+  // sidebar -- moved behind this CTA into a modal instead of removing them,
+  // since both are still real content, just lower-cadence than the live
+  // map/station panels that should own the default view.
+  const [announcementsOpen, setAnnouncementsOpen] = useState(false)
 
   return (
     <aside className={cx(styles.sidebar, open && styles.open)}>
@@ -67,8 +81,23 @@ export function Sidebar({
         <button type="button" className={styles.recenterButton} onClick={onRecenter}>
           Recenter map
         </button>
+        <button
+          type="button"
+          className={styles.announcementsButton}
+          onClick={() => {
+            setAnnouncementsOpen(true)
+            onCloseDrawer()
+          }}
+        >
+          Announcements
+        </button>
       </Section>
-      <AlertsPanel />
+      {announcementsOpen && (
+        <Modal title="Announcements" onClose={() => setAnnouncementsOpen(false)}>
+          <WeeklyDigestPanel />
+          <AlertsPanel />
+        </Modal>
+      )}
       <StationPanel
         stationId={selectedStationId}
         trains={liveState.trains}

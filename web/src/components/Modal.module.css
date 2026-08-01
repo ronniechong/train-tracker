@@ -1,0 +1,91 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: min(600px, 100%);
+  max-height: min(80vh, 700px);
+  background: var(--color-panel-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--color-text-dim);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  overflow-y: auto;
+}
+
+/* Mobile: same breakpoint as the sidebar drawer (Sidebar.module.css). Even
+   the wider desktop dialog above reads as "too small" on a phone screen, so
+   below this width the modal becomes a full-page sheet instead. z-index
+   28 deliberately sits BELOW the drawer (30) and its toggle (35) but
+   ABOVE the map/drawer backdrop (25, App.module.css) -- Sidebar.tsx closes
+   the drawer when Announcements opens, so this ordering only matters if
+   the drawer is reopened afterwards (hamburger toggle stays reachable
+   above the modal, and the drawer sliding back over it is expected, not
+   two competing full-screen layers both claiming the top). */
+@media (max-width: 768px) {
+  .backdrop {
+    z-index: 28;
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .panel {
+    width: 100%;
+    max-height: none;
+    border-radius: 0;
+    border: none;
+  }
+}

@@ -89,3 +89,33 @@ export interface AlertsResponse {
   generated_at: string
   alerts: Alert[]
 }
+
+export interface WeeklyLineStat {
+  route_id: string
+  trip_count: number
+  on_time_count: number
+  late_count: number
+  cancelled_count: number
+  on_time_pct: number
+}
+
+// `on_time_pct` is 0-100, and only meaningful when `days_covered > 0` --
+// a cold-start week with no data yet is a plain 0.0, not null (see
+// work-docs milestones/05-ai-layer.md's "known sharp edge" note). Any
+// renderer must check `days_covered`/counts, not just print the number.
+export interface WeeklyDigest {
+  week_start: string
+  week_end: string
+  days_covered: number
+  on_time_count: number
+  late_count: number
+  cancelled_count: number
+  on_time_pct: number
+  narrative: string
+  slack_delivered: boolean
+  line_stats: WeeklyLineStat[]
+}
+
+export interface WeeklyDigestListResponse {
+  digests: WeeklyDigest[]
+}
