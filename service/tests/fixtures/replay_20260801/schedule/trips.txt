@@ -1,0 +1,483 @@
+route_id,service_id,trip_id,shape_id,trip_headsign,direction_id,block_id,wheelchair_accessible,bikes_allowed
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2320,2-ALM-vpt-57.3.R,Camberwell,1,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2321,2-ALM-vpt-57.4.H,Alamein,0,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2322,2-ALM-vpt-57.3.R,Camberwell,1,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2323,2-ALM-vpt-57.4.H,Alamein,0,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2324,2-ALM-vpt-57.3.R,Camberwell,1,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2325,2-ALM-vpt-57.4.H,Alamein,0,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2326,2-ALM-vpt-57.3.R,Camberwell,1,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2327,2-ALM-vpt-57.4.H,Alamein,0,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2328,2-ALM-vpt-57.3.R,Camberwell,1,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2329,2-ALM-vpt-57.4.H,Alamein,0,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2330,2-ALM-vpt-57.3.R,Camberwell,1,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2331,2-ALM-vpt-57.4.H,Alamein,0,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2332,2-ALM-vpt-57.3.R,Camberwell,1,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2333,2-ALM-vpt-57.4.H,Alamein,0,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2334,2-ALM-vpt-57.3.R,Camberwell,1,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2335,2-ALM-vpt-57.4.H,Alamein,0,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2336,2-ALM-vpt-57.3.R,Camberwell,1,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2337,2-ALM-vpt-57.4.H,Alamein,0,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2338,2-ALM-vpt-57.3.R,Camberwell,1,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2339,2-ALM-vpt-57.4.H,Alamein,0,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2340,2-ALM-vpt-57.3.R,Camberwell,1,,1,1
+aus:vic:vic-02-ALM:,T2_1,02-ALM--57-T2-2341,2-ALM-vpt-57.4.H,Alamein,0,,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3006,2-BEG-vpt-57.2.R,Flinders Street,1,5327,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3008,2-BEG-vpt-57.2.R,Flinders Street,1,5307,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3010,2-BEG-vpt-57.2.R,Flinders Street,1,5313,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3012,2-BEG-vpt-57.2.R,Flinders Street,1,9832,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3014,2-BEG-vpt-57.2.R,Flinders Street,1,9827,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3016,2-BEG-vpt-57.2.R,Flinders Street,1,9824,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3018,2-BEG-vpt-57.2.R,Flinders Street,1,9817,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3020,2-BEG-vpt-57.2.R,Flinders Street,1,9859,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3022,2-BEG-vpt-57.2.R,Flinders Street,1,9837,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3024,2-BEG-vpt-57.2.R,Flinders Street,1,9854,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3026,2-BEG-vpt-57.2.R,Flinders Street,1,9849,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3028,2-BEG-vpt-57.2.R,Flinders Street,1,9822,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3110,2-BEG-vpt-57.10.R,Ringwood,1,,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3112,2-BEG-vpt-57.10.R,Ringwood,1,,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3115,2-BEG-vpt-57.11.H,Bayswater,0,,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3117,2-BEG-vpt-57.11.H,Bayswater,0,,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3119,2-BEG-vpt-57.11.H,Bayswater,0,,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3121,2-BEG-vpt-57.11.H,Bayswater,0,,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3607,2-BEG-vpt-57.16.H,Bayswater via City Loop,0,5225,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3609,2-BEG-vpt-57.16.H,Bayswater via City Loop,0,5217,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3611,2-BEG-vpt-57.16.H,Bayswater via City Loop,0,5221,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3613,2-BEG-vpt-57.17.H,Bayswater via City Loop,0,5201,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3615,2-BEG-vpt-57.18.H,Bayswater via City Loop,0,9832,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3617,2-BEG-vpt-57.18.H,Bayswater via City Loop,0,9827,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3619,2-BEG-vpt-57.18.H,Bayswater via City Loop,0,9824,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3621,2-BEG-vpt-57.18.H,Bayswater via City Loop,0,9817,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3623,2-BEG-vpt-57.18.H,Bayswater via City Loop,0,9859,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3625,2-BEG-vpt-57.18.H,Bayswater via City Loop,0,9837,1,1
+aus:vic:vic-02-BEG:,T2_1,02-BEG--57-T2-3627,2-BEG-vpt-57.18.H,Bayswater via City Loop,0,9854,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C427,2-CBE-vpt-57.3.H,Cranbourne,0,1277,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C429,2-CBE-vpt-57.1.H,Cranbourne,0,1323,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C431,2-CBE-vpt-57.3.H,Cranbourne,0,1313,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C433,2-CBE-vpt-57.1.H,Cranbourne,0,1299,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C435,2-CBE-vpt-57.3.H,Cranbourne,0,1315,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C437,2-CBE-vpt-57.1.H,Cranbourne,0,1293,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C439,2-CBE-vpt-57.3.H,Cranbourne,0,1333,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C441,2-CBE-vpt-57.1.H,Cranbourne,0,1341,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C442,2-CBE-vpt-57.2.R,Sunbury via Metro Tunnel,1,994,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C443,2-CBE-vpt-57.3.H,Cranbourne,0,648,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C444,2-CBE-vpt-57.4.R,Sunbury via Metro Tunnel,1,892,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C445,2-CBE-vpt-57.1.H,Cranbourne,0,633,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C446,2-CBE-vpt-57.2.R,Sunbury via Metro Tunnel,1,1019,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C447,2-CBE-vpt-57.3.H,Cranbourne,0,617,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C448,2-CBE-vpt-57.2.R,Sunbury via Metro Tunnel,1,925,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C449,2-CBE-vpt-57.1.H,Cranbourne,0,620,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C450,2-CBE-vpt-57.4.R,Sunbury via Metro Tunnel,1,1028,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C451,2-CBE-vpt-57.3.H,Cranbourne,0,595,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C452,2-CBE-vpt-57.2.R,Sunbury via Metro Tunnel,1,980,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C453,2-CBE-vpt-57.1.H,Cranbourne,0,590,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C454,2-CBE-vpt-57.4.R,Sunbury via Metro Tunnel,1,1063,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C456,2-CBE-vpt-57.2.R,Sunbury via Metro Tunnel,1,962,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C458,2-CBE-vpt-57.4.R,Sunbury via Metro Tunnel,1,1050,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C460,2-CBE-vpt-57.2.R,Sunbury via Metro Tunnel,1,982,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C462,2-CBE-vpt-57.4.R,Sunbury via Metro Tunnel,1,1062,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C464,2-CBE-vpt-57.2.R,Sunbury via Metro Tunnel,1,928,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C466,2-CBE-vpt-57.4.R,Sunbury via Metro Tunnel,1,1041,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C468,2-CBE-vpt-57.2.R,Sunbury via Metro Tunnel,1,981,1,1
+aus:vic:vic-02-CBE:,T2_1,02-CBE--57-T2-C470,2-CBE-vpt-57.4.R,Sunbury via Metro Tunnel,1,1044,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5215,2-CGB-vpt-57.1.H,Craigieburn,0,3961,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5217,2-CGB-vpt-57.1.H,Craigieburn,0,3955,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5219,2-CGB-vpt-57.1.H,Craigieburn,0,3970,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5221,2-CGB-vpt-57.1.H,Craigieburn,0,4015,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5223,2-CGB-vpt-57.1.H,Craigieburn,0,3992,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5225,2-CGB-vpt-57.1.H,Craigieburn,0,3982,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5227,2-CGB-vpt-57.1.H,Craigieburn,0,4010,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5229,2-CGB-vpt-57.1.H,Craigieburn,0,3948,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5231,2-CGB-vpt-57.1.H,Craigieburn,0,3987,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5233,2-CGB-vpt-57.1.H,Craigieburn,0,3959,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5235,2-CGB-vpt-57.1.H,Craigieburn,0,3977,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5237,2-CGB-vpt-57.1.H,Craigieburn,0,4009,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5239,2-CGB-vpt-57.1.H,Craigieburn,0,4016,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5241,2-CGB-vpt-57.3.H,Craigieburn,0,4019,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5816,2-CGB-vpt-57.14.R,Flinders Street via City Loop,1,4110,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5818,2-CGB-vpt-57.14.R,Flinders Street via City Loop,1,4192,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5820,2-CGB-vpt-57.14.R,Flinders Street via City Loop,1,4168,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5822,2-CGB-vpt-57.14.R,Flinders Street via City Loop,1,4109,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5824,2-CGB-vpt-57.14.R,Flinders Street via City Loop,1,4194,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5826,2-CGB-vpt-57.14.R,Flinders Street via City Loop,1,4170,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5828,2-CGB-vpt-57.14.R,Flinders Street via City Loop,1,4162,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5830,2-CGB-vpt-57.14.R,Flinders Street via City Loop,1,4156,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5832,2-CGB-vpt-57.14.R,Flinders Street via City Loop,1,4107,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5834,2-CGB-vpt-57.14.R,Flinders Street via City Loop,1,4186,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5836,2-CGB-vpt-57.14.R,Flinders Street via City Loop,1,4190,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5838,2-CGB-vpt-57.14.R,Flinders Street via City Loop,1,4144,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5840,2-CGB-vpt-57.14.R,Flinders Street via City Loop,1,4115,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-5842,2-CGB-vpt-57.14.R,Flinders Street via City Loop,1,4133,1,1
+aus:vic:vic-02-CGB:,T2_1,02-CGB--57-T2-7010,2-CGB-vpt-57.16.R,Flinders Street,1,,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4315,2-FKN-vpt-57.3.H,Frankston,0,6820,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4317,2-FKN-vpt-57.4.H,Frankston,0,6641,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4319,2-FKN-vpt-57.4.H,Frankston,0,6665,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4321,2-FKN-vpt-57.4.H,Frankston,0,6643,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4323,2-FKN-vpt-57.4.H,Frankston,0,6682,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4325,2-FKN-vpt-57.4.H,Frankston,0,6679,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4327,2-FKN-vpt-57.4.H,Frankston,0,6655,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4329,2-FKN-vpt-57.4.H,Frankston,0,6676,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4331,2-FKN-vpt-57.4.H,Frankston,0,6663,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4333,2-FKN-vpt-57.4.H,Frankston,0,6700,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4335,2-FKN-vpt-57.3.H,Frankston,0,6824,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4337,2-FKN-vpt-57.4.H,Frankston,0,6705,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4339,2-FKN-vpt-57.2.H,Frankston,0,6801,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4341,2-FKN-vpt-57.1.H,Frankston,0,6969,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4343,2-FKN-vpt-57.2.H,Frankston,0,6802,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4345,2-FKN-vpt-57.1.H,Frankston,0,6977,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4347,2-FKN-vpt-57.2.H,Frankston,0,6806,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4349,2-FKN-vpt-57.1.H,Frankston,0,6974,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4351,2-FKN-vpt-57.2.H,Frankston,0,6812,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4353,2-FKN-vpt-57.1.H,Frankston,0,6982,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4355,2-FKN-vpt-57.3.H,Frankston,0,6830,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4357,2-FKN-vpt-57.1.H,Frankston,0,6980,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4820,2-FKN-vpt-57.10.R,Flinders Street via City Loop,1,6682,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4822,2-FKN-vpt-57.11.R,Flinders Street via City Loop,1,6679,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4824,2-FKN-vpt-57.10.R,Flinders Street via City Loop,1,6655,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4826,2-FKN-vpt-57.11.R,Flinders Street via City Loop,1,6676,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4828,2-FKN-vpt-57.10.R,Flinders Street via City Loop,1,6663,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4830,2-FKN-vpt-57.11.R,Flinders Street via City Loop,1,6700,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4832,2-FKN-vpt-57.10.R,Flinders Street via City Loop,1,6824,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4834,2-FKN-vpt-57.11.R,Flinders Street via City Loop,1,6705,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4836,2-FKN-vpt-57.8.R,Flinders Street via City Loop,1,6801,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4838,2-FKN-vpt-57.9.R,Flinders Street via City Loop,1,6969,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4840,2-FKN-vpt-57.8.R,Flinders Street via City Loop,1,6802,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4842,2-FKN-vpt-57.9.R,Flinders Street via City Loop,1,6977,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4844,2-FKN-vpt-57.8.R,Flinders Street via City Loop,1,6806,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4846,2-FKN-vpt-57.9.R,Flinders Street via City Loop,1,6974,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4848,2-FKN-vpt-57.8.R,Flinders Street via City Loop,1,6812,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4850,2-FKN-vpt-57.9.R,Flinders Street via City Loop,1,6982,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4852,2-FKN-vpt-57.10.R,Flinders Street via City Loop,1,6830,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4854,2-FKN-vpt-57.9.R,Flinders Street via City Loop,1,6980,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4856,2-FKN-vpt-57.8.R,Flinders Street via City Loop,1,6803,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4858,2-FKN-vpt-57.11.R,Flinders Street via City Loop,1,6693,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4860,2-FKN-vpt-57.8.R,Flinders Street via City Loop,1,6816,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4862,2-FKN-vpt-57.9.R,Flinders Street via City Loop,1,6979,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4864,2-FKN-vpt-57.8.R,Flinders Street via City Loop,1,6815,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4866,2-FKN-vpt-57.9.R,Flinders Street via City Loop,1,6978,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4868,2-FKN-vpt-57.8.R,Flinders Street via City Loop,1,6811,1,1
+aus:vic:vic-02-FKN:,T2_1,02-FKN--57-T2-4870,2-FKN-vpt-57.9.R,Flinders Street via City Loop,1,6971,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2016,2-GWY-vpt-57.1.R,Flinders Street,1,5217,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2018,2-GWY-vpt-57.4.R,Flinders Street,1,5472,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2020,2-GWY-vpt-57.1.R,Flinders Street,1,5221,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2022,2-GWY-vpt-57.4.R,Flinders Street,1,5464,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2024,2-GWY-vpt-57.1.R,Flinders Street,1,5201,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2026,2-GWY-vpt-57.4.R,Flinders Street,1,5450,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2028,2-GWY-vpt-57.1.R,Flinders Street,1,5223,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2030,2-GWY-vpt-57.4.R,Flinders Street,1,5456,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2032,2-GWY-vpt-57.1.R,Flinders Street,1,5205,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2034,2-GWY-vpt-57.4.R,Flinders Street,1,5459,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2036,2-GWY-vpt-57.1.R,Flinders Street,1,5220,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2038,2-GWY-vpt-57.4.R,Flinders Street,1,5270,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2040,2-GWY-vpt-57.1.R,Flinders Street,1,5207,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2042,2-GWY-vpt-57.4.R,Flinders Street,1,5468,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2615,2-GWY-vpt-57.10.H,Glen Waverley via City Loop,0,5316,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2617,2-GWY-vpt-57.11.H,Glen Waverley via City Loop,0,5370,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2619,2-GWY-vpt-57.10.H,Glen Waverley via City Loop,0,5327,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2621,2-GWY-vpt-57.11.H,Glen Waverley via City Loop,0,5365,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2623,2-GWY-vpt-57.10.H,Glen Waverley via City Loop,0,5307,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2625,2-GWY-vpt-57.11.H,Glen Waverley via City Loop,0,5355,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2627,2-GWY-vpt-57.10.H,Glen Waverley via City Loop,0,5313,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2629,2-GWY-vpt-57.11.H,Glen Waverley via City Loop,0,5359,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2631,2-GWY-vpt-57.10.H,Glen Waverley via City Loop,0,5335,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2633,2-GWY-vpt-57.11.H,Glen Waverley via City Loop,0,5364,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2635,2-GWY-vpt-57.10.H,Glen Waverley via City Loop,0,5324,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2637,2-GWY-vpt-57.11.H,Glen Waverley via City Loop,0,5375,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2639,2-GWY-vpt-57.10.H,Glen Waverley via City Loop,0,5321,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-2641,2-GWY-vpt-57.12.H,Glen Waverley via City Loop,0,5391,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-7396,2-GWY-vpt-57.13.R,Flinders Street,1,5391,1,1
+aus:vic:vic-02-GWY:,T2_1,02-GWY--57-T2-7871,2-GWY-vpt-57.9.H,Glen Waverley via City Loop,0,5270,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1216,2-HBE-vpt-57.2.R,Flinders Street,1,11753,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1218,2-HBE-vpt-57.1.R,Flinders Street,1,11630,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1220,2-HBE-vpt-57.2.R,Flinders Street,1,11768,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1222,2-HBE-vpt-57.1.R,Flinders Street,1,11645,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1224,2-HBE-vpt-57.2.R,Flinders Street,1,11781,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1226,2-HBE-vpt-57.1.R,Flinders Street,1,11625,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1228,2-HBE-vpt-57.2.R,Flinders Street,1,11760,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1230,2-HBE-vpt-57.1.R,Flinders Street,1,11652,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1232,2-HBE-vpt-57.2.R,Flinders Street,1,11732,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1234,2-HBE-vpt-57.1.R,Flinders Street,1,11624,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1236,2-HBE-vpt-57.2.R,Flinders Street,1,11743,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1238,2-HBE-vpt-57.1.R,Flinders Street,1,11636,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1240,2-HBE-vpt-57.2.R,Flinders Street,1,11763,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1242,2-HBE-vpt-57.1.R,Flinders Street,1,11659,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1809,2-HBE-vpt-57.7.H,Hurstbridge via City Loop,0,11832,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1811,2-HBE-vpt-57.8.H,Eltham via City Loop,0,12004,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1813,2-HBE-vpt-57.7.H,Hurstbridge via City Loop,0,11845,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1815,2-HBE-vpt-57.8.H,Eltham via City Loop,0,11977,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1817,2-HBE-vpt-57.7.H,Hurstbridge via City Loop,0,11834,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1819,2-HBE-vpt-57.8.H,Eltham via City Loop,0,11997,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1821,2-HBE-vpt-57.7.H,Hurstbridge via City Loop,0,11837,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1823,2-HBE-vpt-57.8.H,Eltham via City Loop,0,11974,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1825,2-HBE-vpt-57.7.H,Hurstbridge via City Loop,0,11843,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1827,2-HBE-vpt-57.8.H,Eltham via City Loop,0,11979,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1829,2-HBE-vpt-57.7.H,Hurstbridge via City Loop,0,11839,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1831,2-HBE-vpt-57.8.H,Eltham via City Loop,0,12002,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1833,2-HBE-vpt-57.7.H,Hurstbridge via City Loop,0,11849,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1835,2-HBE-vpt-57.8.H,Eltham via City Loop,0,12005,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1837,2-HBE-vpt-57.7.H,Hurstbridge via City Loop,0,11852,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-1839,2-HBE-vpt-57.8.H,Eltham via City Loop,0,11986,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-7180,2-HBE-vpt-57.13.R,Flinders Street,1,11917,1,1
+aus:vic:vic-02-HBE:,T2_1,02-HBE--57-T2-7751,2-HBE-vpt-57.14.H,Macleod via City Loop,0,11917,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3208,2-LIL-vpt-57.4.R,Flinders Street,1,5365,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3210,2-LIL-vpt-57.4.R,Flinders Street,1,5355,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3212,2-LIL-vpt-57.4.R,Flinders Street,1,5359,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3214,2-LIL-vpt-57.3.R,Flinders Street,1,5335,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3216,2-LIL-vpt-57.4.R,Flinders Street,1,5364,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3218,2-LIL-vpt-57.3.R,Flinders Street,1,5324,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3220,2-LIL-vpt-57.4.R,Flinders Street,1,5375,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3222,2-LIL-vpt-57.3.R,Flinders Street,1,5321,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3224,2-LIL-vpt-57.4.R,Flinders Street,1,7986,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3226,2-LIL-vpt-57.3.R,Flinders Street,1,5317,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3228,2-LIL-vpt-57.3.R,Flinders Street,1,5360,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3230,2-LIL-vpt-57.3.R,Flinders Street,1,5336,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3307,2-LIL-vpt-57.11.H,Lilydale,0,,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3308,2-LIL-vpt-57.10.R,Ringwood,1,,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3309,2-LIL-vpt-57.11.H,Lilydale,0,,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3310,2-LIL-vpt-57.10.R,Ringwood,1,,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3311,2-LIL-vpt-57.11.H,Lilydale,0,,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3313,2-LIL-vpt-57.11.H,Lilydale,0,,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3807,2-LIL-vpt-57.15.H,Lilydale via City Loop,0,5454,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3809,2-LIL-vpt-57.15.H,Lilydale via City Loop,0,5479,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3811,2-LIL-vpt-57.15.H,Lilydale via City Loop,0,5472,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3813,2-LIL-vpt-57.15.H,Lilydale via City Loop,0,5464,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3815,2-LIL-vpt-57.16.H,Lilydale via City Loop,0,5450,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3817,2-LIL-vpt-57.16.H,Lilydale via City Loop,0,5223,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3819,2-LIL-vpt-57.16.H,Lilydale via City Loop,0,5456,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3821,2-LIL-vpt-57.16.H,Lilydale via City Loop,0,5205,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3823,2-LIL-vpt-57.16.H,Lilydale via City Loop,0,5459,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3825,2-LIL-vpt-57.16.H,Lilydale via City Loop,0,5220,1,1
+aus:vic:vic-02-LIL:,T2_1,02-LIL--57-T2-3827,2-LIL-vpt-57.17.H,Lilydale via City Loop,0,7986,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1014,2-MDD-vpt-57.2.R,Flinders Street,1,11834,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1016,2-MDD-vpt-57.1.R,Flinders Street,1,11997,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1018,2-MDD-vpt-57.1.R,Flinders Street,1,11837,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1020,2-MDD-vpt-57.1.R,Flinders Street,1,11974,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1022,2-MDD-vpt-57.1.R,Flinders Street,1,11843,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1024,2-MDD-vpt-57.1.R,Flinders Street,1,11979,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1026,2-MDD-vpt-57.1.R,Flinders Street,1,11839,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1028,2-MDD-vpt-57.1.R,Flinders Street,1,12002,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1030,2-MDD-vpt-57.1.R,Flinders Street,1,11849,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1032,2-MDD-vpt-57.1.R,Flinders Street,1,12005,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1034,2-MDD-vpt-57.1.R,Flinders Street,1,11852,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1036,2-MDD-vpt-57.1.R,Flinders Street,1,11986,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1038,2-MDD-vpt-57.1.R,Flinders Street,1,11814,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1040,2-MDD-vpt-57.1.R,Flinders Street,1,12003,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1042,2-MDD-vpt-57.1.R,Flinders Street,1,11816,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1611,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11776,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1613,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11627,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1615,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11729,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1617,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11631,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1619,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11753,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1621,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11630,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1623,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11768,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1625,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11645,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1627,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11781,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1629,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11625,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1631,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11760,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1633,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11652,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1635,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11732,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1637,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11624,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1639,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11743,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-1641,2-MDD-vpt-57.4.H,Mernda via City Loop,0,11636,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-7140,2-MDD-vpt-57.2.R,Flinders Street,1,13118,1,1
+aus:vic:vic-02-MDD:,T2_1,02-MDD--57-T2-7701,2-MDD-vpt-57.6.H,Epping via City Loop,0,13118,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C027,2-PKM-vpt-57.4.H,East Pakenham,0,346,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C029,2-PKM-vpt-57.1.H,East Pakenham,0,470,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C031,2-PKM-vpt-57.4.H,East Pakenham,0,352,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C033,2-PKM-vpt-57.1.H,East Pakenham,0,448,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C035,2-PKM-vpt-57.4.H,East Pakenham,0,350,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C037,2-PKM-vpt-57.1.H,East Pakenham,0,459,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C039,2-PKM-vpt-57.4.H,East Pakenham,0,402,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C040,2-PKM-vpt-57.5.R,West Footscray via Metro Tunnel,1,685,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C041,2-PKM-vpt-57.1.H,East Pakenham,0,506,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C042,2-PKM-vpt-57.3.R,West Footscray via Metro Tunnel,1,694,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C043,2-PKM-vpt-57.4.H,East Pakenham,0,418,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C044,2-PKM-vpt-57.3.R,West Footscray via Metro Tunnel,1,746,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C045,2-PKM-vpt-57.1.H,East Pakenham,0,495,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C046,2-PKM-vpt-57.5.R,Watergardens via Metro Tunnel,1,1112,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C047,2-PKM-vpt-57.4.H,East Pakenham,0,431,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C048,2-PKM-vpt-57.3.R,Watergardens via Metro Tunnel,1,1134,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C049,2-PKM-vpt-57.1.H,East Pakenham,0,496,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C050,2-PKM-vpt-57.5.R,Watergardens via Metro Tunnel,1,1196,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C051,2-PKM-vpt-57.4.H,East Pakenham,0,391,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C052,2-PKM-vpt-57.3.R,Watergardens via Metro Tunnel,1,1199,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C053,2-PKM-vpt-57.1.H,East Pakenham,0,502,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C055,2-PKM-vpt-57.4.H,East Pakenham,0,396,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C056,2-PKM-vpt-57.5.R,Watergardens via Metro Tunnel,1,1209,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C058,2-PKM-vpt-57.3.R,Watergardens via Metro Tunnel,1,1205,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C060,2-PKM-vpt-57.5.R,Watergardens via Metro Tunnel,1,1120,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C062,2-PKM-vpt-57.3.R,Watergardens via Metro Tunnel,1,1194,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C064,2-PKM-vpt-57.5.R,Watergardens via Metro Tunnel,1,1122,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C066,2-PKM-vpt-57.3.R,Watergardens via Metro Tunnel,1,1126,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C068,2-PKM-vpt-57.5.R,Watergardens via Metro Tunnel,1,1136,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C070,2-PKM-vpt-57.3.R,Watergardens via Metro Tunnel,1,1177,1,1
+aus:vic:vic-02-PKM:,T2_1,02-PKM--57-T2-C072,2-PKM-vpt-57.5.R,Watergardens via Metro Tunnel,1,1193,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-7580,2-SHM-vpt-57.1.R,Flinders Street,1,10333,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X015,2-SHM-vpt-57.7.H,Sandringham,0,8662,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X017,2-SHM-vpt-57.7.H,Sandringham,0,8728,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X018,2-SHM-vpt-57.6.R,Flinders Street,1,8726,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X019,2-SHM-vpt-57.7.H,Sandringham,0,8664,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X020,2-SHM-vpt-57.8.R,Flinders Street,1,10206,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X021,2-SHM-vpt-57.9.H,Sandringham,0,10206,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X022,2-SHM-vpt-57.8.R,Flinders Street,1,10169,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X023,2-SHM-vpt-57.9.H,Sandringham,0,10169,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X024,2-SHM-vpt-57.8.R,Flinders Street,1,10185,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X025,2-SHM-vpt-57.9.H,Sandringham,0,10185,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X026,2-SHM-vpt-57.8.R,Flinders Street,1,10248,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X027,2-SHM-vpt-57.9.H,Sandringham,0,10248,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X028,2-SHM-vpt-57.8.R,Flinders Street,1,10137,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X029,2-SHM-vpt-57.9.H,Sandringham,0,10137,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X030,2-SHM-vpt-57.8.R,Flinders Street,1,10222,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X031,2-SHM-vpt-57.9.H,Sandringham,0,10222,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X032,2-SHM-vpt-57.8.R,Flinders Street,1,10188,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X033,2-SHM-vpt-57.9.H,Sandringham,0,10188,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X034,2-SHM-vpt-57.8.R,Flinders Street,1,10189,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X035,2-SHM-vpt-57.9.H,Sandringham,0,10189,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X036,2-SHM-vpt-57.8.R,Flinders Street,1,10102,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X037,2-SHM-vpt-57.9.H,Sandringham,0,10102,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X038,2-SHM-vpt-57.8.R,Flinders Street,1,10200,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X039,2-SHM-vpt-57.9.H,Sandringham,0,10200,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X040,2-SHM-vpt-57.8.R,Flinders Street,1,10175,1,1
+aus:vic:vic-02-SHM:,T2_1,02-SHM--57-T2-X042,2-SHM-vpt-57.8.R,Flinders Street,1,10254,1,1
+aus:vic:vic-02-STY:,T2_1,02-STY--57-T2-8505,2-STY-vpt-57.2.H,Stony Point,0,,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z029,2-SUY-vpt-57.2.H,Sunbury,0,1018,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z031,2-SUY-vpt-57.1.H,Sunbury,0,880,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z033,2-SUY-vpt-57.2.H,Sunbury,0,994,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z035,2-SUY-vpt-57.1.H,Sunbury,0,892,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z036,2-SUY-vpt-57.4.R,East Pakenham via Metro Tunnel,1,448,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z037,2-SUY-vpt-57.2.H,Sunbury,0,1019,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z038,2-SUY-vpt-57.3.R,East Pakenham via Metro Tunnel,1,350,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z039,2-SUY-vpt-57.1.H,Sunbury,0,925,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z040,2-SUY-vpt-57.4.R,East Pakenham via Metro Tunnel,1,459,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z041,2-SUY-vpt-57.2.H,Sunbury,0,1028,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z042,2-SUY-vpt-57.3.R,East Pakenham via Metro Tunnel,1,402,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z043,2-SUY-vpt-57.1.H,Sunbury,0,980,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z044,2-SUY-vpt-57.4.R,East Pakenham via Metro Tunnel,1,506,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z045,2-SUY-vpt-57.2.H,Sunbury,0,1063,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z046,2-SUY-vpt-57.3.R,East Pakenham via Metro Tunnel,1,418,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z047,2-SUY-vpt-57.1.H,Sunbury,0,962,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z048,2-SUY-vpt-57.4.R,East Pakenham via Metro Tunnel,1,495,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z049,2-SUY-vpt-57.2.H,Sunbury,0,1050,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z050,2-SUY-vpt-57.3.R,East Pakenham via Metro Tunnel,1,431,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z051,2-SUY-vpt-57.1.H,Sunbury,0,982,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z052,2-SUY-vpt-57.4.R,East Pakenham via Metro Tunnel,1,496,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z053,2-SUY-vpt-57.2.H,Sunbury,0,1062,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z054,2-SUY-vpt-57.3.R,East Pakenham via Metro Tunnel,1,391,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z055,2-SUY-vpt-57.1.H,Sunbury,0,928,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z056,2-SUY-vpt-57.4.R,East Pakenham via Metro Tunnel,1,502,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z057,2-SUY-vpt-57.2.H,Sunbury,0,1041,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z058,2-SUY-vpt-57.3.R,East Pakenham via Metro Tunnel,1,396,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z060,2-SUY-vpt-57.4.R,East Pakenham via Metro Tunnel,1,520,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z062,2-SUY-vpt-57.3.R,East Pakenham via Metro Tunnel,1,371,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z064,2-SUY-vpt-57.4.R,East Pakenham via Metro Tunnel,1,477,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z430,2-SUY-vpt-57.8.R,Cranbourne via Metro Tunnel,1,648,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z432,2-SUY-vpt-57.8.R,Cranbourne via Metro Tunnel,1,633,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z434,2-SUY-vpt-57.8.R,Cranbourne via Metro Tunnel,1,617,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z436,2-SUY-vpt-57.8.R,Cranbourne via Metro Tunnel,1,620,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z437,2-SUY-vpt-57.9.H,Watergardens,0,1112,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z438,2-SUY-vpt-57.8.R,Cranbourne via Metro Tunnel,1,595,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z439,2-SUY-vpt-57.9.H,Watergardens,0,1134,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z440,2-SUY-vpt-57.8.R,Cranbourne via Metro Tunnel,1,590,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z441,2-SUY-vpt-57.9.H,Watergardens,0,1196,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z442,2-SUY-vpt-57.8.R,Cranbourne via Metro Tunnel,1,609,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z443,2-SUY-vpt-57.9.H,Watergardens,0,1199,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z444,2-SUY-vpt-57.8.R,Cranbourne via Metro Tunnel,1,579,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z445,2-SUY-vpt-57.9.H,Watergardens,0,1209,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z446,2-SUY-vpt-57.8.R,Cranbourne via Metro Tunnel,1,568,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z447,2-SUY-vpt-57.9.H,Watergardens,0,1205,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z449,2-SUY-vpt-57.9.H,Watergardens,0,1120,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z451,2-SUY-vpt-57.9.H,Watergardens,0,1194,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z453,2-SUY-vpt-57.9.H,Watergardens,0,1122,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z625,2-SUY-vpt-57.11.H,West Footscray,0,679,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z627,2-SUY-vpt-57.11.H,West Footscray,0,685,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z629,2-SUY-vpt-57.11.H,West Footscray,0,694,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z631,2-SUY-vpt-57.11.H,West Footscray,0,746,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z646,2-SUY-vpt-57.13.R,Cranbourne via Metro Tunnel,1,1299,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z648,2-SUY-vpt-57.13.R,Cranbourne via Metro Tunnel,1,1315,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z650,2-SUY-vpt-57.13.R,Cranbourne via Metro Tunnel,1,1293,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z652,2-SUY-vpt-57.13.R,Cranbourne via Metro Tunnel,1,1333,1,1
+aus:vic:vic-02-SUY:,T2_1,02-SUY--57-T2-Z654,2-SUY-vpt-57.13.R,Cranbourne via Metro Tunnel,1,1341,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5017,2-UFD-vpt-57.2.H,Upfield,0,4127,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5019,2-UFD-vpt-57.2.H,Upfield,0,4174,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5021,2-UFD-vpt-57.2.H,Upfield,0,4110,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5023,2-UFD-vpt-57.2.H,Upfield,0,4192,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5025,2-UFD-vpt-57.2.H,Upfield,0,4168,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5027,2-UFD-vpt-57.2.H,Upfield,0,4109,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5029,2-UFD-vpt-57.2.H,Upfield,0,4194,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5031,2-UFD-vpt-57.2.H,Upfield,0,4170,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5033,2-UFD-vpt-57.2.H,Upfield,0,4162,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5035,2-UFD-vpt-57.2.H,Upfield,0,4156,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5037,2-UFD-vpt-57.2.H,Upfield,0,4107,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5039,2-UFD-vpt-57.2.H,Upfield,0,4186,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5041,2-UFD-vpt-57.2.H,Upfield,0,4190,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5043,2-UFD-vpt-57.2.H,Upfield,0,4144,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5616,2-UFD-vpt-57.6.R,Flinders Street via City Loop,1,3970,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5618,2-UFD-vpt-57.6.R,Flinders Street via City Loop,1,4015,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5620,2-UFD-vpt-57.6.R,Flinders Street via City Loop,1,3992,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5622,2-UFD-vpt-57.6.R,Flinders Street via City Loop,1,3982,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5624,2-UFD-vpt-57.6.R,Flinders Street via City Loop,1,4010,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5626,2-UFD-vpt-57.6.R,Flinders Street via City Loop,1,3948,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5628,2-UFD-vpt-57.6.R,Flinders Street via City Loop,1,3987,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5630,2-UFD-vpt-57.6.R,Flinders Street via City Loop,1,3959,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5632,2-UFD-vpt-57.6.R,Flinders Street via City Loop,1,3977,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5634,2-UFD-vpt-57.6.R,Flinders Street via City Loop,1,4009,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5636,2-UFD-vpt-57.6.R,Flinders Street via City Loop,1,4016,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5638,2-UFD-vpt-57.6.R,Flinders Street via City Loop,1,4019,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5640,2-UFD-vpt-57.6.R,Flinders Street via City Loop,1,3997,1,1
+aus:vic:vic-02-UFD:,T2_1,02-UFD--57-T2-5642,2-UFD-vpt-57.6.R,Flinders Street via City Loop,1,4000,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6413,2-WER-vpt-57.2.H,Werribee via Altona Loop,0,,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6415,2-WER-vpt-57.5.H,Werribee via Altona Loop,0,8721,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6417,2-WER-vpt-57.2.H,Werribee via Altona Loop,0,8936,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6418,2-WER-vpt-57.1.R,Flinders Street via Altona Loop,1,8664,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6419,2-WER-vpt-57.5.H,Werribee via Altona Loop,0,8717,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6420,2-WER-vpt-57.7.R,Flinders Street via Altona Loop,1,8733,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6421,2-WER-vpt-57.2.H,Werribee via Altona Loop,0,8937,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6422,2-WER-vpt-57.8.R,Flinders Street via Altona Loop,1,8727,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6423,2-WER-vpt-57.5.H,Werribee via Altona Loop,0,8726,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6424,2-WER-vpt-57.7.R,Flinders Street via Altona Loop,1,8732,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6425,2-WER-vpt-57.2.H,Werribee via Altona Loop,0,8733,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6426,2-WER-vpt-57.1.R,Flinders Street via Altona Loop,1,8638,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6427,2-WER-vpt-57.5.H,Werribee via Altona Loop,0,8727,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6428,2-WER-vpt-57.6.R,Flinders Street via Altona Loop,1,8705,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6429,2-WER-vpt-57.2.H,Werribee via Altona Loop,0,8732,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6430,2-WER-vpt-57.1.R,Flinders Street via Altona Loop,1,8669,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6431,2-WER-vpt-57.3.H,Werribee via Altona Loop,0,8638,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6432,2-WER-vpt-57.6.R,Flinders Street via Altona Loop,1,8702,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6433,2-WER-vpt-57.4.H,Werribee via Altona Loop,0,8705,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6434,2-WER-vpt-57.1.R,Flinders Street via Altona Loop,1,8642,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6435,2-WER-vpt-57.3.H,Werribee via Altona Loop,0,8669,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6436,2-WER-vpt-57.6.R,Flinders Street via Altona Loop,1,8692,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6437,2-WER-vpt-57.4.H,Werribee via Altona Loop,0,8702,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6438,2-WER-vpt-57.1.R,Flinders Street via Altona Loop,1,8651,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6439,2-WER-vpt-57.3.H,Werribee via Altona Loop,0,8642,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6440,2-WER-vpt-57.6.R,Flinders Street via Altona Loop,1,8677,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6441,2-WER-vpt-57.4.H,Werribee via Altona Loop,0,8692,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6442,2-WER-vpt-57.1.R,Flinders Street via Altona Loop,1,8627,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6443,2-WER-vpt-57.3.H,Werribee via Altona Loop,0,8651,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6444,2-WER-vpt-57.6.R,Flinders Street via Altona Loop,1,8712,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6590,2-WER-vpt-57.13.R,Flinders Street,1,8966,1,1
+aus:vic:vic-02-WER:,T2_1,02-WER--57-T2-6592,2-WER-vpt-57.13.R,Flinders Street,1,8964,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-6300,2-WIL-vpt-57.1.R,Flinders Street,1,10930,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-6301,2-WIL-vpt-57.2.H,Williamstown,0,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-6302,2-WIL-vpt-57.1.R,Flinders Street,1,10915,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-6303,2-WIL-vpt-57.2.H,Williamstown,0,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-6304,2-WIL-vpt-57.1.R,Flinders Street,1,10928,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-6305,2-WIL-vpt-57.2.H,Williamstown,0,8966,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-6306,2-WIL-vpt-57.1.R,Flinders Street,1,10941,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-6307,2-WIL-vpt-57.2.H,Williamstown,0,8964,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-6309,2-WIL-vpt-57.2.H,Williamstown,0,10930,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-6311,2-WIL-vpt-57.2.H,Williamstown,0,10915,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-X319,2-WIL-vpt-57.4.H,Williamstown,0,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-X320,2-WIL-vpt-57.3.R,Newport,1,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-X321,2-WIL-vpt-57.4.H,Williamstown,0,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-X322,2-WIL-vpt-57.3.R,Newport,1,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-X323,2-WIL-vpt-57.4.H,Williamstown,0,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-X324,2-WIL-vpt-57.3.R,Newport,1,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-X325,2-WIL-vpt-57.4.H,Williamstown,0,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-X326,2-WIL-vpt-57.3.R,Newport,1,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-X327,2-WIL-vpt-57.4.H,Williamstown,0,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-X328,2-WIL-vpt-57.3.R,Newport,1,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-X329,2-WIL-vpt-57.4.H,Williamstown,0,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-X330,2-WIL-vpt-57.3.R,Newport,1,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-X331,2-WIL-vpt-57.4.H,Williamstown,0,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-X333,2-WIL-vpt-57.4.H,Williamstown,0,,1,1
+aus:vic:vic-02-WIL:,T2_1,02-WIL--57-T2-X334,2-WIL-vpt-57.3.R,Newport,1,,1,1
