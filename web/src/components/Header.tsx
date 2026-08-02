@@ -14,7 +14,7 @@ export function Header({ theme, onThemeChange }: HeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.titleRow}>
-        <img src="/favicon.svg" alt="" width={28} height={28} />
+        <img src="./favicon.svg" alt="" width={28} height={28} />
         <h1 className={styles.title}>Melbourne Train Tracker</h1>
       </div>
       <div className={styles.taglineRow}>
