@@ -51,7 +51,6 @@ describe('Legend', () => {
 
   it('hides specific route when in hiddenRouteIds', () => {
     render(<Legend hiddenRouteIds={new Set(['1'])} onToggle={() => {}} />)
-    const toggles = screen.getAllByRole('checkbox')
     // Find the Belgrave toggle by its label
     const belgraveToggle = screen.getByRole('checkbox', { name: 'Show Belgrave line' })
     expect(belgraveToggle).not.toBeChecked()
