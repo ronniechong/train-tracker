@@ -1,3 +1,4 @@
+import { trackEvent } from '../../lib/analytics'
 import styles from './DrawerToggle.module.css'
 
 interface DrawerToggleProps {
@@ -14,7 +15,10 @@ export function DrawerToggle({ open, onToggle }: DrawerToggleProps) {
     <button
       type="button"
       className={styles.toggle}
-      onClick={onToggle}
+      onClick={() => {
+        trackEvent(open ? 'click-close-drawer' : 'click-open-drawer')
+        onToggle()
+      }}
       aria-label={open ? 'Close menu' : 'Open menu'}
       aria-expanded={open}
     >

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
 import { cx } from '../../lib/cx'
+import { trackEvent } from '../../lib/analytics'
 import styles from './Modal.module.css'
 
 interface ModalProps {
@@ -45,8 +46,16 @@ export function Modal({ title, onClose, children }: ModalProps) {
     }
   }, [onClose])
 
+  // Click-to-close via either the backdrop or the button counts as the same
+  // dismissal action for analytics purposes -- one event, tagged with which
+  // modal it was (title), not which of the two affordances was used.
+  function handleClose(): void {
+    trackEvent('click-close-modal', title)
+    onClose()
+  }
+
   return createPortal(
-    <div className={styles.backdrop} onClick={onClose}>
+    <div className={styles.backdrop} onClick={handleClose}>
       <div
         className={cx(styles.panel)}
         role="dialog"
@@ -56,7 +65,7 @@ export function Modal({ title, onClose, children }: ModalProps) {
       >
         <div className={styles.header}>
           <p className={styles.title}>{title}</p>
-          <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Close">
+          <button type="button" className={styles.closeButton} onClick={handleClose} aria-label="Close">
             ×
           </button>
         </div>

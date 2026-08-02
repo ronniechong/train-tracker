@@ -3,6 +3,7 @@ import type { FeedStatus, Train } from '../../api-types'
 import { Section } from '../Section'
 import { Toggle } from '../Toggle'
 import { cx } from '../../lib/cx'
+import { trackEvent } from '../../lib/analytics'
 import styles from './StatusPanel.module.css'
 
 const STATUS_EXPLANATION: Record<Train['status'], string> = {
@@ -91,7 +92,14 @@ export function StatusPanel({ liveState, hideGhosts, onToggleHideGhosts, grow }:
       </div>
       <label className={styles.ghostToggleRow}>
         <span>Hide ghost trains</span>
-        <Toggle checked={hideGhosts} onChange={onToggleHideGhosts} aria-label="Hide ghost trains" />
+        <Toggle
+          checked={hideGhosts}
+          onChange={(checked) => {
+            trackEvent('toggle-hide-ghosts', checked ? 'hide' : 'show')
+            onToggleHideGhosts(checked)
+          }}
+          aria-label="Hide ghost trains"
+        />
       </label>
     </Section>
   )

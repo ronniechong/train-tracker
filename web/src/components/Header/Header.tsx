@@ -1,4 +1,5 @@
 import { Toggle } from '../Toggle'
+import { trackEvent } from '../../lib/analytics'
 import type { Theme } from '../../hooks/useTheme'
 import styles from './Header.module.css'
 
@@ -29,7 +30,10 @@ export function Header({ theme, onThemeChange }: HeaderProps) {
         <label className={styles.themeToggle}>
           <Toggle
             checked={theme === 'dark'}
-            onChange={(checked) => onThemeChange(checked ? 'dark' : 'light')}
+            onChange={(checked) => {
+              trackEvent('toggle-theme', checked ? 'dark' : 'light')
+              onThemeChange(checked ? 'dark' : 'light')
+            }}
             aria-label="Dark mode"
             icon={theme === 'dark' ? '🌙' : '☀️'}
           />

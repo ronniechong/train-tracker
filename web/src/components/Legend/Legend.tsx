@@ -1,6 +1,7 @@
 import { geometry, type Route } from '../../geometry'
 import { Section } from '../Section'
 import { Toggle } from '../Toggle'
+import { trackEvent } from '../../lib/analytics'
 import styles from './Legend.module.css'
 
 // Groups lines by color family to match PTV's own published line-color
@@ -64,7 +65,10 @@ export function Legend({ hiddenRouteIds, onToggle }: LegendProps) {
                 </span>
                 <Toggle
                   checked={visible}
-                  onChange={(checked) => onToggle(route.id, checked)}
+                  onChange={(checked) => {
+                    trackEvent('toggle-route-visibility', route.name)
+                    onToggle(route.id, checked)
+                  }}
                   aria-label={`Show ${route.name} line`}
                 />
               </label>

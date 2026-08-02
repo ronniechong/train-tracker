@@ -4,6 +4,7 @@ import { relativeTime } from '../../lib/relativeTime'
 import { formatTime } from '../../lib/formatTime'
 import { haversineM } from '../../lib/geo'
 import { Section, Placeholder } from '../Section'
+import { trackEvent } from '../../lib/analytics'
 import type { Train, ScheduledTrain } from '../../api-types'
 import type { StationScheduleState } from '../../hooks/useStationSchedule'
 import styles from './StationPanel.module.css'
@@ -104,7 +105,15 @@ export function StationPanel({ stationId, trains, hideGhosts, onClear, schedule 
         <>
           <div className={styles.header}>
             <span className={styles.name}>{station.name}</span>
-            <button type="button" className={styles.close} onClick={onClear} aria-label="Clear selected station">
+            <button
+              type="button"
+              className={styles.close}
+              onClick={() => {
+                trackEvent('click-clear-station')
+                onClear()
+              }}
+              aria-label="Clear selected station"
+            >
               ×
             </button>
           </div>

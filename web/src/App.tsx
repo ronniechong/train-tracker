@@ -6,6 +6,7 @@ import { useLiveFeed } from './hooks/useLiveFeed'
 import { useStationSchedule } from './hooks/useStationSchedule'
 import { useTheme } from './hooks/useTheme'
 import { routesByStationId, stationsById, type Station } from './geometry'
+import { trackEvent, trackStationSelect } from './lib/analytics'
 import styles from './App.module.css'
 
 export function App() {
@@ -71,7 +72,10 @@ export function App() {
       return
     }
     const station = stationsById.get(stationId)
-    if (station) selectStation(station)
+    if (station) {
+      trackStationSelect(station.name, 'map')
+      selectStation(station)
+    }
   }
 
   // Search selection additionally requests a camera fly -- a plain map
@@ -89,7 +93,15 @@ export function App() {
   return (
     <div className={styles.shell}>
       <DrawerToggle open={drawerOpen} onToggle={() => setDrawerOpen((prev) => !prev)} />
-      {drawerOpen && <div className={styles.drawerBackdrop} onClick={() => setDrawerOpen(false)} />}
+      {drawerOpen && (
+        <div
+          className={styles.drawerBackdrop}
+          onClick={() => {
+            trackEvent('click-dismiss-drawer-backdrop')
+            setDrawerOpen(false)
+          }}
+        />
+      )}
       <Sidebar
         liveState={liveState}
         hiddenRouteIds={hiddenRouteIds}

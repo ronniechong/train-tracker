@@ -10,6 +10,7 @@ import { Modal } from '../Modal'
 import { Section } from '../Section'
 import { useAttribution } from '../../hooks/useAttribution'
 import { cx } from '../../lib/cx'
+import { trackEvent } from '../../lib/analytics'
 import type { LiveState } from '../../hooks/useLiveFeed'
 import type { StationScheduleState } from '../../hooks/useStationSchedule'
 import type { Theme } from '../../hooks/useTheme'
@@ -78,13 +79,21 @@ export function Sidebar({
       <Legend hiddenRouteIds={hiddenRouteIds} onToggle={onToggleRoute} />
       <Search onSelect={onSearchSelect} />
       <Section>
-        <button type="button" className={styles.recenterButton} onClick={onRecenter}>
+        <button
+          type="button"
+          className={styles.recenterButton}
+          onClick={() => {
+            trackEvent('click-recenter-map')
+            onRecenter()
+          }}
+        >
           Recenter map
         </button>
         <button
           type="button"
           className={styles.announcementsButton}
           onClick={() => {
+            trackEvent('click-open-announcements')
             setAnnouncementsOpen(true)
             onCloseDrawer()
           }}
@@ -110,7 +119,12 @@ export function Sidebar({
         {attribution && (
           <p className={styles.attribution}>
             Data: {attribution.source}, licensed{' '}
-            <a href={attribution.license_url} target="_blank" rel="noopener noreferrer">
+            <a
+              href={attribution.license_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-goatcounter-click="click-license-link"
+            >
               {attribution.license}
             </a>
             . {attribution.note}
@@ -119,13 +133,13 @@ export function Sidebar({
         <p className={styles.disclaimer}>
           Experimental project, not an official transport information source. For live departures
           and disruptions, use the{' '}
-          <a href={PTV_URL} target="_blank" rel="noopener noreferrer">
+          <a href={PTV_URL} target="_blank" rel="noopener noreferrer" data-goatcounter-click="click-ptv-link">
             official PTV website
           </a>
           .
         </p>
         <p className={styles.githubLine}>
-          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
+          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" data-goatcounter-click="click-github-link">
             View source on GitHub
           </a>
         </p>

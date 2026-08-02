@@ -1,6 +1,7 @@
 import { useId, useRef, useState, type KeyboardEvent } from 'react'
 import { geometry, routesByStationId, routesById, type Station } from '../../geometry'
 import { Section } from '../Section'
+import { trackStationSelect } from '../../lib/analytics'
 import styles from './Search.module.css'
 
 const MAX_RESULTS = 8
@@ -35,6 +36,7 @@ export function Search({ onSelect }: SearchProps) {
   }
 
   function selectStation(station: Station): void {
+    trackStationSelect(station.name, 'search')
     onSelect(station)
     reset()
     inputRef.current?.blur()
