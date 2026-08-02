@@ -4,7 +4,8 @@ Close-to-real-time Melbourne metro train tracker built on Victoria's open
 GTFS-Realtime feeds: a polling/state service, JSON API + SSE stream, live map,
 and an AI layer with clearly-labelled inferences.
 
-> Work in progress. Architecture writeup lands when the project ships.
+> Live and evolving. Core tracking, map, and AI weekly digest are deployed;
+> a few AI-layer pieces (see below) are still in progress.
 
 Design priorities: polite consumption of the upstream public API, security by
 construction, deep observability, and data honesty (gaps recorded, staleness
@@ -48,9 +49,34 @@ flowchart LR
 5. **Observe** — Prometheus metrics on every design gate; dashboards
    and alerts for staleness, rate-limit abuse, and error rates.
 
-6. **AI (optional)** — On-demand disruption briefings via a restricted
-   endpoint. The LLM reads only local state and every inference is
-   clearly labelled.
+6. **AI (optional)** — A weekly digest (on-time/late/cancelled stats per
+   line, narrated by an LLM) is generated automatically and served
+   read-only. Disruption briefings are on-demand only, reachable through a
+   restricted endpoint with no automatic per-cycle triggering. Both features
+   share a hard monthly spend cap and read only local, already-derived
+   state — never the raw upstream feed as instructions. Every inference is
+   clearly labelled as an inference, not a fact. See the
+   [AI system card](docs/system-card.md) for the full accountability
+   writeup: scope, known failure modes, monitoring, and eval.
+
+## Features
+
+- **Live map** — real-time train positions via SSE, with an honest
+  live → coasting → ghost state machine: trains fall back to their
+  last-known or scheduled position when feed coverage drops, and are
+  drawn visibly faded (not pulsing) so a ghost position never reads as
+  a confirmed one.
+- **Station search & schedules** — search by station, view next
+  departures with live-vs-scheduled labelling.
+- **Service alerts** — active disruptions surfaced in an announcements
+  panel.
+- **AI weekly digest** — automated, narrated summary of on-time/late/
+  cancelled performance per line, generated once a week under a fixed
+  budget cap.
+- **On-demand AI briefings** — short, evidence-labelled disruption
+  summaries, triggered manually rather than automatically.
+- **Theme + route/ghost visibility toggles**, and privacy-friendly,
+  no-cookie pageview analytics ([GoatCounter](https://www.goatcounter.com/)).
 
 ## Development setup
 
@@ -73,5 +99,5 @@ Train positions and schedule data are derived and processed from the
 static GTFS feeds, published under
 [**CC BY 4.0**](https://creativecommons.org/licenses/by/4.0/). This is not
 a copy of the original feeds. The same credit is served live at the
-deployed API's `/attribution` endpoint; the map frontend (in progress)
-will carry a matching visible credit once it ships.
+deployed API's `/attribution` endpoint and carried visibly on the map
+frontend.
