@@ -9,13 +9,13 @@ import {
   registerStationInteractions,
   resetInitialView,
   setMapStyle,
-} from '../map/mapController'
-import { createTrainMarkerManager, type TrainMarkerManager } from '../map/trainMarkers'
-import { createStationPopupManager, type StationPopupManager } from '../map/stationPopup'
-import { LoadingOverlay } from './LoadingOverlay'
-import type { Train } from '../api-types'
-import type { StationScheduleState } from '../hooks/useStationSchedule'
-import type { Theme } from '../hooks/useTheme'
+} from '../../map/mapController'
+import { createTrainMarkerManager, type TrainMarkerManager } from '../../map/trainMarkers'
+import { createStationPopupManager, type StationPopupManager } from '../../map/stationPopup'
+import { LoadingOverlay } from '../LoadingOverlay'
+import type { Train } from '../../api-types'
+import type { StationScheduleState } from '../../hooks/useStationSchedule'
+import type { Theme } from '../../hooks/useTheme'
 import styles from './MapView.module.css'
 
 // A search selection carries its own `nonce` so re-selecting the same

@@ -1,8 +1,8 @@
-import type { LiveState } from '../hooks/useLiveFeed'
-import type { FeedStatus, Train } from '../api-types'
-import { Section } from './Section'
-import { Toggle } from './Toggle'
-import { cx } from '../lib/cx'
+import type { LiveState } from '../../hooks/useLiveFeed'
+import type { FeedStatus, Train } from '../../api-types'
+import { Section } from '../Section'
+import { Toggle } from '../Toggle'
+import { cx } from '../../lib/cx'
 import styles from './StatusPanel.module.css'
 
 const STATUS_EXPLANATION: Record<Train['status'], string> = {

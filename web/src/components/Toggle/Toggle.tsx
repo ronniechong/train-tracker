@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { cx } from '../lib/cx'
+import { cx } from '../../lib/cx'
 import styles from './Toggle.module.css'
 
 interface ToggleProps {

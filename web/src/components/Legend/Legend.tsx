@@ -1,6 +1,6 @@
-import { geometry, type Route } from '../geometry'
-import { Section } from './Section'
-import { Toggle } from './Toggle'
+import { geometry, type Route } from '../../geometry'
+import { Section } from '../Section'
+import { Toggle } from '../Toggle'
 import styles from './Legend.module.css'
 
 // Groups lines by color family to match PTV's own published line-color

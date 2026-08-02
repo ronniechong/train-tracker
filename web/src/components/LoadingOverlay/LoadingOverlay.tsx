@@ -1,4 +1,4 @@
-import { cx } from '../lib/cx'
+import { cx } from '../../lib/cx'
 import styles from './LoadingOverlay.module.css'
 
 interface LoadingOverlayProps {

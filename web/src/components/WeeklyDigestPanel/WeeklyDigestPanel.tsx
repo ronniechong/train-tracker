@@ -1,8 +1,8 @@
-import { Section, Placeholder } from './Section'
-import { useWeeklyDigests } from '../hooks/useWeeklyDigests'
-import { routesById } from '../geometry'
-import { formatWeekRange, formatPercent, parseNarrative } from '../lib/formatDigest'
-import type { WeeklyDigest, WeeklyLineStat } from '../api-types'
+import { Section, Placeholder } from '../Section'
+import { useWeeklyDigests } from '../../hooks/useWeeklyDigests'
+import { routesById } from '../../geometry'
+import { formatWeekRange, formatPercent, parseNarrative } from '../../lib/formatDigest'
+import type { WeeklyDigest, WeeklyLineStat } from '../../api-types'
 import styles from './WeeklyDigestPanel.module.css'
 
 // A week with no completed trips at all (cold start, or every partition in

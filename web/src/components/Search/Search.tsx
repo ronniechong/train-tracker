@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type KeyboardEvent } from 'react'
-import { geometry, routesByStationId, routesById, type Station } from '../geometry'
-import { Section } from './Section'
+import { geometry, routesByStationId, routesById, type Station } from '../../geometry'
+import { Section } from '../Section'
 import styles from './Search.module.css'
 
 const MAX_RESULTS = 8

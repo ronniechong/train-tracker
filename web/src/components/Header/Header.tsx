@@ -1,5 +1,5 @@
-import { Toggle } from './Toggle'
-import type { Theme } from '../hooks/useTheme'
+import { Toggle } from '../Toggle'
+import type { Theme } from '../../hooks/useTheme'
 import styles from './Header.module.css'
 
 interface HeaderProps {

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
-import { cx } from '../lib/cx'
+import { cx } from '../../lib/cx'
 import styles from './Modal.module.css'
 
 interface ModalProps {

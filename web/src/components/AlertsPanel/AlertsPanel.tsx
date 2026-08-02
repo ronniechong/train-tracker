@@ -1,5 +1,5 @@
-import { Section } from './Section'
-import { useAlerts } from '../hooks/useAlerts'
+import { Section } from '../Section'
+import { useAlerts } from '../../hooks/useAlerts'
 import styles from './AlertsPanel.module.css'
 
 // Effect enum -> short human label. Falls back to the raw value for any
