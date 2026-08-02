@@ -70,13 +70,6 @@ flowchart LR
   departures with live-vs-scheduled labelling.
 - **Service alerts** — active disruptions surfaced in an announcements
   panel.
-- **AI weekly digest** — automated, narrated summary of on-time/late/
-  cancelled performance per line, generated once a week under a fixed
-  budget cap.
-- **On-demand AI briefings** — short, evidence-labelled disruption
-  summaries, triggered manually rather than automatically.
-- **Theme + route/ghost visibility toggles**, and privacy-friendly,
-  no-cookie pageview analytics ([GoatCounter](https://www.goatcounter.com/)).
 
 ## Development setup
 
