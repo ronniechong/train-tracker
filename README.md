@@ -101,3 +101,8 @@ static GTFS feeds, published under
 a copy of the original feeds. The same credit is served live at the
 deployed API's `/attribution` endpoint and carried visibly on the map
 frontend.
+
+**Not travel advice.** This is a personal, portfolio project, not an
+official source. Positions can lag, be inferred rather than observed
+(see the ghost/coasting states above), or be temporarily unavailable.
+For real-time trip planning, use PTV's own official app or website.
