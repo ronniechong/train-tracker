@@ -51,4 +51,13 @@ def configure_logging(*secrets: str, level: int = logging.INFO) -> SecretRedacti
     root = logging.getLogger()
     root.setLevel(level)
     root.handlers = [handler]
+
+    # Belt-and-braces (M7 P0, 2026-08-02): the filter above only redacts
+    # secret *values* that were actually registered above -- a future
+    # secret-bearing URL that a caller forgets to pass in would still leak.
+    # httpx logs full request URLs at INFO on every call; raising its own
+    # logger threshold means that line never gets emitted at all,
+    # independent of whether this call's secrets list is complete.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
     return redaction_filter

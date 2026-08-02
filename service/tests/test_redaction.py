@@ -1,6 +1,6 @@
 import logging
 
-from traintracker.redaction import SecretRedactionFilter
+from traintracker.redaction import SecretRedactionFilter, configure_logging
 
 
 class ListHandler(logging.Handler):
@@ -65,6 +65,31 @@ def test_redacts_secret_embedded_in_a_logged_url():
     assert len(handler.lines) == 1
     assert ping_url not in handler.lines[0]
     assert "REDACTED" in handler.lines[0]
+
+
+def test_redacts_slack_webhook_url():
+    # M7 P0 (2026-08-02): same bug class as the dead-man ping URL above --
+    # the Slack webhook URL carries its secret as a path segment, and
+    # httpx logs full request URLs at INFO on every briefing/weekly-digest
+    # send. Confirmed live: `docker compose logs` wrote the real webhook
+    # URL on every successful delivery before this was registered.
+    webhook_url = "https://hooks.invalid/services/T00000000/B00000000/fakefakefakefakefakefake"
+    logger, handler = _logger_with_filter("test.webhook_url", [webhook_url])
+
+    logger.info('HTTP Request: POST %s "HTTP/1.1 200 OK"', webhook_url)
+
+    assert len(handler.lines) == 1
+    assert webhook_url not in handler.lines[0]
+    assert "REDACTED" in handler.lines[0]
+
+
+def test_configure_logging_raises_httpx_logger_to_warning():
+    # Belt-and-braces: even if a future secret-bearing URL is never
+    # registered above, httpx's own INFO-level request logging (which
+    # prints full URLs) should never fire at all.
+    configure_logging("some-secret", level=logging.INFO)
+
+    assert logging.getLogger("httpx").getEffectiveLevel() == logging.WARNING
 
 
 def test_leaves_unrelated_messages_untouched():

@@ -32,7 +32,7 @@ import uvicorn
 from prometheus_client import start_http_server
 
 from ..ai.budget import BudgetEnforcedLLMClient, BudgetTracker
-from ..ai.llm_client import AnthropicLLMClient, LLMClient
+from ..ai.llm_client import ANTHROPIC_API_KEY_ENV, AnthropicLLMClient, LLMClient
 from ..ai.tools import ToolContext
 from ..ai.tracing import LangfuseTracedLLMClient
 from ..ai.weekly_digest import aggregate_weekly_stats, compose_weekly_digest
@@ -50,7 +50,7 @@ from ..state.eventhub import InProcessEventHub
 from ..state.store import StateStore
 from .healthcheck import PING_URL_ENV
 from .loop import ALL_FEEDS, PollerLoop
-from .slack import post_message
+from .slack import WEBHOOK_URL_ENV, post_message
 from .weekly_digest_trigger import WeeklyDigestTrigger
 
 # Fixed container-internal mount point (see Dockerfile's `VOLUME` and
@@ -192,9 +192,21 @@ async def main() -> int:
     # URLs at INFO level, so without registering it here it leaks straight
     # into logs on every successful cycle. Caught live 2026-07-21: the real
     # URL appeared in a docker compose logs capture during 2b verification.
+    #
+    # M7 P0 (2026-08-02): same bug class, second instance -- the Slack
+    # webhook URL (`ai/briefing.py`/`weekly_digest.py`'s delivery path) also
+    # carries its secret as a URL path segment, and every briefing/weekly
+    # digest send was writing it straight into `docker compose logs` via the
+    # same httpx INFO-level request logging. Anthropic/Langfuse keys added
+    # too, belt-and-braces -- nothing today logs them, but registering costs
+    # nothing and this filter is the only backstop if that ever changes.
     configure_logging(
         os.environ.get(API_KEY_ENV, ""),
         os.environ.get(PING_URL_ENV, ""),
+        os.environ.get(WEBHOOK_URL_ENV, ""),
+        os.environ.get(ANTHROPIC_API_KEY_ENV, ""),
+        os.environ.get("LANGFUSE_PUBLIC_KEY", ""),
+        os.environ.get("LANGFUSE_SECRET_KEY", ""),
         level=logging.INFO,
     )
 
