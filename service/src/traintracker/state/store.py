@@ -100,6 +100,9 @@ class StateStore:
     def status_of(self, trip_id: str):
         return self._lifecycle.status_of(trip_id)
 
+    def view_of(self, trip_id: str) -> TrackedTrainView | None:
+        return self._lifecycle.view_of(trip_id)
+
     def all_tracked(self) -> tuple[TrackedTrainView, ...]:
         return self._lifecycle.all_tracked()
 

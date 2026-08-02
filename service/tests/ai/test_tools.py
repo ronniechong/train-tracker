@@ -1,5 +1,5 @@
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from traintracker.ai.tools import TOOL_FUNCTIONS, ToolContext, get_active_alerts, get_line_status, get_trip
 from traintracker.gtfs.gtfstime import service_date_for_instant
@@ -7,6 +7,7 @@ from traintracker.gtfs.pinning import PinManifest
 from traintracker.gtfs.schedule_cache import PinnedScheduleCache
 from traintracker.state.alerts import ActivePeriod, Alert, InformedEntity
 from traintracker.state.eventlog import InMemoryEventLog
+from traintracker.state.ghost import COASTING_TIMEOUT_S
 from traintracker.state.merge import StopTimeUpdate, TrainSnapshot
 from traintracker.state.store import StateStore
 
@@ -180,6 +181,73 @@ async def test_get_line_status_counts_tracked_trips_and_cancellations(tmp_path, 
     # coasting/ghost (fresh), so it doesn't land in any of the 3 buckets
     # this same cycle -- only T1 should count.
     assert result["tracked_trip_counts"]["live"] == 1
+
+
+async def test_get_trip_reports_live_position_source_for_a_live_trip(tmp_path, sample_static_zip_bytes):
+    ctx = _ctx(tmp_path, sample_static_zip_bytes)
+    now = datetime.now(timezone.utc)
+    tu_feed = {"header": {"timestamp": "1784500000"}, "entity": [_tu_entity("T1", "2-PKM")]}
+    vp_feed = {"header": {"timestamp": "1784500000"}, "entity": [_vp_entity("T1", "2-PKM")]}
+    ctx.store.ingest(tu_feed, vp_feed, cycle_time=now)
+
+    result = await get_trip(ctx, trip_id="T1")
+
+    assert result["status"] == "live"
+    assert result["position_source"] == "live"
+    assert result["ghost_duration_s"] is None
+    assert result["last_seen_at"] is not None
+
+
+async def test_get_trip_returns_ghost_evidence_for_a_fully_vanished_trip(tmp_path, sample_static_zip_bytes):
+    """2026-08-02, ghost-inference annotations: the exact gap that was
+    open before this session -- a trip dropped out of both live feeds
+    entirely used to be indistinguishable from one the poller never saw,
+    returning the same bare "not currently tracked" error either way."""
+    ctx = _ctx(tmp_path, sample_static_zip_bytes)
+    # `get_trip`'s evidence uses the real wall clock (`_ghost_evidence`),
+    # same convention `get_active_alerts` already uses -- so cycle times
+    # must sit in the real past, not an arbitrary offset from each other,
+    # for `ghost_duration_s` to come out sane at assertion time.
+    real_now = datetime.now(timezone.utc)
+    t0 = real_now - timedelta(seconds=COASTING_TIMEOUT_S + 20)
+    tu_feed = {"header": {"timestamp": "1784500000"}, "entity": [_tu_entity("T1", "2-PKM")]}
+    vp_feed = {"header": {"timestamp": "1784500000"}, "entity": [_vp_entity("T1", "2-PKM")]}
+    ctx.store.ingest(tu_feed, vp_feed, cycle_time=t0)
+
+    empty_feed = {"header": {"timestamp": "1784500000"}, "entity": []}
+    ghost_time = t0 + timedelta(seconds=COASTING_TIMEOUT_S + 10)  # ~10s before real_now
+    ctx.store.ingest(empty_feed, empty_feed, cycle_time=ghost_time)
+
+    result = await get_trip(ctx, trip_id="T1")
+
+    assert result["status"] == "ghost"
+    assert result["position_source"] == "last_confirmed"
+    assert result["latitude"] == -37.8
+    assert result["longitude"] == 144.9
+    assert result["route_id"] is None  # lost project-wide once both feeds drop it, see api/app.py's _train
+    assert 0 < result["ghost_duration_s"] < 15
+    assert result["last_seen_at"] is not None
+
+
+async def test_get_line_status_reports_evidence_for_coasting_trips(tmp_path, sample_static_zip_bytes):
+    ctx = _ctx(tmp_path, sample_static_zip_bytes)
+    t0 = datetime.now(timezone.utc)
+    tu_feed = {"header": {"timestamp": "1784500000"}, "entity": [_tu_entity("T1", "2-PKM")]}
+    vp_feed = {"header": {"timestamp": "1784500000"}, "entity": [_vp_entity("T1", "2-PKM")]}
+    ctx.store.ingest(tu_feed, vp_feed, cycle_time=t0)
+
+    # TU still reports T1 (keeps its route_id in latest_snapshots) but VP
+    # doesn't -- coasting, not yet ghost.
+    coasting_time = t0 + timedelta(seconds=30)
+    ctx.store.ingest(tu_feed, {"header": {"timestamp": "1784500030"}, "entity": []}, cycle_time=coasting_time)
+
+    result = await get_line_status(ctx, line_name="Pakenham")
+
+    assert result["tracked_trip_counts"]["coasting"] == 1
+    assert len(result["non_live_trips"]) == 1
+    assert result["non_live_trips"][0]["trip_id"] == "T1"
+    assert result["non_live_trips"][0]["status"] == "coasting"
+    assert result["non_live_trips"][0]["ghost_duration_s"] is None  # not a ghost yet
 
 
 async def test_tool_functions_registry_matches_tools_list():

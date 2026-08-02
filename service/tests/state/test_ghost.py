@@ -82,6 +82,25 @@ def test_loop_contained_true_when_both_endpoints_inside_bbox():
     assert log.events[0].loop_contained is True
 
 
+def test_view_of_exposes_ghost_started_at_only_while_ghosted():
+    log = InMemoryEventLog()
+    tracker = TrainLifecycleTracker(log)
+
+    tracker.tick({"trip-1": _snap(-37.8, 144.9, _at(0))}, _at(0))
+    assert tracker.view_of("trip-1").ghost_started_at is None  # live
+
+    tracker.tick({}, _at(30))
+    assert tracker.view_of("trip-1").ghost_started_at is None  # coasting
+
+    tracker.tick({}, _at(COASTING_TIMEOUT_S + 10))
+    view = tracker.view_of("trip-1")
+    assert view.status == "ghost"
+    assert view.ghost_started_at == _at(COASTING_TIMEOUT_S + 10)
+    assert view.last_position == (-37.8, 144.9)
+
+    assert tracker.view_of("never-seen") is None
+
+
 def test_backoff_freezes_the_coasting_clock():
     log = InMemoryEventLog()
     tracker = TrainLifecycleTracker(log)

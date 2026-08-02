@@ -76,7 +76,9 @@ class _TrackedTrain:
 
 @dataclass(frozen=True)
 class TrackedTrainView:
-    """Read-only snapshot of one tracked trip, for M3's API/SSE consumers.
+    """Read-only snapshot of one tracked trip, for M3's API/SSE consumers
+    and (2026-08-02, 05-ai-layer ghost-inference annotations) the AI tool
+    layer's evidence fields.
 
     Deliberately minimal (status + last-known position only) -- this is all
     `_TrackedTrain` actually retains once a trip drops out of both live
@@ -95,6 +97,14 @@ class TrackedTrainView:
     # should use for "is this genuinely current" checks (see api/app.py's
     # `_is_current`).
     last_touched_at: datetime | None
+    # When status is "ghost", when this ghost episode started -- lets a
+    # caller compute a live "ghosted for Xs" duration WHILE still ghosted,
+    # not just retroactively via `GhostEvent.ghost_duration_s` at
+    # reappearance/eviction. `None` when not currently ghost. Defaulted so
+    # existing construction sites (e.g. `test_metrics.py`'s fixture, built
+    # before this field existed) don't all need updating for a field they
+    # don't exercise.
+    ghost_started_at: datetime | None = None
 
 
 class TrainLifecycleTracker:
@@ -193,6 +203,23 @@ class TrainLifecycleTracker:
         tracked = self._trains.get(trip_id)
         return tracked.status if tracked else None
 
+    def view_of(self, trip_id: str) -> TrackedTrainView | None:
+        """Single-trip lookup, for the AI tool layer (`ai/tools.py`'s
+        `get_trip`) -- same fields `all_tracked()` reports, without
+        building a view for every tracked trip just to find one."""
+        tracked = self._trains.get(trip_id)
+        return self._view(trip_id, tracked) if tracked is not None else None
+
+    def _view(self, trip_id: str, tracked: _TrackedTrain) -> TrackedTrainView:
+        return TrackedTrainView(
+            trip_id=trip_id,
+            status=tracked.status,
+            last_seen_at=tracked.last_seen_at,
+            last_position=tracked.last_position,
+            last_touched_at=tracked.last_touched_at,
+            ghost_started_at=tracked.ghost_started_at,
+        )
+
     def all_tracked(self) -> tuple[TrackedTrainView, ...]:
         """Every trip this tracker has ever seen (live, coasting, or ghost),
         not just the ones present in the current cycle's merge output --
@@ -207,16 +234,7 @@ class TrainLifecycleTracker:
         2026-07-31, closing CLAUDE.md's "ghost ... fade at journey end"
         gap), so `_trains` is already bounded by the time this is called;
         this method just reports it as-is rather than re-filtering."""
-        return tuple(
-            TrackedTrainView(
-                trip_id=trip_id,
-                status=tracked.status,
-                last_seen_at=tracked.last_seen_at,
-                last_position=tracked.last_position,
-                last_touched_at=tracked.last_touched_at,
-            )
-            for trip_id, tracked in self._trains.items()
-        )
+        return tuple(self._view(trip_id, tracked) for trip_id, tracked in self._trains.items())
 
     def flush(self, at: datetime) -> None:
         """Force-close any still-open ghost episodes (e.g. at the end of a
