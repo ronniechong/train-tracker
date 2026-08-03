@@ -144,6 +144,7 @@ async def _client_for(
     ai_notify_client=None,
     metrics=None,
     digest_store=None,
+    briefing_token=None,
 ) -> httpx.AsyncClient:
     app = create_app(
         loop=loop,
@@ -158,6 +159,7 @@ async def _client_for(
         ai_notify_client=ai_notify_client,
         metrics=metrics,
         digest_store=digest_store,
+        briefing_token=briefing_token,
     )
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
 
@@ -943,6 +945,53 @@ async def test_trigger_briefing_reports_budget_exceeded_without_calling_slack(mo
     assert body["sent"] is False
     assert "budget" in body["reason"].lower()
     assert posted == []
+
+
+async def test_trigger_briefing_rejects_missing_bearer_token_when_configured():
+    loop, store = await _running_loop()
+    ai_client = _ScriptedLLMClient("should never be produced")
+
+    async with await _client_for(
+        loop, store, ai_client=ai_client, ai_tool_context=ToolContext(store=store, schedule_cache=None),
+        ai_notify_client=httpx.AsyncClient(), briefing_token="s3cret",
+    ) as client:
+        response = await client.post("/briefing/trigger")
+
+    assert response.status_code == 401
+    assert ai_client.calls == 0
+
+
+async def test_trigger_briefing_rejects_wrong_bearer_token():
+    loop, store = await _running_loop()
+    ai_client = _ScriptedLLMClient("should never be produced")
+
+    async with await _client_for(
+        loop, store, ai_client=ai_client, ai_tool_context=ToolContext(store=store, schedule_cache=None),
+        ai_notify_client=httpx.AsyncClient(), briefing_token="s3cret",
+    ) as client:
+        response = await client.post(
+            "/briefing/trigger", headers={"Authorization": "Bearer wrong"}
+        )
+
+    assert response.status_code == 401
+    assert ai_client.calls == 0
+
+
+async def test_trigger_briefing_accepts_correct_bearer_token():
+    loop, store = await _running_loop()
+    store.latest_alerts = {"A1": _briefable_alert()}
+    ai_client = _ScriptedLLMClient("Belgrave line: major delays due to a signal fault.")
+
+    async with await _client_for(
+        loop, store, ai_client=ai_client, ai_tool_context=ToolContext(store=store, schedule_cache=None),
+        ai_notify_client=httpx.AsyncClient(), briefing_token="s3cret",
+    ) as client:
+        response = await client.post(
+            "/briefing/trigger", headers={"Authorization": "Bearer s3cret"}
+        )
+
+    assert response.status_code == 200
+    assert ai_client.calls == 1
 
 
 async def test_trigger_briefing_reports_a_generic_failure_without_leaking_internals(monkeypatch):

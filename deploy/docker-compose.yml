@@ -70,6 +70,11 @@ services:
       # container, not via this env var -- this line is what lets the
       # POLLER's process reach it too, previously only Grafana needed it.
       TT_ALERT_WEBHOOK_URL: ${TT_ALERT_WEBHOOK_URL:-}
+      # M7 P1: app-level bearer token for POST /briefing/trigger, on top
+      # of the existing tailnet-only network isolation -- unset means the
+      # route falls back to network-isolation-only (pre-M7 behavior), so
+      # this must be set before relying on the extra layer being live.
+      TT_BRIEFING_TOKEN: ${TT_BRIEFING_TOKEN:-}
     volumes:
       - ${TT_DATA_DIR:-./data}:/data
       # 2e: nightly maintenance (`python -m traintracker.history`, run via

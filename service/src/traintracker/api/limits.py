@@ -96,11 +96,14 @@ class RateLimiter:
     ConnectionTracker does: no shared store needed, exactly one process
     ever runs.
 
-    Known gap, not fixed here: `_per_ip` has no eviction, so it grows by
-    one entry per unique IP ever seen for the life of the process -- same
-    shape as the ghost tracker's unbounded-growth gap (see JOURNAL). A
-    slow, multi-week memory creep under real hostile traffic, not an
-    immediate problem.
+    M7 P1: `_per_ip` is pruned of entries idle past 2x the window on every
+    call, capped to run at most once per window (`_last_sweep`) so a busy
+    process doesn't pay an O(n) scan on every single request -- fixes the
+    unbounded-growth gap noted here previously (one entry per unique IP
+    ever seen, for the life of the process; same shape as the ghost
+    tracker's gap, see JOURNAL). A window-old entry is, by definition,
+    already back to a fresh count on its next hit, so dropping it loses no
+    real rate-limit state.
     """
 
     def __init__(
@@ -114,8 +117,22 @@ class RateLimiter:
         self._window_s = window_s
         self._global = _FixedWindowCounter(window_s)
         self._per_ip: dict[str, _FixedWindowCounter] = {}
+        self._last_seen: dict[str, float] = {}
+        self._last_sweep = 0.0
+
+    def _sweep_stale(self, now: float) -> None:
+        if now - self._last_sweep < self._window_s:
+            return
+        self._last_sweep = now
+        stale_after = 2 * self._window_s
+        stale_ips = [ip for ip, last in self._last_seen.items() if now - last >= stale_after]
+        for ip in stale_ips:
+            self._per_ip.pop(ip, None)
+            self._last_seen.pop(ip, None)
 
     def check(self, client_ip: str, endpoint: str, now: float) -> None:
+        self._sweep_stale(now)
+        self._last_seen[client_ip] = now
         global_count = self._global.hit(now)
         ip_count = self._per_ip.setdefault(client_ip, _FixedWindowCounter(self._window_s)).hit(now)
 

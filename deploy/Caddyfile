@@ -4,6 +4,23 @@
 {
 	auto_https off
 	admin off
+
+	# M7 P1: the `tailscale` sidecar shares this container's network
+	# namespace (compose's `network_mode: service:caddy`), so every real
+	# Funnel request arrives over loopback -- tailscaled's local funnel
+	# target sets `X-Forwarded-For` to the actual internet client before
+	# that hop, the same way any reverse proxy would. Trusting 127.0.0.1
+	# here means Caddy uses that already-correct value as the basis for
+	# the X-Forwarded-For it forwards to `poller`, instead of blindly
+	# re-appending whatever a client claims. Nothing but the sidecar can
+	# reach Caddy on loopback, so this is a genuine trust boundary, not a
+	# cosmetic one -- unlike the old code comment in `api/app.py`, which
+	# claimed the same protection for `poller` itself without accounting
+	# for `poller`'s separate `monitoring` network membership (see M7 P2:
+	# that residual gap is tracked, not closed by this change).
+	servers {
+		trusted_proxies static 127.0.0.1
+	}
 }
 
 :8080 {

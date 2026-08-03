@@ -36,7 +36,7 @@ from ..ai.llm_client import ANTHROPIC_API_KEY_ENV, AnthropicLLMClient, LLMClient
 from ..ai.tools import ToolContext
 from ..ai.tracing import LangfuseTracedLLMClient
 from ..ai.weekly_digest import aggregate_weekly_stats, compose_weekly_digest
-from ..api.app import create_app
+from ..api.app import BRIEFING_TOKEN_ENV, create_app
 from ..digests.store import LineStat, WeeklyDigestRecord, WeeklyDigestStore
 from ..gateway.client import API_KEY_ENV, GatewayClient
 from ..gtfs.pinning import PinManifest
@@ -207,6 +207,9 @@ async def main() -> int:
         os.environ.get(ANTHROPIC_API_KEY_ENV, ""),
         os.environ.get("LANGFUSE_PUBLIC_KEY", ""),
         os.environ.get("LANGFUSE_SECRET_KEY", ""),
+        # M7 P1: new credential, same env-only + redaction-filter-
+        # registered treatment as every other secret here (invariant #2).
+        os.environ.get(BRIEFING_TOKEN_ENV, ""),
         level=logging.INFO,
     )
 
@@ -299,6 +302,7 @@ async def main() -> int:
         loop=loop, store=store, hub=hub, schedule_cache=schedule_cache,
         ai_client=ai_client, ai_tool_context=tool_context, ai_notify_client=notify_client,
         metrics=metrics, digest_store=digest_store,
+        briefing_token=os.environ.get(BRIEFING_TOKEN_ENV) or None,
     )
     server = uvicorn.Server(uvicorn.Config(api, host="0.0.0.0", port=API_PORT, log_level="info"))
 

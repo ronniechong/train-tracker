@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import secrets
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import datetime, timedelta, timezone
 
@@ -85,6 +86,10 @@ DATA_ATTRIBUTION = AttributionResponse(
 logger = logging.getLogger("traintracker.api")
 
 CORS_ORIGINS_ENV = "TT_CORS_ORIGINS"
+# M7 P1: shared-secret bearer token for POST /briefing/trigger, defense-
+# in-depth on top of the tailnet-only network isolation (see create_app's
+# briefing_token docstring above).
+BRIEFING_TOKEN_ENV = "TT_BRIEFING_TOKEN"
 
 # M3 finding #5's resolution: this is a cap on connection *idleness*, not a
 # promised data-freshness cadence -- the actual delta cadence is whatever
@@ -238,11 +243,19 @@ def _current_state(loop: PollerLoop, store: StateStore) -> StateResponse:
 
 
 def _client_ip(request: Request) -> str:
-    # `X-Forwarded-For` is normally not something to trust from a client --
-    # here it's safe: per the M3 process-boundary decision, this container
-    # only carries the new `ingress` network, shared solely with `caddy`.
-    # Nothing else can reach this port to forge the header in the first
-    # place, unlike a general public-internet-facing service.
+    # M7 P1 correction: the old version of this comment claimed nothing but
+    # `caddy` could reach this port, which was never true -- `poller` also
+    # carries the host's shared `monitoring` network (2f, for Prometheus
+    # scraping) and `internal` (for its own egress calls), so this header
+    # is only trustworthy for traffic that actually arrived via Caddy.
+    # Caddy itself now only forwards a trustworthy value here (see the
+    # `trusted_proxies` config in deploy/Caddyfile, M7 P1) -- it trusts
+    # `X-Forwarded-For` only on the loopback hop from the co-located
+    # Tailscale sidecar, not from an arbitrary client. Something on the
+    # `monitoring` network forging this header directly against `poller`,
+    # bypassing Caddy, is a real residual gap -- explicitly tracked as M7
+    # P2 ("reconcile the monitoring network trust boundary"), not closed
+    # here.
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return forwarded.split(",")[0].strip()
@@ -342,6 +355,15 @@ def create_app(
     # 05-ai-layer weekly digest (locked 2026-08-01): None by default, same
     # "feature not configured" 503 convention as the AI-stack params above.
     digest_store: WeeklyDigestStore | None = None,
+    # M7 P1: app-level defense-in-depth for /briefing/trigger, on top of
+    # (not instead of) the tailnet-only network isolation Ronnie chose at
+    # M5 kickoff -- that isolation turned out narrower than "tailnet-only"
+    # in practice (also reachable via the shared `monitoring` network and
+    # `tailscale serve` to the whole tailnet, see the milestone doc), so a
+    # second, independent check is worthwhile. None by default = auth not
+    # enforced, same "feature not configured" convention as the params
+    # above -- lets tests/dev exercise this route without wiring a token.
+    briefing_token: str | None = None,
 ) -> FastAPI:
     connections = connections or ConnectionTracker()
     rate_limiter = rate_limiter or RateLimiter()
@@ -418,15 +440,24 @@ def create_app(
         response_model=BriefingTriggerResponse,
         dependencies=[Depends(_rate_limit_dependency(rate_limiter, "briefing_trigger"))],
     )
-    async def trigger_briefing() -> BriefingTriggerResponse:
-        # Network-level isolation, not app-level: this route is only ever
-        # actually reachable through the tailnet-only Caddy listener
-        # (deploy/Caddyfile's :8081 block + `tailscale serve`, NOT the
-        # publicly-funnelled :8080) -- Ronnie's explicit choice over an
-        # app-level bearer token, so there's deliberately no auth check
-        # here. Security invariant #1 is unaffected either way: this only
-        # ever reads already-polled local state via `ai_tool_context`,
-        # same as every AI-layer tool.
+    async def trigger_briefing(request: Request) -> BriefingTriggerResponse:
+        # Network-level isolation (deploy/Caddyfile's :8081 block +
+        # `tailscale serve`, NOT the publicly-funnelled :8080) was Ronnie's
+        # original, deliberate choice over an app-level token at M5
+        # kickoff. M7 P1 adds this bearer check on top, not instead of
+        # that: the route turned out reachable from more than "tailnet-
+        # only" in practice (the shared `monitoring` network; `tailscale
+        # serve` also exposes it to the whole tailnet, not just this
+        # deployment's own callers) -- see the milestone doc. Security
+        # invariant #1 is unaffected either way: this only ever reads
+        # already-polled local state via `ai_tool_context`, same as every
+        # AI-layer tool.
+        if briefing_token:
+            authorization = request.headers.get("authorization", "")
+            scheme, _, presented = authorization.partition(" ")
+            if scheme.lower() != "bearer" or not secrets.compare_digest(presented, briefing_token):
+                raise HTTPException(status_code=401, detail="missing or invalid bearer token")
+
         if ai_client is None or ai_tool_context is None or ai_notify_client is None:
             raise HTTPException(status_code=503, detail="briefing feature not configured")
 
