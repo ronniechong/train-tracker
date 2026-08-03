@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from ..redaction import configure_logging
 from .nightly import run_nightly_maintenance
 
 logger = logging.getLogger("traintracker.history")
@@ -27,7 +28,12 @@ BACKUP_DIR = Path("/backup")
 
 
 def main() -> int:
-    logging.basicConfig(level=logging.INFO)
+    # M7 P2: routed through the shared redaction filter for consistency
+    # with `poller`/`gtfs` -- this job takes no secrets today, but
+    # `configure_logging` is also what raises httpx's own logger to
+    # WARNING, closing the same leak-vector class as M7 P0's fix even
+    # though nothing here currently triggers it.
+    configure_logging(level=logging.INFO)
 
     result = run_nightly_maintenance(
         history_dir=DATA_DIR / "history",

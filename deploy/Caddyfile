@@ -40,6 +40,7 @@
 		X-Frame-Options DENY
 		Referrer-Policy no-referrer
 		Content-Security-Policy "default-src 'none'"
+		Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=()"
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		Cache-Control no-store
 		-Server
@@ -82,6 +83,7 @@
 	header {
 		X-Content-Type-Options nosniff
 		Referrer-Policy no-referrer
+		Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=()"
 		Cache-Control no-store
 		-Server
 	}

@@ -28,6 +28,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ..redaction import configure_logging
 from .fetch import refresh_and_pin
 from .gtfstime import service_date_for_instant
 
@@ -37,7 +38,12 @@ DATA_DIR = Path("/data")
 
 
 def main() -> int:
-    logging.basicConfig(level=logging.INFO)
+    # M7 P2: routed through the shared redaction filter for consistency
+    # with `poller`/`history` -- this job takes no secrets today, but
+    # `configure_logging` is also what raises httpx's own logger to
+    # WARNING, closing the same leak-vector class as M7 P0's fix even
+    # though nothing here currently triggers it.
+    configure_logging(level=logging.INFO)
 
     gtfs_dir = DATA_DIR / "gtfs"
     service_date = service_date_for_instant(datetime.now(timezone.utc))

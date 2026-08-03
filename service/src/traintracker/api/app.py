@@ -253,9 +253,12 @@ def _client_ip(request: Request) -> str:
     # `X-Forwarded-For` only on the loopback hop from the co-located
     # Tailscale sidecar, not from an arbitrary client. Something on the
     # `monitoring` network forging this header directly against `poller`,
-    # bypassing Caddy, is a real residual gap -- explicitly tracked as M7
-    # P2 ("reconcile the monitoring network trust boundary"), not closed
-    # here.
+    # bypassing Caddy, is a real residual gap -- explicitly accepted, not
+    # closed, as of M7 P2 (2026-08-03): `monitoring` is this same host's
+    # own single-operator stack, no untrusted tenants, so this is
+    # host-compromise-equivalent risk rather than a genuine additional
+    # attack surface (see deploy/docker-compose.yml's `monitoring`
+    # network definition for the full reasoning).
     forwarded = request.headers.get("x-forwarded-for")
     resolved = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
     if os.environ.get("TT_DEBUG_CLIENT_IP"):

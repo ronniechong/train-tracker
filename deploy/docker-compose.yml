@@ -10,7 +10,9 @@
 # to, via tinyproxy.filter — two independent layers, not one.
 services:
   egress-proxy:
-    image: docker.io/vimagick/tinyproxy:latest
+    # M7 P2: pinned by digest (image only ships a `latest` tag) so an
+    # upstream push can't silently change what's running.
+    image: docker.io/vimagick/tinyproxy:latest@sha256:72b441b95ee1e641af948f68f09492f9f795ead72b73954414e339168c98ad8c
     restart: unless-stopped
     read_only: true
     volumes:
@@ -43,7 +45,12 @@ services:
       TT_DEADMAN_PING_URL: ${TT_DEADMAN_PING_URL:-}
       HTTP_PROXY: http://egress-proxy:8888
       HTTPS_PROXY: http://egress-proxy:8888
-      NO_PROXY: ""
+      # M7 P2: loopback exempted so in-container health checks (and any
+      # future in-process tooling) can reach localhost without punching a
+      # new egress-allowlist hole -- found P0 deploy session 2026-08-02,
+      # a same-container `/healthz` call was getting proxied and
+      # 403-Filtered by tinyproxy (correct behavior, just the wrong path).
+      NO_PROXY: "localhost,127.0.0.1"
       # M3: `.env` only feeds compose-file `${...}` substitution, never a
       # container's process environment on its own -- this app.py reads it
       # via `os.environ`, so it has to be listed here explicitly too. Found
@@ -113,7 +120,8 @@ services:
   # shares this container's network namespace and needs it, not because
   # Caddy itself calls out anywhere.
   caddy:
-    image: caddy:2.9-alpine
+    # M7 P2: pinned by digest on top of the version tag.
+    image: caddy:2.9-alpine@sha256:b4e3952384eb9524a887633ce65c752dd7c71314d2c2acf98cd5c715aaa534f0
     restart: unless-stopped
     read_only: true
     # Non-root (invariant 5) -- same UID convention as `poller`. Unlike
@@ -141,7 +149,11 @@ services:
   # of its own, so it reaches Caddy over localhost and never gains any
   # network membership beyond exactly what Caddy already has.
   tailscale:
-    image: tailscale/tailscale:latest
+    # M7 P2: pinned by digest (image only ships a `latest` tag) so an
+    # upstream push can't silently change what's running -- this one runs
+    # root + NET_ADMIN/NET_RAW on the host, the highest-risk image in the
+    # stack per the M7 spec.
+    image: tailscale/tailscale:latest@sha256:cdf5612ded5be1344f1a704b8c5e53496db97376bb533e5e15f141e48bf60cc0
     restart: unless-stopped
     network_mode: service:caddy
     cap_add:
@@ -184,6 +196,16 @@ networks:
   # network name (Compose's default naming: `<project-dir-name>_default`)
   # would need updating to match -- host-specific enough that the exact
   # value is confirmed against the live host, not assumed.
+  #
+  # M7 P2 (2026-08-03): explicitly accepted as a trusted network, not
+  # closed by splitting /metrics onto a dedicated exporter. `poller`'s
+  # FastAPI port is technically reachable from anything else joined to
+  # `monitoring`, bypassing Caddy -- but everything on this network is
+  # this same host's own single-operator monitoring stack (no untrusted
+  # tenants, no other party's containers), so the residual exposure is
+  # host-compromise-equivalent, not a real additional attack surface.
+  # `/metrics` itself carries no secrets. Revisit only if this host ever
+  # runs containers for a party Ronnie doesn't trust.
   monitoring:
     external: true
     name: monitoring_default
