@@ -257,9 +257,14 @@ def _client_ip(request: Request) -> str:
     # P2 ("reconcile the monitoring network trust boundary"), not closed
     # here.
     forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    resolved = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
+    if os.environ.get("TT_DEBUG_CLIENT_IP"):
+        # M7 P1 follow-up: one-off toggle to directly confirm what Caddy's
+        # `trusted_proxies` config actually resolves per real request,
+        # without permanently logging every client IP. Unset (default) =
+        # no-op, same convention as this codebase's other optional features.
+        logger.info("client_ip resolved=%s raw_xff=%r", resolved, forwarded)
+    return resolved
 
 
 def _rate_limit_dependency(rate_limiter: RateLimiter, endpoint: str) -> Callable[[Request], Awaitable[None]]:
