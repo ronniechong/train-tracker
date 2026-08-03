@@ -87,6 +87,10 @@ services:
       # request. Unset (default) = no-op; set to "1" temporarily, verify,
       # then unset again -- not meant to stay on permanently.
       TT_DEBUG_CLIENT_IP: ${TT_DEBUG_CLIENT_IP:-}
+      # Flagsmith server-side flag checks (feature-toggle system, decouples
+      # feature work from milestone gating). Unset = every flags.is_enabled()
+      # call falls back to its explicit default, never silently "on".
+      FLAGSMITH_SERVER_ENV_KEY: ${FLAGSMITH_SERVER_ENV_KEY:-}
     volumes:
       - ${TT_DATA_DIR:-./data}:/data
       # 2e: nightly maintenance (`python -m traintracker.history`, run via

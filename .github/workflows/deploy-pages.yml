@@ -40,6 +40,13 @@ jobs:
           # would be false security theater. Set once via:
           #   gh variable set VITE_API_BASE_URL --body "<url>"
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          # Flagsmith client-side environment ID is also non-secret (ships
+          # in the bundle) -- this is deliberately the PRODUCTION
+          # environment's ID, distinct from whatever's in a contributor's
+          # local web/.env.local (Development), so a flag can be off in
+          # prod while still on for local feature-building. Set once via:
+          #   gh variable set VITE_FLAGSMITH_ENV_ID --body "<production client id>"
+          VITE_FLAGSMITH_ENV_ID: ${{ vars.VITE_FLAGSMITH_ENV_ID }}
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
           path: web/dist

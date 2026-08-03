@@ -4,6 +4,7 @@
 # M7 P3: template files carry no real values, meant to be committed --
 # `.env.*` above was unintentionally excluding this one too.
 !web/.env.example
+!service/.env.example
 CLAUDE.local.md
 docker-compose.override.yml
 

@@ -7,3 +7,7 @@ if (!apiBaseUrl) {
 }
 
 export const API_BASE_URL = apiBaseUrl
+
+// Optional, unlike API_BASE_URL above: an unset flag env just means every
+// feature flag falls back to its default (see flags.ts), not a broken app.
+export const FLAGSMITH_ENV_ID = import.meta.env.VITE_FLAGSMITH_ENV_ID || null
