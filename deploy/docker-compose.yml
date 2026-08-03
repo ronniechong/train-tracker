@@ -75,6 +75,11 @@ services:
       # route falls back to network-isolation-only (pre-M7 behavior), so
       # this must be set before relying on the extra layer being live.
       TT_BRIEFING_TOKEN: ${TT_BRIEFING_TOKEN:-}
+      # M7 P1 follow-up: one-off toggle to directly confirm what Caddy's
+      # trusted_proxies config resolves as X-Forwarded-For per real
+      # request. Unset (default) = no-op; set to "1" temporarily, verify,
+      # then unset again -- not meant to stay on permanently.
+      TT_DEBUG_CLIENT_IP: ${TT_DEBUG_CLIENT_IP:-}
     volumes:
       - ${TT_DATA_DIR:-./data}:/data
       # 2e: nightly maintenance (`python -m traintracker.history`, run via
