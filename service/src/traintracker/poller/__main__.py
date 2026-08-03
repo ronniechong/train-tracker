@@ -42,6 +42,7 @@ from ..gateway.client import API_KEY_ENV, GatewayClient
 from ..gtfs.pinning import PinManifest
 from ..gtfs.schedule_cache import NoPinnedSnapshotError, PinnedScheduleCache
 from ..history.store import HistoryStore
+from ..insights.store import InsightsStore
 from ..metrics import Metrics
 from ..redaction import configure_logging
 from ..state.completion import TripCompletionTracker
@@ -49,6 +50,7 @@ from ..state.delay_observation import DelayObservationTracker
 from ..state.eventhub import InProcessEventHub
 from ..state.store import StateStore
 from .healthcheck import PING_URL_ENV
+from .insights_trigger import InsightsTrigger, run_insights_cycle
 from .loop import ALL_FEEDS, PollerLoop
 from .slack import WEBHOOK_URL_ENV, post_message
 from .weekly_digest_trigger import WeeklyDigestTrigger
@@ -290,6 +292,16 @@ async def main() -> int:
     digest_store = WeeklyDigestStore(digests_dir / "weekly.db")
     digest_trigger = WeeklyDigestTrigger(digests_dir / "digest_trigger_state.json")
 
+    # M8 Insights (locked build order, milestones/08-analytics-insights.md):
+    # this is the FIRST thing built for the milestone, ahead of any chart
+    # UI or API route, specifically so daily rollups start accumulating
+    # immediately -- they can't be computed retroactively once a source
+    # partition ages out of the 60-day window. Indefinite retention, its
+    # own trigger sidecar, same shape as the weekly digest's own pairing.
+    insights_dir = DATA_DIR / "insights"
+    insights_store = InsightsStore(insights_dir / "insights.db")
+    insights_trigger = InsightsTrigger(insights_dir / "insights_trigger_state.json")
+
     # M3: producer side of 2d's EventHub interface finally gets a
     # consumer (the SSE route below) -- one hub instance, shared between
     # the poll loop (publishes) and the API (subscribes).
@@ -345,6 +357,25 @@ async def main() -> int:
                 digest_trigger, history, schedule_cache, digest_store,
                 weekly_digest_client, notify_client, cycle_start,
             )
+
+            # M8 Insights: also cheap when neither the finalize-yesterday nor
+            # refresh-today path is due (a JSON-file read each). Requires a
+            # pinned static snapshot -- unlike the weekly digest's narration-
+            # only degrade-to-raw-route-ids fallback, Insights' whole -R
+            # correction (never merge replacement-bus completions into a
+            # real line, see milestones/08-analytics-insights.md) depends on
+            # `route_short_name` to tell the two apart. Skipping entirely
+            # when nothing is pinned yet is safer than aggregating with a
+            # wrong split -- retried every cycle, same as any other
+            # transient-dependency skip in this loop.
+            try:
+                insights_routes = schedule_cache.routes_for(cycle_start)
+            except NoPinnedSnapshotError:
+                insights_routes = None
+            if insights_routes is not None:
+                await run_insights_cycle(
+                    insights_trigger, history, insights_store, insights_routes, cycle_start,
+                )
 
             interval = loop.next_interval(cycle_start)
             logger.info(

@@ -1,0 +1,144 @@
+from datetime import date, datetime, timezone
+
+from traintracker.insights.aggregate import DayRollup, HourlyDayRollup, LineDayRollup
+from traintracker.insights.store import InsightsStore
+
+BEG = "2-BEG:"
+SBY = "2-SBY:"
+
+
+def _rollup(service_date, beg_on_time=10, beg_r_count=0, sby_on_time=5) -> DayRollup:
+    return DayRollup(
+        service_date=service_date,
+        line_rollups=(
+            LineDayRollup(
+                route_id=BEG, on_time_count=beg_on_time, late_count=1, cancelled_count=0,
+                gap_count=0, replacement_bus_count=beg_r_count,
+            ),
+            LineDayRollup(
+                route_id=SBY, on_time_count=sby_on_time, late_count=0, cancelled_count=1,
+                gap_count=0, replacement_bus_count=0,
+            ),
+        ),
+        hourly_rollups=(
+            HourlyDayRollup(route_id=BEG, hour_local=8, completion_count=3),
+            HourlyDayRollup(route_id=None, hour_local=8, completion_count=3),
+        ),
+    )
+
+
+def test_record_day_then_read_range_round_trips_single_day(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    d = date(2026, 8, 4)
+    store.record_day(_rollup(d))
+
+    result = store.read_range((d,))
+
+    assert result.days_covered == (d,)
+    [beg, sby] = sorted(result.line_rollups, key=lambda r: r.route_id)
+    assert beg.route_id == BEG
+    assert beg.on_time_count == 10
+    assert beg.replacement_bus_count == 0
+    assert sby.on_time_count == 5
+    assert sby.cancelled_count == 1
+
+
+def test_read_range_sums_across_multiple_days(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    d1, d2 = date(2026, 8, 1), date(2026, 8, 2)
+    store.record_day(_rollup(d1, beg_on_time=10))
+    store.record_day(_rollup(d2, beg_on_time=7))
+
+    result = store.read_range((d1, d2))
+
+    assert result.days_covered == (d1, d2)
+    [beg] = [r for r in result.line_rollups if r.route_id == BEG]
+    assert beg.on_time_count == 17
+
+
+def test_read_range_reports_uncovered_dates_as_missing_not_zero(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    d1, d2 = date(2026, 8, 1), date(2026, 8, 2)
+    store.record_day(_rollup(d1))
+
+    result = store.read_range((d1, d2))
+
+    # d2 has no persisted rollup at all -- an unknown, distinct from a
+    # covered day with genuinely zero completions.
+    assert result.days_covered == (d1,)
+
+
+def test_read_range_empty_input_returns_empty_result_not_crash(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    result = store.read_range(())
+    assert result.days_covered == ()
+    assert result.line_rollups == ()
+    assert result.hourly_rollups == ()
+
+
+def test_record_day_is_idempotent_reruns_replace_not_append(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    d = date(2026, 8, 4)
+    store.record_day(_rollup(d, beg_on_time=5))
+    store.record_day(_rollup(d, beg_on_time=8))  # e.g. refreshing "today" with more events
+
+    result = store.read_range((d,))
+    [beg] = [r for r in result.line_rollups if r.route_id == BEG]
+    assert beg.on_time_count == 8
+
+
+def test_hourly_rollups_round_trip_including_network_wide_row(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    d = date(2026, 8, 4)
+    store.record_day(_rollup(d))
+
+    result = store.read_range((d,))
+
+    per_route = [r for r in result.hourly_rollups if r.route_id == BEG]
+    network = [r for r in result.hourly_rollups if r.route_id is None]
+    assert per_route == [HourlyDayRollup(route_id=BEG, hour_local=8, completion_count=3)]
+    assert network == [HourlyDayRollup(route_id=None, hour_local=8, completion_count=3)]
+
+
+def test_record_day_stamps_generated_at_and_read_range_surfaces_it(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    d = date(2026, 8, 4)
+    before = datetime.now(timezone.utc)
+    store.record_day(_rollup(d))
+    after = datetime.now(timezone.utc)
+
+    result = store.read_range((d,))
+
+    assert d in result.generated_at_by_date
+    generated_at = result.generated_at_by_date[d]
+    assert generated_at.tzinfo is not None
+    assert before <= generated_at <= after
+
+
+def test_generated_at_refreshes_on_reruns_for_the_same_date(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    d = date(2026, 8, 4)
+    store.record_day(_rollup(d, beg_on_time=5))
+    first_generated_at = store.read_range((d,)).generated_at_by_date[d]
+
+    store.record_day(_rollup(d, beg_on_time=8))  # e.g. a later "today" refresh
+    second_generated_at = store.read_range((d,)).generated_at_by_date[d]
+
+    assert second_generated_at >= first_generated_at
+
+
+def test_generated_at_by_date_omits_dates_with_no_rollup(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    d1, d2 = date(2026, 8, 1), date(2026, 8, 2)
+    store.record_day(_rollup(d1))
+
+    result = store.read_range((d1, d2))
+
+    assert d1 in result.generated_at_by_date
+    assert d2 not in result.generated_at_by_date
+
+
+def test_empty_range_returns_empty_generated_at_map(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    result = store.read_range(())
+    assert result.generated_at_by_date == {}
