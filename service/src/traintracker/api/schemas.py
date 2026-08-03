@@ -238,3 +238,10 @@ class InsightsResponse(BaseModel):
     line_stats: list[InsightsLineStat]
     hourly_stats: list[InsightsHourlyStat]
     generated_at_by_date: dict[date, datetime]
+    # UNSUMMED per-day breakdown, added when the frontend build found the
+    # summed line_stats above can't back charts 2 (cancellations/delays
+    # OVER TIME) or 5 (weekday vs. weekend) -- both need a point per day,
+    # not one range total. Keyed by ISO date string (Pydantic dict keys
+    # serialize as strings regardless of the Python-side date key type,
+    # matching generated_at_by_date's existing behavior).
+    daily_line_stats: dict[date, list[InsightsLineStat]]

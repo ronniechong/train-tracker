@@ -592,6 +592,20 @@ def create_app(
                 for hourly in result.hourly_rollups
             ],
             generated_at_by_date=result.generated_at_by_date,
+            daily_line_stats={
+                day: [
+                    InsightsLineStat(
+                        route_id=line.route_id,
+                        on_time_count=line.on_time_count,
+                        late_count=line.late_count,
+                        cancelled_count=line.cancelled_count,
+                        gap_count=line.gap_count,
+                        replacement_bus_count=line.replacement_bus_count,
+                    )
+                    for line in lines
+                ]
+                for day, lines in result.daily_line_rollups.items()
+            },
         )
 
     @app.get(

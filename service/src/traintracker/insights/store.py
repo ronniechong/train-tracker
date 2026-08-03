@@ -83,6 +83,13 @@ class InsightsRangeQuery:
     days_covered: tuple[date, ...]
     line_rollups: tuple[LineDayRollup, ...]  # one row per route_id, summed across days_covered
     hourly_rollups: tuple[HourlyDayRollup, ...]  # one row per (route_id, hour_local), summed
+    # UNSUMMED per-day rows, one entry per days_covered -- added after the
+    # frontend build found the summed-only `line_rollups` above can't back
+    # a chart that needs a point per day (cancellations/delays over time)
+    # or a per-day-of-week split (weekday vs. weekend). `line_rollups`
+    # stays as the cheap common case for charts that only need range
+    # totals; this is for the two that don't.
+    daily_line_rollups: dict[date, tuple[LineDayRollup, ...]]
     # Per-date generated_at, NOT a single min/max across the range --
     # deliberately not collapsed to one number. A closed day's generated_at
     # is a fixed historical fact ("finalized at X"), not staleness; only a
@@ -168,7 +175,11 @@ class InsightsStore:
         is an unknown, not a genuine zero."""
         if not service_dates:
             return InsightsRangeQuery(
-                days_covered=(), line_rollups=(), hourly_rollups=(), generated_at_by_date={}
+                days_covered=(),
+                line_rollups=(),
+                hourly_rollups=(),
+                generated_at_by_date={},
+                daily_line_rollups={},
             )
 
         placeholders = ",".join("?" for _ in service_dates)
@@ -228,11 +239,36 @@ class InsightsStore:
             for row in hourly_rows
         )
 
+        daily_rows = self._conn.execute(
+            f"""
+            SELECT service_date, route_id, on_time_count, late_count,
+                   cancelled_count, gap_count, replacement_bus_count
+            FROM insights_line_rollups
+            WHERE service_date IN ({placeholders})
+            ORDER BY service_date, route_id
+            """,
+            iso_dates,
+        ).fetchall()
+        daily_line_rollups: dict[date, list[LineDayRollup]] = {}
+        for row in daily_rows:
+            day = date.fromisoformat(row[0])
+            daily_line_rollups.setdefault(day, []).append(
+                LineDayRollup(
+                    route_id=row[1],
+                    on_time_count=row[2],
+                    late_count=row[3],
+                    cancelled_count=row[4],
+                    gap_count=row[5],
+                    replacement_bus_count=row[6],
+                )
+            )
+
         return InsightsRangeQuery(
             days_covered=days_covered,
             line_rollups=line_rollups,
             hourly_rollups=hourly_rollups,
             generated_at_by_date=generated_at_by_date,
+            daily_line_rollups={day: tuple(rows) for day, rows in daily_line_rollups.items()},
         )
 
     def close(self) -> None:

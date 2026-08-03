@@ -119,3 +119,40 @@ export interface WeeklyDigest {
 export interface WeeklyDigestListResponse {
   digests: WeeklyDigest[]
 }
+
+// M8 Insights (milestones/08-analytics-insights.md). `route_id` is never
+// a `-R` (replacement bus) id here -- see the backend's PTV-methodology
+// correction -- `replacement_bus_count` is the only place that volume
+// shows up, kept separate from on_time/late/cancelled.
+export interface InsightsLineStat {
+  route_id: string
+  on_time_count: number
+  late_count: number
+  cancelled_count: number
+  gap_count: number
+  replacement_bus_count: number
+}
+
+// `route_id: null` means network-wide (all real lines summed).
+export interface InsightsHourlyStat {
+  route_id: string | null
+  hour_local: number
+  completion_count: number
+}
+
+export type InsightsRangeName = 'today' | 'yesterday' | 'last7' | 'last30' | 'custom'
+
+// `days_covered` vs `expected_days` is the partial-calendar-period honesty
+// signal -- "Last 7 days" picked partway through the ISO week returns
+// fewer covered days than 7. `generated_at_by_date` only has a genuine
+// freshness meaning for "today" (closed days are finalized once and never
+// touched again) -- look up the specific date you care about, don't
+// collapse this to one timestamp.
+export interface InsightsResponse {
+  range_name: InsightsRangeName
+  days_covered: string[]
+  expected_days: number
+  line_stats: InsightsLineStat[]
+  hourly_stats: InsightsHourlyStat[]
+  generated_at_by_date: Record<string, string>
+}

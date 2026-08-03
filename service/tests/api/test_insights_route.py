@@ -109,6 +109,26 @@ async def test_custom_range_with_dates_returns_summed_stats(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_custom_range_returns_unsummed_daily_line_stats(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    store.record_day(_rollup(date(2026, 8, 1)))
+    store.record_day(_rollup(date(2026, 8, 2)))
+    client = await _client(insights_store=store)
+
+    response = await client.get(
+        "/api/insights",
+        params={"range": "custom", "start": "2026-08-01", "end": "2026-08-02"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    daily = body["daily_line_stats"]
+    assert set(daily.keys()) == {"2026-08-01", "2026-08-02"}
+    [line_d1] = daily["2026-08-01"]
+    assert line_d1["on_time_count"] == 10  # NOT summed with day 2 (would be 20)
+
+
+@pytest.mark.asyncio
 async def test_unknown_range_name_returns_400(tmp_path):
     store = InsightsStore(tmp_path / "insights.db")
     client = await _client(insights_store=store)

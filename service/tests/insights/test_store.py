@@ -142,3 +142,38 @@ def test_empty_range_returns_empty_generated_at_map(tmp_path):
     store = InsightsStore(tmp_path / "insights.db")
     result = store.read_range(())
     assert result.generated_at_by_date == {}
+
+
+def test_daily_line_rollups_are_not_summed_across_days(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    d1, d2 = date(2026, 8, 1), date(2026, 8, 2)
+    store.record_day(_rollup(d1, beg_on_time=10))
+    store.record_day(_rollup(d2, beg_on_time=7))
+
+    result = store.read_range((d1, d2))
+
+    assert set(result.daily_line_rollups.keys()) == {d1, d2}
+    [beg_d1] = [r for r in result.daily_line_rollups[d1] if r.route_id == BEG]
+    [beg_d2] = [r for r in result.daily_line_rollups[d2] if r.route_id == BEG]
+    assert beg_d1.on_time_count == 10
+    assert beg_d2.on_time_count == 7
+    # The summed field is unaffected -- both views come from one read_range call.
+    [beg_summed] = [r for r in result.line_rollups if r.route_id == BEG]
+    assert beg_summed.on_time_count == 17
+
+
+def test_daily_line_rollups_empty_for_uncovered_dates(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    d1, d2 = date(2026, 8, 1), date(2026, 8, 2)
+    store.record_day(_rollup(d1))
+
+    result = store.read_range((d1, d2))
+
+    assert d1 in result.daily_line_rollups
+    assert d2 not in result.daily_line_rollups
+
+
+def test_empty_range_returns_empty_daily_line_rollups(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    result = store.read_range(())
+    assert result.daily_line_rollups == {}
