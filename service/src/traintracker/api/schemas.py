@@ -185,3 +185,56 @@ class AttributionResponse(BaseModel):
     license: str
     license_url: str
     note: str
+
+
+class InsightsLineStat(BaseModel):
+    """One real line's rollup for the requested range -- never a `-R`
+    (replacement bus) row (milestones/08-analytics-insights.md's PTV-
+    methodology correction: a substitute bus doesn't undo a cancelled,
+    non-delivered scheduled trip, so `-R` volume is surfaced only via
+    `replacement_bus_count`, never merged into these counts)."""
+
+    route_id: str
+    on_time_count: int
+    late_count: int
+    cancelled_count: int
+    gap_count: int
+    replacement_bus_count: int
+
+
+class InsightsHourlyStat(BaseModel):
+    """Completions at terminus bucketed by Melbourne-LOCAL hour of arrival
+    -- an arrival proxy, not a departure-frequency count. `route_id=None`
+    means network-wide (all real lines summed), used for the "All lines"
+    view."""
+
+    route_id: str | None
+    hour_local: int
+    completion_count: int
+
+
+class InsightsResponse(BaseModel):
+    """Backs the Insights dashboard's global date-range filter (locked
+    2026-08-04): one response per selected range (Today / Yesterday /
+    Last 7 days / Last 30 days / Custom), never per-chart -- the frontend
+    slices this one payload across all 6 v1 charts.
+
+    `days_covered` vs. `expected_days` is the calendar-aligned-range
+    honesty signal (locked alongside the range decision): "Last 7 days"
+    picked on a Tuesday returns 2 covered days against an expected_days
+    of 7 -- the UI's "(N of 7 days)" indicator is built directly from
+    this pair, not inferred from date arithmetic client-side.
+
+    `generated_at_by_date` backs the staleness tooltip (locked 2026-08-04,
+    after Ronnie asked how often the data actually refreshes): only
+    "today" has a genuine freshness concept (closed days are finalized
+    once and never touched again), so the frontend looks up whichever
+    date it cares about rather than this response collapsing to one
+    timestamp."""
+
+    range_name: str
+    days_covered: list[date]
+    expected_days: int
+    line_stats: list[InsightsLineStat]
+    hourly_stats: list[InsightsHourlyStat]
+    generated_at_by_date: dict[date, datetime]

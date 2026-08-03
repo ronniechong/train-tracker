@@ -313,7 +313,7 @@ async def main() -> int:
     api = create_app(
         loop=loop, store=store, hub=hub, schedule_cache=schedule_cache,
         ai_client=ai_client, ai_tool_context=tool_context, ai_notify_client=notify_client,
-        metrics=metrics, digest_store=digest_store,
+        metrics=metrics, digest_store=digest_store, insights_store=insights_store,
         briefing_token=os.environ.get(BRIEFING_TOKEN_ENV) or None,
     )
     server = uvicorn.Server(uvicorn.Config(api, host="0.0.0.0", port=API_PORT, log_level="info"))

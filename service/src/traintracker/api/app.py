@@ -16,7 +16,7 @@ import logging
 import os
 import secrets
 from collections.abc import AsyncIterator, Awaitable, Callable
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -32,6 +32,8 @@ from ..digests.store import WeeklyDigestStore
 from ..gateway.client import Feed
 from ..gtfs.schedule import ScheduledDeparture
 from ..gtfs.schedule_cache import NoPinnedSnapshotError, PinnedScheduleCache
+from ..insights.ranges import RANGE_NAMES, InvalidRangeError, resolve_range
+from ..insights.store import InsightsStore
 from ..metrics import STALENESS_THRESHOLD_S, Metrics
 from ..poller.loop import ALL_FEEDS, PollerLoop
 from ..poller.slack import post_message
@@ -58,6 +60,9 @@ from .schemas import (
     DeltaResponse,
     FeedStatus,
     HealthResponse,
+    InsightsHourlyStat,
+    InsightsLineStat,
+    InsightsResponse,
     ScheduledTrain,
     StateResponse,
     StationScheduleResponse,
@@ -363,6 +368,10 @@ def create_app(
     # 05-ai-layer weekly digest (locked 2026-08-01): None by default, same
     # "feature not configured" 503 convention as the AI-stack params above.
     digest_store: WeeklyDigestStore | None = None,
+    # M8 Insights (locked 2026-08-04): same "feature not configured" 503
+    # convention -- lets tests/dev construct an app before the aggregation
+    # job has ever run without wiring a real store.
+    insights_store: InsightsStore | None = None,
     # M7 P1: app-level defense-in-depth for /briefing/trigger, on top of
     # (not instead of) the tailnet-only network isolation Ronnie chose at
     # M5 kickoff -- that isolation turned out narrower than "tailnet-only"
@@ -529,6 +538,60 @@ def create_app(
                 )
                 for d in stored
             ]
+        )
+
+    @app.get(
+        "/api/insights",
+        response_model=InsightsResponse,
+        dependencies=[Depends(_rate_limit_dependency(rate_limiter, "insights"))],
+    )
+    async def get_insights(
+        # `?range=` is the nicer external query-string name; shadows the
+        # `range()` builtin within this function's scope only, which is
+        # harmless since nothing here calls it.
+        range: str = "today",
+        start: date | None = None,
+        end: date | None = None,
+    ) -> InsightsResponse:
+        # Read-only, GET-only, derived-only (invariant 3/1) -- same as
+        # every other route here; this never triggers the aggregation
+        # job itself, only reads whatever it has already precomputed
+        # (locked 2026-08-04: "precomputed, cached, refreshed
+        # periodically", not computed on-demand per request).
+        if insights_store is None:
+            raise HTTPException(status_code=503, detail="insights feature not configured")
+        try:
+            resolved = resolve_range(range, datetime.now(timezone.utc), start, end)
+        except InvalidRangeError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{exc} (expected range=one of {RANGE_NAMES}, or range=custom with start/end)",
+            ) from exc
+        result = insights_store.read_range(resolved.service_dates)
+        return InsightsResponse(
+            range_name=resolved.range_name,
+            days_covered=list(result.days_covered),
+            expected_days=resolved.expected_days,
+            line_stats=[
+                InsightsLineStat(
+                    route_id=line.route_id,
+                    on_time_count=line.on_time_count,
+                    late_count=line.late_count,
+                    cancelled_count=line.cancelled_count,
+                    gap_count=line.gap_count,
+                    replacement_bus_count=line.replacement_bus_count,
+                )
+                for line in result.line_rollups
+            ],
+            hourly_stats=[
+                InsightsHourlyStat(
+                    route_id=hourly.route_id,
+                    hour_local=hourly.hour_local,
+                    completion_count=hourly.completion_count,
+                )
+                for hourly in result.hourly_rollups
+            ],
+            generated_at_by_date=result.generated_at_by_date,
         )
 
     @app.get(
