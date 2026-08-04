@@ -94,14 +94,25 @@ class PinnedScheduleCache:
             if current is None or record.stop_sequence > current.stop_sequence:
                 termini_by_trip[record.trip_id] = record
         route_by_trip = {t.trip_id: t.route_id for t in snapshot.trips}
+        stops = stops_from_zip_bytes(data)
         stop_routes: dict[str, set[str]] = {}
         for record in stop_times:
             route_id = route_by_trip.get(record.trip_id)
-            if route_id is not None:
-                stop_routes.setdefault(record.stop_id, set()).add(route_id)
+            if route_id is None:
+                continue
+            stop_routes.setdefault(record.stop_id, set()).add(route_id)
+            # stop_times.txt keys on the platform-level child stop_id, but
+            # Service Alerts' informed_entity carries the PARENT STATION id
+            # instead (e.g. `vic:rail:UFD`, verified live 2026-08-04) --
+            # index the route under the parent too, same platform->station
+            # grouping gtfs/schedule.py already relies on, or a
+            # cancellation alert would never resolve to anything.
+            parent = stops.get(record.stop_id)
+            if parent is not None and parent.parent_station:
+                stop_routes.setdefault(parent.parent_station, set()).add(route_id)
         parsed = _ParsedSchedule(
             snapshot=snapshot,
-            stops=stops_from_zip_bytes(data),
+            stops=stops,
             stop_times=stop_times,
             routes=routes_from_zip_bytes(data),
             termini_by_trip=termini_by_trip,
