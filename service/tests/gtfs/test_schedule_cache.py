@@ -44,89 +44,88 @@ def test_routes_for_returns_parsed_routes(tmp_path, sample_static_zip_bytes):
     assert routes["2-CRB"].short_name == "Craigieburn"
 
 
-def test_routes_serving_all_stops_resolves_by_parent_station(
-    tmp_path, sample_static_zip_bytes
+_MAJORITY_VOTE_FILES = {
+    "routes.txt": (
+        "route_id,route_short_name,route_long_name\n"
+        "ROUTE_A,A,A - City\n"
+        "ROUTE_B,B,B - City\n"
+    ),
+    "trips.txt": (
+        "route_id,service_id,trip_id,trip_headsign,direction_id\n"
+        "ROUTE_A,WEEKDAY,TRIP_A,City,0\n"
+        "ROUTE_B,WEEKDAY,TRIP_B,City,0\n"
+    ),
+    "stop_times.txt": (
+        "trip_id,stop_sequence,stop_id,arrival_time,departure_time\n"
+        # ROUTE_A calls at all three -- STOP_1/STOP_2 are "genuinely
+        # A-only", STOP_3 is shared (models a real Metro Tunnel station
+        # whose static data lags for one line but not another).
+        "TRIP_A,1,STOP_1,08:00:00,08:00:00\n"
+        "TRIP_A,2,STOP_2,08:05:00,08:05:00\n"
+        "TRIP_A,3,STOP_3,08:10:00,\n"
+        "TRIP_B,1,STOP_3,08:15:00,08:15:00\n"
+    ),
+    "stops.txt": (
+        "stop_id,stop_name,stop_lat,stop_lon,location_type,parent_station\n"
+        "STATION_1,Station One,-37.8,144.9,1,\n"
+        "STOP_1,Platform One,-37.8,144.9,0,STATION_1\n"
+        "STOP_2,Platform Two,-37.8,144.9,0,\n"
+        "STOP_3,Platform Three,-37.8,144.9,0,\n"
+    ),
+    "calendar.txt": (
+        "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,"
+        "start_date,end_date\n"
+        "WEEKDAY,1,1,1,1,1,0,0,20260101,20261231\n"
+    ),
+    "calendar_dates.txt": "service_id,date,exception_type\n",
+}
+
+
+def test_routes_most_likely_for_stops_resolves_by_majority_despite_one_dissenting_stop(
+    tmp_path,
 ):
-    # stop_times.txt only keys on the platform-level stop_id (PLAT_A1), but
-    # Service Alerts carry the PARENT STATION id instead (STATION_A, real
-    # live shape verified 2026-08-04) -- proves the parent->platform
-    # indexing resolves anything at all rather than an unindexed id
-    # silently returning []. Both fixture routes call at PLAT_A1, so the
-    # match set is non-empty but still shared, same as the platform-level
-    # ambiguous case below.
-    cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+    # Real production shape (verified live 2026-08-04): a 3-stop alert
+    # where 2 stops are A-only and 1 is shared with B -- a strict
+    # "every stop must agree" intersection would return nothing (STOP_1/
+    # STOP_2 never see ROUTE_B), but the majority (2 of 3, and ahead of
+    # ROUTE_B's 1) correctly resolves to A.
+    cache = _pinned_cache_from_files(tmp_path, _MAJORITY_VOTE_FILES)
 
-    matched = cache.routes_serving_all_stops(datetime.now(timezone.utc), ["STATION_A"])
-
-    assert {r.route_id for r in matched} == {"2-PKM", "2-CRB"}
-
-
-def test_routes_serving_all_stops_resolves_a_line_uniquely_served_by_one_route(tmp_path):
-    # Minimal, self-contained schedule where ONLY_ROUTE's platforms are
-    # never shared with any other route -- the real production case this
-    # feature exists for (a single cancelled trip's stop list should
-    # resolve to exactly one line).
-    cache = _pinned_cache_from_files(
-        tmp_path,
-        {
-            "routes.txt": (
-                "route_id,route_short_name,route_long_name\n"
-                "ONLY_ROUTE,Only,Only - City\n"
-            ),
-            "trips.txt": (
-                "route_id,service_id,trip_id,trip_headsign,direction_id\n"
-                "ONLY_ROUTE,WEEKDAY,TRIP_1,City,0\n"
-            ),
-            "stop_times.txt": (
-                "trip_id,stop_sequence,stop_id,arrival_time,departure_time\n"
-                "TRIP_1,1,PLATFORM_ONLY,08:00:00,08:00:00\n"
-                "TRIP_1,2,PLATFORM_TWO,08:10:00,\n"
-            ),
-            "stops.txt": (
-                "stop_id,stop_name,stop_lat,stop_lon,location_type,parent_station\n"
-                "STATION_ONLY,Only Station,-37.8,144.9,1,\n"
-                "PLATFORM_ONLY,Only Station Platform,-37.8,144.9,0,STATION_ONLY\n"
-                "PLATFORM_TWO,Two Station Platform,-37.9,144.9,0,\n"
-            ),
-            "calendar.txt": (
-                "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,"
-                "start_date,end_date\n"
-                "WEEKDAY,1,1,1,1,1,0,0,20260101,20261231\n"
-            ),
-            "calendar_dates.txt": "service_id,date,exception_type\n",
-        },
+    matched = cache.routes_most_likely_for_stops(
+        datetime.now(timezone.utc), ["STOP_1", "STOP_2", "STOP_3"]
     )
 
-    matched = cache.routes_serving_all_stops(
-        datetime.now(timezone.utc), ["STATION_ONLY", "PLATFORM_TWO"]
+    assert [r.route_id for r in matched] == ["ROUTE_A"]
+
+
+def test_routes_most_likely_for_stops_resolves_by_parent_station(tmp_path):
+    # STOP_1's parent is STATION_1 -- Service Alerts carry the parent
+    # station id, not the platform-level id stop_times.txt actually keys
+    # on (real live shape, verified 2026-08-04). Proves the parent id
+    # participates in the vote at all, not just the raw platform id.
+    cache = _pinned_cache_from_files(tmp_path, _MAJORITY_VOTE_FILES)
+
+    matched = cache.routes_most_likely_for_stops(
+        datetime.now(timezone.utc), ["STATION_1", "STOP_2", "STOP_3"]
     )
 
-    assert {r.route_id for r in matched} == {"ONLY_ROUTE"}
+    assert [r.route_id for r in matched] == ["ROUTE_A"]
 
 
-def test_routes_serving_all_stops_is_ambiguous_when_stops_are_shared(
-    tmp_path, sample_static_zip_bytes
-):
-    # PLAT_A1/PLAT_B1 both get trips from 2-PKM AND 2-CRB in the fixture --
-    # matches the real live case (informed_entity lists a single trip's
-    # stops, no service_date filtering here), so intersecting on them alone
-    # is genuinely ambiguous.
-    cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+def test_routes_most_likely_for_stops_returns_empty_on_a_tie(tmp_path):
+    # A single shared stop -- both routes tied at 1 vote each, no majority.
+    cache = _pinned_cache_from_files(tmp_path, _MAJORITY_VOTE_FILES)
 
-    matched = cache.routes_serving_all_stops(
-        datetime.now(timezone.utc), ["PLAT_A1", "PLAT_B1"]
-    )
+    matched = cache.routes_most_likely_for_stops(datetime.now(timezone.utc), ["STOP_3"])
 
-    assert {r.route_id for r in matched} == {"2-PKM", "2-CRB"}
+    assert matched == []
 
 
-def test_routes_serving_all_stops_returns_empty_for_unknown_stop(
-    tmp_path, sample_static_zip_bytes
-):
-    cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+def test_routes_most_likely_for_stops_returns_empty_for_unknown_stops(tmp_path):
+    cache = _pinned_cache_from_files(tmp_path, _MAJORITY_VOTE_FILES)
 
-    matched = cache.routes_serving_all_stops(
-        datetime.now(timezone.utc), ["PLAT_A1", "NOT_A_REAL_STOP"]
+    matched = cache.routes_most_likely_for_stops(
+        datetime.now(timezone.utc), ["NOT_A_REAL_STOP"]
     )
 
     assert matched == []

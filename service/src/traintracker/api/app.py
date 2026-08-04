@@ -235,19 +235,17 @@ def _alert_response(
 
     # Fallback for the single-trip-cancellation shape: the feed lists the
     # trip's whole stop sequence but no route_id at all -- infer the line
-    # from whichever route serves every listed stop (see
-    # `routes_serving_all_stops`'s docstring). Only trust an unambiguous
-    # match (one distinct long_name, ignoring the `-R` bus-replacement
-    # twin); leave None rather than guess when the stops are shared by
-    # multiple lines.
+    # by majority vote across the listed stops (see
+    # `routes_most_likely_for_stops`'s docstring for why a strict
+    # intersection was too fragile). Leaves None rather than guess when no
+    # line clears the majority bar.
     if stop_only_indices and schedule_cache is not None:
         stop_ids = [alert.informed_entities[i].stop_id for i in stop_only_indices]
         try:
-            matched_routes = schedule_cache.routes_serving_all_stops(now, stop_ids)  # type: ignore[arg-type]
+            matched_routes = schedule_cache.routes_most_likely_for_stops(now, stop_ids)  # type: ignore[arg-type]
         except NoPinnedSnapshotError:
             matched_routes = []
-        distinct_names = {r.long_name for r in matched_routes if r.long_name}
-        resolved = next(iter(distinct_names)) if len(distinct_names) == 1 else None
+        resolved = matched_routes[0].long_name if matched_routes else None
         for i in stop_only_indices:
             entity_route_names[i] = resolved
 

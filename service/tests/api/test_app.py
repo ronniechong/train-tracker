@@ -821,8 +821,9 @@ async def test_get_alerts_leaves_route_name_none_for_ambiguous_stop_only_entitie
 ):
     # Real-world shape (verified live 2026-08-04): a single-trip
     # cancellation lists only stop_ids, no route_id at all. PLAT_A1/PLAT_B1
-    # are shared by both fixture routes (2-PKM, 2-CRB), so this must stay
-    # None rather than guess -- see routes_serving_all_stops's docstring.
+    # are shared by both fixture routes (2-PKM, 2-CRB) with no majority
+    # either way, so this must stay None rather than guess -- see
+    # routes_most_likely_for_stops's docstring.
     loop, store = await _running_loop()
     store.latest_alerts = {
         "active-alert": Alert(
@@ -847,6 +848,39 @@ async def test_get_alerts_leaves_route_name_none_for_ambiguous_stop_only_entitie
     body = response.json()
     names = {e["route_name"] for e in body["alerts"][0]["informed_entities"]}
     assert names == {None}
+
+
+async def test_get_alerts_resolves_route_name_by_majority_for_stop_only_entities(tmp_path):
+    # Same real-world shape as the majority-vote unit tests in
+    # test_schedule_cache.py: 2 of 3 listed stops are A-only, 1 is shared
+    # with B -- majority still resolves A end-to-end through the API.
+    from tests.gtfs.test_schedule_cache import _MAJORITY_VOTE_FILES, _pinned_cache_from_files
+
+    loop, store = await _running_loop()
+    store.latest_alerts = {
+        "active-alert": Alert(
+            id="active-alert",
+            cause="OTHER_CAUSE",
+            effect="NO_SERVICE",
+            header_text="Cancellation",
+            description_text=None,
+            url=None,
+            active_periods=(),
+            informed_entities=(
+                InformedEntity(route_id=None, stop_id="STOP_1", direction_id=None),
+                InformedEntity(route_id=None, stop_id="STOP_2", direction_id=None),
+                InformedEntity(route_id=None, stop_id="STOP_3", direction_id=None),
+            ),
+        ),
+    }
+    schedule_cache = _pinned_cache_from_files(tmp_path, _MAJORITY_VOTE_FILES)
+
+    async with await _client_for(loop, store, schedule_cache=schedule_cache) as client:
+        response = await client.get("/api/alerts")
+
+    body = response.json()
+    names = {e["route_name"] for e in body["alerts"][0]["informed_entities"]}
+    assert names == {"A - City"}
 
 
 async def test_get_alerts_filters_by_route_id():

@@ -174,29 +174,50 @@ class PinnedScheduleCache:
         same condition `next_departures_for` does."""
         return self._load_for(now).routes
 
-    def routes_serving_all_stops(self, now: datetime, stop_ids: list[str]) -> list[Route]:
-        """Routes with a trip calling at EVERY one of the given stops --
-        used to infer a Service Alert's line from its informed_entity stop
-        list when the feed carries no route_id at all (the single-trip
+    def routes_most_likely_for_stops(self, now: datetime, stop_ids: list[str]) -> list[Route]:
+        """Best-effort line inference from a Service Alert's raw stop list,
+        used when the feed carries no route_id at all (the single-trip
         cancellation case, verified live 2026-08-04: `informed_entity` is
-        the trip's full stop sequence, route_id null throughout). Returns
-        `[]` for an empty/unresolvable input rather than raising -- same
-        "unavailable, not an error" convention as `_alert_response`'s
-        route_id-direct path. Ambiguous by construction when the stops are
-        shared by multiple lines (e.g. just the CBD loop stations); callers
-        should only trust this when it narrows to one route (aside from
-        the `-R` bus-replacement twin, which shares `long_name`)."""
+        the trip's full stop sequence, route_id null throughout).
+
+        Requiring EVERY stop to agree (a strict intersection) turned out
+        too fragile against real data: a real live Pakenham cancellation's
+        26-stop list included 3 Metro Tunnel stations (Arden/Parkville/
+        State Library) whose static schedule shows Sunbury-line service
+        only, even though the other 23 stops unambiguously belong to the
+        Pakenham line -- one stale/incomplete platform mapping blanked out
+        an otherwise-obvious match. Instead this counts, per stop, which
+        line(s) call there (collapsing a route and its `-R` bus-
+        replacement twin into one vote via `long_name`, so they don't
+        split what's really a single line's count) and returns the winner
+        only when it's an outright majority of the stops AND strictly
+        ahead of the runner-up. Genuinely shared corridors (e.g. Pakenham/
+        Cranbourne's shared Caulfield-group stations) still return `[]`
+        rather than guess when no line clears that bar."""
         parsed = self._load_for(now)
         ids = [s for s in stop_ids if s]
         if not ids:
             return []
-        common: set[str] | None = None
+        votes: dict[str, int] = {}
+        route_by_name: dict[str, Route] = {}
         for stop_id in ids:
-            routes_here = parsed.stop_routes.get(stop_id, frozenset())
-            common = set(routes_here) if common is None else common & routes_here
-            if not common:
-                return []
-        return [parsed.routes[rid] for rid in common if rid in parsed.routes]
+            names_here: set[str] = set()
+            for route_id in parsed.stop_routes.get(stop_id, frozenset()):
+                route = parsed.routes.get(route_id)
+                if route is None or not route.long_name:
+                    continue
+                names_here.add(route.long_name)
+                route_by_name.setdefault(route.long_name, route)
+            for name in names_here:
+                votes[name] = votes.get(name, 0) + 1
+        if not votes:
+            return []
+        ranked = sorted(votes.items(), key=lambda kv: kv[1], reverse=True)
+        winner_name, winner_votes = ranked[0]
+        runner_up_votes = ranked[1][1] if len(ranked) > 1 else 0
+        if winner_votes <= len(ids) / 2 or winner_votes <= runner_up_votes:
+            return []
+        return [route_by_name[winner_name]]
 
     def next_departures_for(
         self,
