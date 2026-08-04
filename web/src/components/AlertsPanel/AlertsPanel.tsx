@@ -1,5 +1,7 @@
 import { Section } from '../Section'
 import { useAlerts } from '../../hooks/useAlerts'
+import { formatTime } from '../../lib/formatTime'
+import type { Alert } from '../../api-types'
 import styles from './AlertsPanel.module.css'
 
 // Effect enum -> short human label. Falls back to the raw value for any
@@ -15,6 +17,25 @@ const EFFECT_LABEL: Record<string, string> = {
   STOP_MOVED: 'Stop moved',
   OTHER_EFFECT: 'Disruption',
   UNKNOWN_EFFECT: 'Disruption',
+}
+
+// Distinct resolved line names for an alert, deduped (an alert's
+// informed_entity list can repeat the same line across stop/direction
+// variants, or pair a real route with its "-R" bus-replacement id -- see
+// gtfs/routes.py). `route_name` is only present when a static snapshot
+// was pinned when the API resolved it; entities that didn't resolve are
+// dropped rather than shown as a raw route_id.
+function lineNames(alert: Alert): string[] {
+  return [...new Set(alert.informed_entities.map((e) => e.route_name).filter((n): n is string => !!n))]
+}
+
+// Earliest active_period start, i.e. "since when" this alert has applied
+// -- null (rendered as nothing) when the alert has an open/unbounded
+// start, per state/alerts.py's ActivePeriod semantics.
+function since(alert: Alert): string | null {
+  const starts = alert.active_periods.map((p) => p.start).filter((s): s is string => !!s)
+  if (starts.length === 0) return null
+  return starts.reduce((earliest, s) => (s < earliest ? s : earliest))
 }
 
 /** Network-wide "what's currently disrupted" summary -- deliberately
@@ -33,14 +54,25 @@ export function AlertsPanel() {
   return (
     <Section title={`Service alerts (${alerts.length})`}>
       <ul className={styles.list}>
-        {alerts.map((alert) => (
-          <li key={alert.id} className={styles.row}>
-            <span className={styles.effect}>
-              {(alert.effect && EFFECT_LABEL[alert.effect]) ?? 'Disruption'}
-            </span>
-            <span className={styles.headerText}>{alert.header_text ?? 'Service alert'}</span>
-          </li>
-        ))}
+        {alerts.map((alert) => {
+          const lines = lineNames(alert)
+          const startedAt = since(alert)
+          return (
+            <li key={alert.id} className={styles.row}>
+              <span className={styles.effect}>
+                {(alert.effect && EFFECT_LABEL[alert.effect]) ?? 'Disruption'}
+              </span>
+              <span className={styles.headerText}>{alert.header_text ?? 'Service alert'}</span>
+              {(lines.length > 0 || startedAt) && (
+                <span className={styles.meta}>
+                  {lines.length > 0 && lines.join(', ')}
+                  {lines.length > 0 && startedAt && ' — '}
+                  {startedAt && `since ${formatTime(startedAt)}`}
+                </span>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </Section>
   )

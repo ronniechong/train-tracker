@@ -78,4 +78,40 @@ describe('AlertsPanel', () => {
     render(<AlertsPanel />)
     expect(screen.getByText('Service alert')).toBeInTheDocument()
   })
+
+  it('shows resolved line name and since-time when available', () => {
+    mockUseAlerts.mockReturnValue({
+      alerts: [
+        {
+          id: '1',
+          effect: 'NO_SERVICE',
+          header_text: 'Buses replace trains',
+          cause: null,
+          description_text: null,
+          url: null,
+          active_periods: [{ start: '2026-08-04T06:00:00Z', end: null }],
+          informed_entities: [
+            { route_id: '2-PKM', route_name: 'Pakenham - City', stop_id: null, direction_id: null },
+          ],
+        },
+      ],
+      loading: false,
+      error: false,
+    })
+    render(<AlertsPanel />)
+    expect(screen.getByText(/Pakenham - City/)).toBeInTheDocument()
+    expect(screen.getByText(/since/)).toBeInTheDocument()
+  })
+
+  it('omits the meta line when no line name or timestamp resolved', () => {
+    mockUseAlerts.mockReturnValue({
+      alerts: [
+        { id: '1', effect: 'NO_SERVICE', header_text: 'Alert', cause: null, description_text: null, url: null, active_periods: [], informed_entities: [] },
+      ],
+      loading: false,
+      error: false,
+    })
+    render(<AlertsPanel />)
+    expect(screen.queryByText(/since/)).not.toBeInTheDocument()
+  })
 })

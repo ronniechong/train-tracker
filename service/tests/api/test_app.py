@@ -789,8 +789,31 @@ async def test_get_alerts_returns_currently_active_alerts():
     alert = body["alerts"][0]
     assert alert["header_text"] == "Buses replace trains"
     assert alert["informed_entities"] == [
-        {"route_id": "R1", "stop_id": None, "direction_id": None}
+        {"route_id": "R1", "route_name": None, "stop_id": None, "direction_id": None}
     ]
+
+
+async def test_get_alerts_resolves_route_name_from_pinned_schedule(tmp_path, sample_static_zip_bytes):
+    loop, store = await _running_loop()
+    store.latest_alerts = {
+        "active-alert": Alert(
+            id="active-alert",
+            cause="CONSTRUCTION",
+            effect="MODIFIED_SERVICE",
+            header_text="Buses replace trains",
+            description_text="Details",
+            url=None,
+            active_periods=(),
+            informed_entities=(InformedEntity(route_id="2-PKM", stop_id=None, direction_id=None),),
+        ),
+    }
+    schedule_cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+
+    async with await _client_for(loop, store, schedule_cache=schedule_cache) as client:
+        response = await client.get("/api/alerts")
+
+    body = response.json()
+    assert body["alerts"][0]["informed_entities"][0]["route_name"] == "Pakenham - City"
 
 
 async def test_get_alerts_filters_by_route_id():

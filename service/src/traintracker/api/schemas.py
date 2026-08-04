@@ -111,6 +111,7 @@ class AlertInformedEntity(BaseModel):
     `state/alerts.py`."""
 
     route_id: str | None
+    route_name: str | None
     stop_id: str | None
     direction_id: int | None
 

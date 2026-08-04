@@ -70,6 +70,7 @@ export interface AlertActivePeriod {
 // upstream feed, never confirmation that a specific train is affected.
 export interface AlertInformedEntity {
   route_id: string | null
+  route_name: string | null
   stop_id: string | null
   direction_id: number | null
 }

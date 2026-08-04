@@ -31,6 +31,7 @@ from ..ai.tools import ToolContext
 from ..digests.store import WeeklyDigestStore
 from ..gateway.client import Feed
 from ..gtfs.schedule import ScheduledDeparture
+from ..gtfs.routes import Route
 from ..gtfs.schedule_cache import NoPinnedSnapshotError, PinnedScheduleCache
 from ..insights.ranges import RANGE_NAMES, InvalidRangeError, resolve_range
 from ..insights.store import InsightsStore
@@ -214,7 +215,7 @@ def _scheduled_train(store: StateStore, dep: ScheduledDeparture) -> ScheduledTra
     )
 
 
-def _alert_response(alert: AlertRecord) -> Alert:
+def _alert_response(alert: AlertRecord, routes: dict[str, Route]) -> Alert:
     return Alert(
         id=alert.id,
         cause=alert.cause,
@@ -227,7 +228,15 @@ def _alert_response(alert: AlertRecord) -> Alert:
         ],
         informed_entities=[
             AlertInformedEntity(
-                route_id=e.route_id, stop_id=e.stop_id, direction_id=e.direction_id
+                route_id=e.route_id,
+                # Best-effort: routes.txt may be unavailable (no pinned
+                # snapshot yet) or the id may be a `-R` bus-replacement
+                # variant not in the map -- None here just means "line name
+                # unavailable", never raises, same convention as every
+                # other optional field on this response.
+                route_name=routes[e.route_id].long_name if e.route_id in routes else None,
+                stop_id=e.stop_id,
+                direction_id=e.direction_id,
             )
             for e in alert.informed_entities
         ],
@@ -443,7 +452,16 @@ def create_app(
         # AlertInformedEntity's docstring).
         now = datetime.now(timezone.utc)
         matched = alerts_matching(store.latest_alerts, now, route_id=route_id)
-        return AlertsResponse(generated_at=now, alerts=[_alert_response(a) for a in matched])
+        try:
+            routes = schedule_cache.routes_for(now) if schedule_cache is not None else {}
+        except NoPinnedSnapshotError:
+            # No static snapshot pinned yet -- alerts still render, just
+            # without a resolved line name (same "unavailable" convention
+            # as every other optional field on this response).
+            routes = {}
+        return AlertsResponse(
+            generated_at=now, alerts=[_alert_response(a, routes) for a in matched]
+        )
 
     @app.get(
         "/attribution",
