@@ -113,6 +113,19 @@ export function InsightsPage() {
   const todayGeneratedAt = todayIsoDate ? data?.generated_at_by_date[todayIsoDate] : undefined
   const isTodayIncluded = todayGeneratedAt !== undefined
 
+  const histogramRows = useMemo(() => {
+    if (!data) return []
+    const h = data.histogram_stats
+    return [
+      { label: 'On time', value: h.on_time_count, color: 'var(--color-success)' },
+      { label: 'Late 5–10 min', value: h.late_5_10_count, color: 'var(--color-warning)' },
+      { label: 'Late 10+ min', value: h.late_10_plus_count, color: 'var(--color-danger)' },
+      { label: 'Cancelled', value: h.cancelled_count, color: 'var(--color-danger)' },
+      { label: 'Undetermined gap', value: h.gap_count, color: 'var(--color-text-dim)' },
+    ]
+  }, [data])
+  const maxHistogramValue = Math.max(1, ...histogramRows.map((r) => r.value))
+
   const networkHourly = useMemo(() => {
     if (!data) return []
     const byHour = new Map<number, number>()
@@ -282,6 +295,28 @@ export function InsightsPage() {
                     </div>
                   )
                 })}
+              </div>
+            </article>
+
+            <article className={styles.card}>
+              <h2 className={styles.cardTitle}>On-time performance</h2>
+              <p className={styles.cardCaption}>
+                Delay margin, network-wide, for the selected range. Cancellations shown, never scored as a
+                punctuality miss.
+              </p>
+              <div className={styles.barList}>
+                {histogramRows.map((row) => (
+                  <div className={styles.barRow} key={row.label}>
+                    <span className={styles.barName}>{row.label}</span>
+                    <span className={styles.barTrack}>
+                      <span
+                        className={styles.barSeg}
+                        style={{ width: `${(row.value / maxHistogramValue) * 100}%`, background: row.color }}
+                      />
+                    </span>
+                    <span className={styles.barValue}>{row.value}</span>
+                  </div>
+                ))}
               </div>
             </article>
 

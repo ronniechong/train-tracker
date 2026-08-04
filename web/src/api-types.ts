@@ -140,6 +140,17 @@ export interface InsightsHourlyStat {
   completion_count: number
 }
 
+// Chart 3. Buckets diverge from the milestone doc's original
+// on-time/1-5min/5-10min/10+min sketch -- that overlapped the already-
+// locked <=4:59 on-time threshold. Network-wide, matching the KPI row.
+export interface InsightsHistogramStat {
+  on_time_count: number
+  late_5_10_count: number
+  late_10_plus_count: number
+  cancelled_count: number
+  gap_count: number
+}
+
 export type InsightsRangeName = 'today' | 'yesterday' | 'last7' | 'last30' | 'custom'
 
 // `days_covered` vs `expected_days` is the partial-calendar-period honesty
@@ -164,4 +175,5 @@ export interface InsightsResponse {
   // here (zero-filled for a date missing from daily_line_stats), not
   // just whichever dates happen to have a rollup.
   requested_dates: string[]
+  histogram_stats: InsightsHistogramStat
 }
