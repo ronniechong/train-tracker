@@ -6,7 +6,12 @@ from google.transit import gtfs_realtime_pb2
 
 from traintracker.api.app import create_app
 from traintracker.gateway.client import GatewayClient
-from traintracker.insights.aggregate import DayRollup, HourlyDayRollup, LineDayRollup
+from traintracker.insights.aggregate import (
+    DayRollup,
+    DelayHistogramDayRollup,
+    HourlyDayRollup,
+    LineDayRollup,
+)
 from traintracker.insights.store import InsightsStore
 from traintracker.poller.loop import PollerLoop
 from traintracker.state.eventhub import InProcessEventHub
@@ -50,6 +55,9 @@ def _rollup(service_date) -> DayRollup:
             HourlyDayRollup(route_id=BEG, hour_local=8, completion_count=3),
             HourlyDayRollup(route_id=None, hour_local=8, completion_count=3),
         ),
+        histogram_rollup=DelayHistogramDayRollup(
+            on_time_count=10, late_5_10_count=1, late_10_plus_count=0, cancelled_count=0, gap_count=0,
+        ),
     )
 
 
@@ -77,6 +85,8 @@ async def test_today_range_returns_line_and_hourly_stats(tmp_path):
     assert line["on_time_count"] == 10
     assert line["replacement_bus_count"] == 2
     assert today.isoformat() in body["generated_at_by_date"]
+    assert body["histogram_stats"]["on_time_count"] == 10
+    assert body["histogram_stats"]["late_5_10_count"] == 1
 
 
 @pytest.mark.asyncio

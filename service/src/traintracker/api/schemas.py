@@ -213,6 +213,22 @@ class InsightsHourlyStat(BaseModel):
     completion_count: int
 
 
+class InsightsHistogramStat(BaseModel):
+    """Chart 3 (fast-follow, built 2026-08-04): network-wide delay
+    distribution for the selected range. Bucket boundaries deliberately
+    do NOT match this milestone's original "1-5min/5-10min/10+min"
+    sketch -- that would double-count against the already-locked
+    on-time threshold (<=4:59); buckets here start where "late" actually
+    starts. `gap_count` included for the same honesty reason
+    undetermined_gap is never folded away elsewhere in this dashboard."""
+
+    on_time_count: int
+    late_5_10_count: int
+    late_10_plus_count: int
+    cancelled_count: int
+    gap_count: int
+
+
 class InsightsResponse(BaseModel):
     """Backs the Insights dashboard's global date-range filter (locked
     2026-08-04): one response per selected range (Today / Yesterday /
@@ -253,3 +269,4 @@ class InsightsResponse(BaseModel):
     # serialize as strings regardless of the Python-side date key type,
     # matching generated_at_by_date's existing behavior).
     daily_line_stats: dict[date, list[InsightsLineStat]]
+    histogram_stats: InsightsHistogramStat

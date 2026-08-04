@@ -1,13 +1,20 @@
 from datetime import date, datetime, timezone
 
-from traintracker.insights.aggregate import DayRollup, HourlyDayRollup, LineDayRollup
+from traintracker.insights.aggregate import (
+    DayRollup,
+    DelayHistogramDayRollup,
+    HourlyDayRollup,
+    LineDayRollup,
+)
 from traintracker.insights.store import InsightsStore
 
 BEG = "2-BEG:"
 SBY = "2-SBY:"
 
 
-def _rollup(service_date, beg_on_time=10, beg_r_count=0, sby_on_time=5) -> DayRollup:
+def _rollup(
+    service_date, beg_on_time=10, beg_r_count=0, sby_on_time=5, histogram=None
+) -> DayRollup:
     return DayRollup(
         service_date=service_date,
         line_rollups=(
@@ -23,6 +30,11 @@ def _rollup(service_date, beg_on_time=10, beg_r_count=0, sby_on_time=5) -> DayRo
         hourly_rollups=(
             HourlyDayRollup(route_id=BEG, hour_local=8, completion_count=3),
             HourlyDayRollup(route_id=None, hour_local=8, completion_count=3),
+        ),
+        histogram_rollup=histogram
+        or DelayHistogramDayRollup(
+            on_time_count=beg_on_time + sby_on_time, late_5_10_count=1, late_10_plus_count=0,
+            cancelled_count=1, gap_count=0,
         ),
     )
 
@@ -177,3 +189,57 @@ def test_empty_range_returns_empty_daily_line_rollups(tmp_path):
     store = InsightsStore(tmp_path / "insights.db")
     result = store.read_range(())
     assert result.daily_line_rollups == {}
+
+
+def test_histogram_rollup_round_trips_single_day(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    d = date(2026, 8, 4)
+    store.record_day(
+        _rollup(
+            d,
+            histogram=DelayHistogramDayRollup(
+                on_time_count=100, late_5_10_count=5, late_10_plus_count=2,
+                cancelled_count=1, gap_count=1,
+            ),
+        )
+    )
+
+    result = store.read_range((d,))
+
+    assert result.histogram_rollup == DelayHistogramDayRollup(
+        on_time_count=100, late_5_10_count=5, late_10_plus_count=2, cancelled_count=1, gap_count=1,
+    )
+
+
+def test_histogram_rollup_sums_across_multiple_days(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    d1, d2 = date(2026, 8, 1), date(2026, 8, 2)
+    store.record_day(
+        _rollup(d1, histogram=DelayHistogramDayRollup(10, 1, 0, 0, 0))
+    )
+    store.record_day(
+        _rollup(d2, histogram=DelayHistogramDayRollup(20, 2, 1, 1, 0))
+    )
+
+    result = store.read_range((d1, d2))
+
+    assert result.histogram_rollup == DelayHistogramDayRollup(
+        on_time_count=30, late_5_10_count=3, late_10_plus_count=1, cancelled_count=1, gap_count=0,
+    )
+
+
+def test_histogram_rollup_is_idempotent_reruns_replace_not_double_count(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    d = date(2026, 8, 4)
+    store.record_day(_rollup(d, histogram=DelayHistogramDayRollup(10, 1, 0, 0, 0)))
+    store.record_day(_rollup(d, histogram=DelayHistogramDayRollup(15, 2, 0, 0, 0)))
+
+    result = store.read_range((d,))
+
+    assert result.histogram_rollup.on_time_count == 15
+
+
+def test_empty_range_returns_zeroed_histogram_rollup(tmp_path):
+    store = InsightsStore(tmp_path / "insights.db")
+    result = store.read_range(())
+    assert result.histogram_rollup == DelayHistogramDayRollup(0, 0, 0, 0, 0)

@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from .aggregate import DayRollup, HourlyDayRollup, LineDayRollup
+from .aggregate import DayRollup, DelayHistogramDayRollup, HourlyDayRollup, LineDayRollup
 
 _CREATE_LINE_ROLLUPS_SQL = """
     CREATE TABLE IF NOT EXISTS insights_line_rollups (
@@ -69,6 +69,19 @@ _CREATE_ROLLUP_META_SQL = """
     )
 """
 
+# Chart 3 (fast-follow, built 2026-08-04). Network-wide, one row per
+# service_date -- not per-line, matching the KPI row's own scope.
+_CREATE_HISTOGRAM_ROLLUPS_SQL = """
+    CREATE TABLE IF NOT EXISTS insights_histogram_rollups (
+        service_date TEXT PRIMARY KEY,
+        on_time_count INTEGER NOT NULL,
+        late_5_10_count INTEGER NOT NULL,
+        late_10_plus_count INTEGER NOT NULL,
+        cancelled_count INTEGER NOT NULL,
+        gap_count INTEGER NOT NULL
+    )
+"""
+
 
 @dataclass(frozen=True)
 class InsightsRangeQuery:
@@ -102,6 +115,9 @@ class InsightsRangeQuery:
     # whichever date it actually cares about -- typically today's, for
     # the staleness tooltip.
     generated_at_by_date: dict[date, datetime]
+    # Chart 3 -- summed across days_covered, same shape/reasoning as
+    # line_rollups above (network-wide, so no per-line split needed).
+    histogram_rollup: DelayHistogramDayRollup
 
 
 class InsightsStore:
@@ -116,6 +132,7 @@ class InsightsStore:
         self._conn.execute(_CREATE_LINE_ROLLUPS_SQL)
         self._conn.execute(_CREATE_HOURLY_ROLLUPS_SQL)
         self._conn.execute(_CREATE_ROLLUP_META_SQL)
+        self._conn.execute(_CREATE_HISTOGRAM_ROLLUPS_SQL)
 
     def record_day(self, rollup: DayRollup) -> None:
         """Replaces any existing rows for this service_date -- makes the
@@ -131,6 +148,9 @@ class InsightsStore:
         )
         self._conn.execute(
             "DELETE FROM insights_hourly_rollups WHERE service_date = ?", (service_date_iso,)
+        )
+        self._conn.execute(
+            "DELETE FROM insights_histogram_rollups WHERE service_date = ?", (service_date_iso,)
         )
         self._conn.execute(
             "INSERT OR REPLACE INTO insights_rollup_meta (service_date, generated_at) "
@@ -164,6 +184,16 @@ class InsightsStore:
                 """,
                 (service_date_iso, hourly.route_id, hourly.hour_local, hourly.completion_count),
             )
+        h = rollup.histogram_rollup
+        self._conn.execute(
+            """
+            INSERT INTO insights_histogram_rollups
+                (service_date, on_time_count, late_5_10_count, late_10_plus_count,
+                 cancelled_count, gap_count)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (service_date_iso, h.on_time_count, h.late_5_10_count, h.late_10_plus_count, h.cancelled_count, h.gap_count),
+        )
 
     def read_range(self, service_dates: tuple[date, ...]) -> InsightsRangeQuery:
         """Sums rollups across whichever service_dates the caller asks for
@@ -180,6 +210,7 @@ class InsightsStore:
                 hourly_rollups=(),
                 generated_at_by_date={},
                 daily_line_rollups={},
+                histogram_rollup=DelayHistogramDayRollup(0, 0, 0, 0, 0),
             )
 
         placeholders = ",".join("?" for _ in service_dates)
@@ -263,12 +294,30 @@ class InsightsStore:
                 )
             )
 
+        histogram_row = self._conn.execute(
+            f"""
+            SELECT SUM(on_time_count), SUM(late_5_10_count), SUM(late_10_plus_count),
+                   SUM(cancelled_count), SUM(gap_count)
+            FROM insights_histogram_rollups
+            WHERE service_date IN ({placeholders})
+            """,
+            iso_dates,
+        ).fetchone()
+        histogram_rollup = DelayHistogramDayRollup(
+            on_time_count=histogram_row[0] or 0,
+            late_5_10_count=histogram_row[1] or 0,
+            late_10_plus_count=histogram_row[2] or 0,
+            cancelled_count=histogram_row[3] or 0,
+            gap_count=histogram_row[4] or 0,
+        )
+
         return InsightsRangeQuery(
             days_covered=days_covered,
             line_rollups=line_rollups,
             hourly_rollups=hourly_rollups,
             generated_at_by_date=generated_at_by_date,
             daily_line_rollups={day: tuple(rows) for day, rows in daily_line_rollups.items()},
+            histogram_rollup=histogram_rollup,
         )
 
     def close(self) -> None:

@@ -60,6 +60,7 @@ from .schemas import (
     DeltaResponse,
     FeedStatus,
     HealthResponse,
+    InsightsHistogramStat,
     InsightsHourlyStat,
     InsightsLineStat,
     InsightsResponse,
@@ -607,6 +608,13 @@ def create_app(
                 ]
                 for day, lines in result.daily_line_rollups.items()
             },
+            histogram_stats=InsightsHistogramStat(
+                on_time_count=result.histogram_rollup.on_time_count,
+                late_5_10_count=result.histogram_rollup.late_5_10_count,
+                late_10_plus_count=result.histogram_rollup.late_10_plus_count,
+                cancelled_count=result.histogram_rollup.cancelled_count,
+                gap_count=result.histogram_rollup.gap_count,
+            ),
         )
 
     @app.get(

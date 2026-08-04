@@ -53,11 +53,36 @@ class HourlyDayRollup:
     completion_count: int
 
 
+# Chart 3 (on-time performance histogram). Bucket boundaries deliberately
+# do NOT match the milestone doc's original "1-5min/5-10min/10+min" sketch
+# -- that would double-count against the already-locked on-time threshold
+# (<=4:59, ON_TIME_THRESHOLD_S in state/completion.py), since a delay of
+# 1-4:59 is already scored on_time. Buckets here start where "late"
+# actually starts, avoiding that overlap. Found and fixed 2026-08-04 while
+# finally building this chart (was deferred at design-review time).
+LATE_10_MIN_THRESHOLD_S = 600
+
+
+@dataclass(frozen=True)
+class DelayHistogramDayRollup:
+    """Network-wide (not per-line, matching the KPI row's own scope) delay
+    distribution for one service_date. `gap_count` included for the same
+    honesty reason `undetermined_gap` is always its own segment elsewhere
+    in this codebase -- never silently folded into another bucket."""
+
+    on_time_count: int
+    late_5_10_count: int
+    late_10_plus_count: int
+    cancelled_count: int
+    gap_count: int
+
+
 @dataclass(frozen=True)
 class DayRollup:
     service_date: date
     line_rollups: tuple[LineDayRollup, ...]
     hourly_rollups: tuple[HourlyDayRollup, ...]
+    histogram_rollup: DelayHistogramDayRollup
 
 
 def _is_replacement_bus(route_id: str, routes_by_id: dict[str, Route]) -> bool:
@@ -81,6 +106,7 @@ def aggregate_day(
     # hour_local -> count, per route_id (real lines only -- an -R event
     # contributes to nothing here; this chart is about real-line service)
     hourly: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
+    histogram = {"on_time": 0, "late_5_10": 0, "late_10_plus": 0, "cancelled": 0, "gap": 0}
 
     for event in events:
         if event.route_id is None:
@@ -93,6 +119,21 @@ def aggregate_day(
         ):
             local_hour = event.actual_terminus_arrival.astimezone(_MELBOURNE_ZONE).hour
             hourly[event.route_id][local_hour] += 1
+
+        if _is_replacement_bus(event.route_id, routes_by_id):
+            continue  # network-wide histogram is about real-line service, same as hourly above
+        if event.status == "on_time":
+            histogram["on_time"] += 1
+        elif event.status == "late":
+            delay = event.delay_seconds or 0
+            if delay >= LATE_10_MIN_THRESHOLD_S:
+                histogram["late_10_plus"] += 1
+            else:
+                histogram["late_5_10"] += 1
+        elif event.status == "cancelled":
+            histogram["cancelled"] += 1
+        elif event.status == "undetermined_gap":
+            histogram["gap"] += 1
 
     real_line_ids = {
         route_id
@@ -132,4 +173,11 @@ def aggregate_day(
         service_date=service_date,
         line_rollups=line_rollups,
         hourly_rollups=tuple(sorted(hourly_rollups, key=lambda r: (r.route_id or "", r.hour_local))),
+        histogram_rollup=DelayHistogramDayRollup(
+            on_time_count=histogram["on_time"],
+            late_5_10_count=histogram["late_5_10"],
+            late_10_plus_count=histogram["late_10_plus"],
+            cancelled_count=histogram["cancelled"],
+            gap_count=histogram["gap"],
+        ),
     )

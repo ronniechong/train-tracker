@@ -106,3 +106,46 @@ def test_undetermined_gap_counted_separately_never_folded_in():
     [beg] = rollup.line_rollups
     assert beg.gap_count == 1
     assert beg.on_time_count == 0
+
+
+def test_histogram_buckets_late_events_by_delay_threshold():
+    events = (
+        _event(BEG, "on_time", trip_id="a", delay_seconds=100),
+        _event(BEG, "late", trip_id="b", delay_seconds=400),  # < 600s -> late_5_10
+        _event(BEG, "late", trip_id="c", delay_seconds=900),  # >= 600s -> late_10_plus
+        _event(BEG, "cancelled", trip_id="d"),
+        _event(BEG, "undetermined_gap", trip_id="e"),
+    )
+    rollup = aggregate_day(SERVICE_DATE, events, ROUTES)
+
+    h = rollup.histogram_rollup
+    assert h.on_time_count == 1
+    assert h.late_5_10_count == 1
+    assert h.late_10_plus_count == 1
+    assert h.cancelled_count == 1
+    assert h.gap_count == 1
+
+
+def test_histogram_late_boundary_is_inclusive_of_10_minutes():
+    events = (_event(BEG, "late", delay_seconds=600),)  # exactly 10:00
+    rollup = aggregate_day(SERVICE_DATE, events, ROUTES)
+    assert rollup.histogram_rollup.late_10_plus_count == 1
+    assert rollup.histogram_rollup.late_5_10_count == 0
+
+
+def test_histogram_excludes_replacement_bus_events():
+    events = (
+        _event(BEG, "on_time", trip_id="a"),
+        _event(BEG_R, "on_time", trip_id="b"),
+    )
+    rollup = aggregate_day(SERVICE_DATE, events, ROUTES)
+    assert rollup.histogram_rollup.on_time_count == 1
+
+
+def test_histogram_is_network_wide_summed_across_lines():
+    events = (
+        _event(BEG, "on_time", trip_id="a"),
+        _event(SBY, "on_time", trip_id="b"),
+    )
+    rollup = aggregate_day(SERVICE_DATE, events, ROUTES)
+    assert rollup.histogram_rollup.on_time_count == 2
