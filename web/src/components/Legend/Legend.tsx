@@ -11,7 +11,7 @@ import styles from './Legend.module.css'
 // Frankston's color/family, so it's placed right after Williamstown.
 // Anything not listed here (future new routes) falls back to alphabetical
 // at the end rather than silently vanishing.
-const LEGEND_ORDER = [
+export const LEGEND_ORDER = [
   'City Circle',
   'Sandringham',
   'Frankston',
@@ -32,7 +32,7 @@ const LEGEND_ORDER = [
   'Flemington Racecourse',
 ]
 
-function sortedForLegend(routes: Route[]): Route[] {
+export function sortedForLegend(routes: Route[]): Route[] {
   return [...routes].sort((a, b) => {
     const indexA = LEGEND_ORDER.indexOf(a.name)
     const indexB = LEGEND_ORDER.indexOf(b.name)

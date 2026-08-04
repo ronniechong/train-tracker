@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
+import { useFlags } from '@flagsmith/flagsmith/react'
 import { Header } from '../Header'
 import { Legend } from '../Legend'
 import { Search } from '../Search'
@@ -72,6 +74,12 @@ export function Sidebar({
   // since both are still real content, just lower-cadence than the live
   // map/station panels that should own the default view.
   const [announcementsOpen, setAnnouncementsOpen] = useState(false)
+  // M8 Insights nav entry -- gated on the real Flagsmith flag key
+  // (`train-insghts`, Ronnie's own typo in the dashboard, used verbatim
+  // since the SDK looks up the exact string). Off in Production until
+  // the 2-week data-maturity gate is met; on in Development throughout
+  // the build (locked 2026-08-04, milestones/08-analytics-insights.md).
+  const insightsFlag = useFlags(['train-insghts'])
 
   return (
     <aside className={cx(styles.sidebar, open && styles.open)}>
@@ -100,6 +108,16 @@ export function Sidebar({
         >
           Announcements
         </button>
+        {insightsFlag['train-insghts']?.enabled && (
+          <Link
+            to="/insights"
+            className={styles.announcementsButton}
+            data-goatcounter-click="click-open-insights"
+            onClick={onCloseDrawer}
+          >
+            Insights
+          </Link>
+        )}
       </Section>
       {announcementsOpen && (
         <Modal title="Announcements" onClose={() => setAnnouncementsOpen(false)}>

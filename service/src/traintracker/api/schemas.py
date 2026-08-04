@@ -238,6 +238,14 @@ class InsightsResponse(BaseModel):
     line_stats: list[InsightsLineStat]
     hourly_stats: list[InsightsHourlyStat]
     generated_at_by_date: dict[date, datetime]
+    # The FULL requested date range (ascending, never past "today"),
+    # regardless of which of those dates actually have a rollup yet --
+    # distinct from days_covered above. Added so a per-day chart (e.g.
+    # cancellations/delays over time) can render every day the user
+    # selected, with an explicit gap for a day with no rollup, instead of
+    # silently compressing its x-axis down to whatever happens to be
+    # covered.
+    requested_dates: list[date]
     # UNSUMMED per-day breakdown, added when the frontend build found the
     # summed line_stats above can't back charts 2 (cancellations/delays
     # OVER TIME) or 5 (weekday vs. weekend) -- both need a point per day,

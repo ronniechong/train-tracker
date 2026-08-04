@@ -155,4 +155,13 @@ export interface InsightsResponse {
   line_stats: InsightsLineStat[]
   hourly_stats: InsightsHourlyStat[]
   generated_at_by_date: Record<string, string>
+  // UNSUMMED per-day breakdown, keyed by ISO date -- needed for any chart
+  // that wants a point per day (over-time / weekday-vs-weekend), since
+  // line_stats above is summed across the whole selected range.
+  daily_line_stats: Record<string, InsightsLineStat[]>
+  // The FULL requested date range, ascending -- a superset of
+  // days_covered. A per-day chart should render one point per entry
+  // here (zero-filled for a date missing from daily_line_stats), not
+  // just whichever dates happen to have a rollup.
+  requested_dates: string[]
 }

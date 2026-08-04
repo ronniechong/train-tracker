@@ -1,10 +1,13 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter, Routes, Route } from 'react-router'
 import { FlagsmithProvider } from '@flagsmith/flagsmith/react'
 import '@fontsource-variable/inter/wght.css'
 import './styles/tokens.css'
 import './styles/global.css'
 import { App } from './App'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { InsightsPage } from './components/Insights/InsightsPage'
 import { flagsmith, flagsmithOptions } from './lib/flags'
 
 const container = document.getElementById('app')
@@ -12,8 +15,19 @@ if (!container) throw new Error('#app root element not found')
 
 createRoot(container).render(
   <StrictMode>
-    <FlagsmithProvider flagsmith={flagsmith} options={flagsmithOptions}>
-      <App />
-    </FlagsmithProvider>
+    <ErrorBoundary>
+      <FlagsmithProvider flagsmith={flagsmith} options={flagsmithOptions}>
+        {/* basename from Vite's own configured base (`/train-tracker/` in
+            production, `/` in dev) -- see vite.config.ts's `base` comment;
+            keeps the router in sync with wherever the app is actually
+            served from instead of hardcoding the GitHub Pages subpath. */}
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
+          <Routes>
+            <Route path="/" element={<App />} />
+            <Route path="/insights" element={<InsightsPage />} />
+          </Routes>
+        </BrowserRouter>
+      </FlagsmithProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )

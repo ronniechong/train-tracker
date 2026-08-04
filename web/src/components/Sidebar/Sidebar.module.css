@@ -47,6 +47,15 @@
   cursor: pointer;
 }
 
+/* Applied to the "Insights" nav entry too (a <Link>, not a <button>) --
+   these two rules make it look identical despite the different element. */
+a.announcementsButton {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
 .announcementsButton:hover {
   filter: brightness(1.08);
 }

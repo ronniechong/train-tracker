@@ -149,3 +149,23 @@ async def test_uncovered_range_returns_empty_not_error(tmp_path):
     body = response.json()
     assert body["days_covered"] == []
     assert body["line_stats"] == []
+
+
+@pytest.mark.asyncio
+async def test_requested_dates_includes_uncovered_days(tmp_path):
+    # Only day 2 of a 2-day custom range has a rollup -- requested_dates
+    # must still list BOTH days, so a per-day chart can render an
+    # explicit gap for day 1 instead of silently omitting it.
+    store = InsightsStore(tmp_path / "insights.db")
+    store.record_day(_rollup(date(2026, 8, 2)))
+    client = await _client(insights_store=store)
+
+    response = await client.get(
+        "/api/insights",
+        params={"range": "custom", "start": "2026-08-01", "end": "2026-08-02"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["requested_dates"] == ["2026-08-01", "2026-08-02"]
+    assert body["days_covered"] == ["2026-08-02"]

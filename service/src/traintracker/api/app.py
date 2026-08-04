@@ -572,6 +572,7 @@ def create_app(
             range_name=resolved.range_name,
             days_covered=list(result.days_covered),
             expected_days=resolved.expected_days,
+            requested_dates=list(resolved.service_dates),
             line_stats=[
                 InsightsLineStat(
                     route_id=line.route_id,
