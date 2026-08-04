@@ -25,6 +25,34 @@ def test_routes_for_returns_parsed_routes(tmp_path, sample_static_zip_bytes):
     assert routes["2-CRB"].short_name == "Craigieburn"
 
 
+def test_routes_serving_all_stops_is_ambiguous_when_stops_are_shared(
+    tmp_path, sample_static_zip_bytes
+):
+    # PLAT_A1/PLAT_B1 both get trips from 2-PKM AND 2-CRB in the fixture --
+    # matches the real live case (informed_entity lists a single trip's
+    # stops, no service_date filtering here), so intersecting on them alone
+    # is genuinely ambiguous.
+    cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+
+    matched = cache.routes_serving_all_stops(
+        datetime.now(timezone.utc), ["PLAT_A1", "PLAT_B1"]
+    )
+
+    assert {r.route_id for r in matched} == {"2-PKM", "2-CRB"}
+
+
+def test_routes_serving_all_stops_returns_empty_for_unknown_stop(
+    tmp_path, sample_static_zip_bytes
+):
+    cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+
+    matched = cache.routes_serving_all_stops(
+        datetime.now(timezone.utc), ["PLAT_A1", "NOT_A_REAL_STOP"]
+    )
+
+    assert matched == []
+
+
 def test_terminus_for_returns_the_highest_stop_sequence_row(tmp_path, sample_static_zip_bytes):
     # 2026-07-20 is a Monday -- WEEKDAY_TRIP_1's WEEKDAY service is active.
     monday = date(2026, 7, 20)

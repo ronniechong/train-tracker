@@ -1,6 +1,6 @@
 import { Section } from '../Section'
 import { useAlerts } from '../../hooks/useAlerts'
-import { formatTime } from '../../lib/formatTime'
+import { formatDateTime } from '../../lib/formatTime'
 import type { Alert } from '../../api-types'
 import styles from './AlertsPanel.module.css'
 
@@ -67,7 +67,7 @@ export function AlertsPanel() {
                 <span className={styles.meta}>
                   {lines.length > 0 && lines.join(', ')}
                   {lines.length > 0 && startedAt && ' — '}
-                  {startedAt && `since ${formatTime(startedAt)}`}
+                  {startedAt && `since ${formatDateTime(startedAt)}`}
                 </span>
               )}
             </li>

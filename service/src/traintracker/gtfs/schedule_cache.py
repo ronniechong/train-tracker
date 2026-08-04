@@ -63,6 +63,11 @@ class _ParsedSchedule:
     # already relies on) rather than scanning the full stop_times list on
     # every terminus_for() call.
     termini_by_trip: dict[str, StopTimeRecord]
+    # stop_id -> every route_id with a trip calling at that stop. Service
+    # Alerts for a single cancelled trip carry the trip's whole stop list
+    # but no route_id at all (verified live 2026-08-04) -- this is what
+    # `routes_serving_all_stops` intersects against to infer the line.
+    stop_routes: dict[str, frozenset[str]]
 
 
 class PinnedScheduleCache:
@@ -82,17 +87,25 @@ class PinnedScheduleCache:
             return cached
         data = (self._gtfs_dir / f"{digest}.zip").read_bytes()
         stop_times = stop_times_from_zip_bytes(data)
+        snapshot = StaticSnapshot.from_zip_bytes(data)
         termini_by_trip: dict[str, StopTimeRecord] = {}
         for record in stop_times:
             current = termini_by_trip.get(record.trip_id)
             if current is None or record.stop_sequence > current.stop_sequence:
                 termini_by_trip[record.trip_id] = record
+        route_by_trip = {t.trip_id: t.route_id for t in snapshot.trips}
+        stop_routes: dict[str, set[str]] = {}
+        for record in stop_times:
+            route_id = route_by_trip.get(record.trip_id)
+            if route_id is not None:
+                stop_routes.setdefault(record.stop_id, set()).add(route_id)
         parsed = _ParsedSchedule(
-            snapshot=StaticSnapshot.from_zip_bytes(data),
+            snapshot=snapshot,
             stops=stops_from_zip_bytes(data),
             stop_times=stop_times,
             routes=routes_from_zip_bytes(data),
             termini_by_trip=termini_by_trip,
+            stop_routes={sid: frozenset(rids) for sid, rids in stop_routes.items()},
         )
         self._by_digest[digest] = parsed
         return parsed
@@ -149,6 +162,30 @@ class PinnedScheduleCache:
         feeds actually key on. Raises `NoPinnedSnapshotError` under the
         same condition `next_departures_for` does."""
         return self._load_for(now).routes
+
+    def routes_serving_all_stops(self, now: datetime, stop_ids: list[str]) -> list[Route]:
+        """Routes with a trip calling at EVERY one of the given stops --
+        used to infer a Service Alert's line from its informed_entity stop
+        list when the feed carries no route_id at all (the single-trip
+        cancellation case, verified live 2026-08-04: `informed_entity` is
+        the trip's full stop sequence, route_id null throughout). Returns
+        `[]` for an empty/unresolvable input rather than raising -- same
+        "unavailable, not an error" convention as `_alert_response`'s
+        route_id-direct path. Ambiguous by construction when the stops are
+        shared by multiple lines (e.g. just the CBD loop stations); callers
+        should only trust this when it narrows to one route (aside from
+        the `-R` bus-replacement twin, which shares `long_name`)."""
+        parsed = self._load_for(now)
+        ids = [s for s in stop_ids if s]
+        if not ids:
+            return []
+        common: set[str] | None = None
+        for stop_id in ids:
+            routes_here = parsed.stop_routes.get(stop_id, frozenset())
+            common = set(routes_here) if common is None else common & routes_here
+            if not common:
+                return []
+        return [parsed.routes[rid] for rid in common if rid in parsed.routes]
 
     def next_departures_for(
         self,

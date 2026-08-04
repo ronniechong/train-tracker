@@ -816,6 +816,39 @@ async def test_get_alerts_resolves_route_name_from_pinned_schedule(tmp_path, sam
     assert body["alerts"][0]["informed_entities"][0]["route_name"] == "Pakenham - City"
 
 
+async def test_get_alerts_leaves_route_name_none_for_ambiguous_stop_only_entities(
+    tmp_path, sample_static_zip_bytes
+):
+    # Real-world shape (verified live 2026-08-04): a single-trip
+    # cancellation lists only stop_ids, no route_id at all. PLAT_A1/PLAT_B1
+    # are shared by both fixture routes (2-PKM, 2-CRB), so this must stay
+    # None rather than guess -- see routes_serving_all_stops's docstring.
+    loop, store = await _running_loop()
+    store.latest_alerts = {
+        "active-alert": Alert(
+            id="active-alert",
+            cause="OTHER_CAUSE",
+            effect="NO_SERVICE",
+            header_text="Cancellation",
+            description_text=None,
+            url=None,
+            active_periods=(),
+            informed_entities=(
+                InformedEntity(route_id=None, stop_id="PLAT_A1", direction_id=None),
+                InformedEntity(route_id=None, stop_id="PLAT_B1", direction_id=None),
+            ),
+        ),
+    }
+    schedule_cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+
+    async with await _client_for(loop, store, schedule_cache=schedule_cache) as client:
+        response = await client.get("/api/alerts")
+
+    body = response.json()
+    names = {e["route_name"] for e in body["alerts"][0]["informed_entities"]}
+    assert names == {None}
+
+
 async def test_get_alerts_filters_by_route_id():
     loop, store = await _running_loop()
     store.latest_alerts = {

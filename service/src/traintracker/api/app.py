@@ -215,7 +215,42 @@ def _scheduled_train(store: StateStore, dep: ScheduledDeparture) -> ScheduledTra
     )
 
 
-def _alert_response(alert: AlertRecord, routes: dict[str, Route]) -> Alert:
+def _alert_response(
+    alert: AlertRecord,
+    routes: dict[str, Route],
+    schedule_cache: PinnedScheduleCache | None,
+    now: datetime,
+) -> Alert:
+    entity_route_names: dict[int, str | None] = {}
+    stop_only_indices: list[int] = []
+    for i, e in enumerate(alert.informed_entities):
+        if e.route_id is not None:
+            # Best-effort: routes.txt may be unavailable (no pinned
+            # snapshot yet) or the id may be a `-R` bus-replacement variant
+            # not in the map -- None here just means "line name
+            # unavailable", never raises.
+            entity_route_names[i] = routes[e.route_id].long_name if e.route_id in routes else None
+        elif e.stop_id is not None:
+            stop_only_indices.append(i)
+
+    # Fallback for the single-trip-cancellation shape: the feed lists the
+    # trip's whole stop sequence but no route_id at all -- infer the line
+    # from whichever route serves every listed stop (see
+    # `routes_serving_all_stops`'s docstring). Only trust an unambiguous
+    # match (one distinct long_name, ignoring the `-R` bus-replacement
+    # twin); leave None rather than guess when the stops are shared by
+    # multiple lines.
+    if stop_only_indices and schedule_cache is not None:
+        stop_ids = [alert.informed_entities[i].stop_id for i in stop_only_indices]
+        try:
+            matched_routes = schedule_cache.routes_serving_all_stops(now, stop_ids)  # type: ignore[arg-type]
+        except NoPinnedSnapshotError:
+            matched_routes = []
+        distinct_names = {r.long_name for r in matched_routes if r.long_name}
+        resolved = next(iter(distinct_names)) if len(distinct_names) == 1 else None
+        for i in stop_only_indices:
+            entity_route_names[i] = resolved
+
     return Alert(
         id=alert.id,
         cause=alert.cause,
@@ -229,16 +264,11 @@ def _alert_response(alert: AlertRecord, routes: dict[str, Route]) -> Alert:
         informed_entities=[
             AlertInformedEntity(
                 route_id=e.route_id,
-                # Best-effort: routes.txt may be unavailable (no pinned
-                # snapshot yet) or the id may be a `-R` bus-replacement
-                # variant not in the map -- None here just means "line name
-                # unavailable", never raises, same convention as every
-                # other optional field on this response.
-                route_name=routes[e.route_id].long_name if e.route_id in routes else None,
+                route_name=entity_route_names.get(i),
                 stop_id=e.stop_id,
                 direction_id=e.direction_id,
             )
-            for e in alert.informed_entities
+            for i, e in enumerate(alert.informed_entities)
         ],
     )
 
@@ -460,7 +490,8 @@ def create_app(
             # as every other optional field on this response).
             routes = {}
         return AlertsResponse(
-            generated_at=now, alerts=[_alert_response(a, routes) for a in matched]
+            generated_at=now,
+            alerts=[_alert_response(a, routes, schedule_cache, now) for a in matched],
         )
 
     @app.get(
