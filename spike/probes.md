@@ -64,14 +64,14 @@ curl -s -D - \
 
 ## Results
 
-Run 2026-07-20T00:43 UTC from the deployment host (Melbourne LAN).
+Run from the deployment host (Melbourne LAN).
 
 | Probe | Result |
 |---|---|
 | VP payload size | 19,087 bytes |
 | TU payload size | 80,525 bytes |
 | SA payload size | 35,963 bytes |
-| Latency (origin: Melbourne LAN) | VP 0.21s, TU 0.20s, SA 0.17s (not representative of the OCI-Melbourne figure originally planned — self-hosted deployment was chosen instead, see M1 doc 2026-07-17 log) |
+| Latency (origin: Melbourne LAN) | VP 0.21s, TU 0.20s, SA 0.17s (not representative of the OCI-Melbourne figure originally planned — self-hosted deployment was chosen instead) |
 | ETag present? | No, on any of the three feeds |
 | Last-Modified present? | No, on any of the three feeds |
 | Cache-Control / Age headers | VP: none. TU: `Cache-Control: no-store, no-cache`. SA: `Cache-Control: public, max-age=90, s-maxage=90` + `Age: 11` (confirms SA is CDN-cached ~90s server-side; VP/TU are not) |
@@ -86,8 +86,8 @@ wrong for the live gateway. A 401 against that header returns
 `WWW-Authenticate: ApiKey realm="api-realm", error="Invalid API-Key",
 error_description="Failed to find key field: KeyId"` — the actual gateway
 is still fronted by a legacy Axway/Vordel layer expecting `KeyId`. Verified
-live 2026-07-17 with a real key (200 OK, correctly decoded protobuf on all
-three feeds). `capture.py` uses `KeyId`.
+live with a real key (200 OK, correctly decoded protobuf on all three
+feeds). `capture.py` uses `KeyId`.
 
 **Caution:** the 401 error body for a *recognized but unauthorized* key
 (`error_description: "API Key not authorized: <key>"`) echoes the key

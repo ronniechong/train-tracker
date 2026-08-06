@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-M1 data spike — continuous poller for the three Metro Train GTFS-R feeds.
+Data spike — continuous poller for the three Metro Train GTFS-R feeds.
 
 Polls Vehicle Positions + Trip Updates at --vp-tu-interval (default 10s) and
 Service Alerts at --sa-interval (default 60s). Each successful poll appends

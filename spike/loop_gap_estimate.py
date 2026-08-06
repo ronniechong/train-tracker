@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-2d pre-analysis — first estimate of the loop-gap share, run against the
-existing M1 capture ahead of 2g's soak gate.
+Pre-analysis — first estimate of the loop-gap share, run against the
+existing capture.
 
-Extends M1's Q4 City Loop bbox (analyze.py) with a question Q4 didn't ask:
+Extends the Q4 City Loop bbox (analyze.py) with a question Q4 didn't ask:
 of the gaps long enough to trigger ghosting under the settled coasting
 design (~60-90s coasting before -> ghost), what share have BOTH the
 last-seen point AND the reappearance point inside the loop bbox? That
-number is what CLAUDE.md's ghost-design revisit clause is keyed on: "if
+number is what the ghost-design revisit clause is keyed on: "if
 ~99% of ghost events are City Loop-contained -> dedicated 'in loop,
 position unavailable' state instead of generic ghosting."
 

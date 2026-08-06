@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One-off: extract a bounded time-slice from the M1 capture for 2d's replay
+"""One-off: extract a bounded time-slice from the capture for a replay
 fixture. Streams the source ndjson (never loads it whole) and writes only
 lines whose fetch_timestamp falls in [--start, --end) to --out."""
 import argparse
