@@ -16,6 +16,7 @@ dependencies = [
     "anthropic>=0.120.2",
     "langfuse>=4.14.2",
     "flagsmith>=6.1.0",
+    "pyarrow>=25.0.0",
 ]
 
 [build-system]
