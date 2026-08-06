@@ -3,13 +3,11 @@ first app-code Slack integration in this repo (2f's ops alerts are
 Grafana's own Slack contact point, configured in Grafana, not here).
 
 Reuses `TT_ALERT_WEBHOOK_URL` (2f's ops-alerts webhook) rather than a
-dedicated one -- 05e's kickoff considered a separate webhook/channel
-(different audience: rider-facing disruption info vs. infra health) but
-Ronnie decided against the extra Slack setup for two config values that
-would only ever need to stay in sync; briefings and ops alerts share one
-channel by choice (revisited 2026-07-31, reversing that kickoff's
-tentative call). Splitting them again later is a one-line env change,
-not a code change.
+dedicated one -- a separate webhook/channel was considered (different
+audience: rider-facing disruption info vs. infra health) and rejected in
+favor of sharing one, since two config values that must only ever stay in
+sync isn't worth the extra Slack setup. Splitting them again later is a
+one-line env change, not a code change.
 
 Mirrors `healthcheck.ping()`'s exact shape: best-effort, resolves its URL
 from an env var if not passed explicitly, logs and returns `False` rather

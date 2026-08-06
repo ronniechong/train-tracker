@@ -2,8 +2,7 @@
 
 The Vic open-data portal publishes one zip-of-zips covering every transport
 mode (~270MB): `https://opendata.transport.vic.gov.au/dataset/gtfs-schedule`
-(confirmed by Ronnie 2026-07-20, resource
-`fb152201-859f-4882-9206-b768060b50ad`). Inside it, each mode is a numbered
+(resource `fb152201-859f-4882-9206-b768060b50ad`). Inside it, each mode is a numbered
 subdirectory containing its own `google_transit.zip` — mode `2` is Metro
 Train (route_type 400, verified against `routes.txt`: Alamein/Belgrave/
 Cranbourne etc. lines). We only ever need that ~20MB inner zip, not the full

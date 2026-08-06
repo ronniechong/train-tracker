@@ -15,7 +15,7 @@ from pathlib import Path
 
 from ..gtfs.gtfstime import service_date_boundary_utc
 
-# Confirmed by Ronnie 2026-07-20 (CLAUDE.md's settled "History scope" decision).
+# CLAUDE.md's settled "History scope" decision.
 RETENTION_DAYS = 60
 
 # Small margin past the exact `service_date_for_instant` rollover boundary —

@@ -96,12 +96,12 @@ class RateLimiter:
     ConnectionTracker does: no shared store needed, exactly one process
     ever runs.
 
-    M7 P1: `_per_ip` is pruned of entries idle past 2x the window on every
+    `_per_ip` is pruned of entries idle past 2x the window on every
     call, capped to run at most once per window (`_last_sweep`) so a busy
     process doesn't pay an O(n) scan on every single request -- fixes the
     unbounded-growth gap noted here previously (one entry per unique IP
     ever seen, for the life of the process; same shape as the ghost
-    tracker's gap, see JOURNAL). A window-old entry is, by definition,
+    tracker's own gap). A window-old entry is, by definition,
     already back to a fresh count on its next hit, so dropping it loses no
     real rate-limit state.
     """

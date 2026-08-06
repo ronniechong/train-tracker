@@ -64,7 +64,7 @@ services:
       # with these unset, verified live; they only fail at actual call
       # time, and that failure is caught and logged, never left to crash
       # the poller). egress-proxy's tinyproxy.filter widened for these
-      # hosts and live-verified deployed 2026-07-31 (see JOURNAL).
+      # hosts and live-verified deployed.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
@@ -103,13 +103,13 @@ services:
       - egress-proxy
     networks:
       - internal
-      # 2f: joins the host's already-existing general monitoring stack's
+      # Joins the host's already-existing general monitoring stack's
       # network so ITS Prometheus can scrape `poller:9109` by service name --
       # no second Prometheus/Grafana/cAdvisor/node_exporter run by this repo
-      # (see the `monitoring` network definition below and JOURNAL Session
-      # 16/17). Purely additive: `poller` keeps its existing `internal`
-      # egress-restricted network exactly as before, this only adds a second,
-      # separate network for INBOUND scraping -- doesn't touch invariant #5.
+      # (see the `monitoring` network definition below). Purely additive:
+      # `poller` keeps its existing `internal` egress-restricted network
+      # exactly as before, this only adds a second, separate network for
+      # INBOUND scraping -- doesn't touch invariant #5.
       - monitoring
       # M3: a second, separate network carrying the FastAPI/SSE app's
       # inbound traffic only, shared with nothing but `caddy`. Distinct
@@ -275,7 +275,7 @@ networks:
   # tenants, no other party's containers), so the residual exposure is
   # host-compromise-equivalent, not a real additional attack surface.
   # `/metrics` itself carries no secrets. Revisit only if this host ever
-  # runs containers for a party Ronnie doesn't trust.
+  # runs containers for an untrusted party.
   monitoring:
     external: true
     name: monitoring_default

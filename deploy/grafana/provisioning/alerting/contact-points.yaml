@@ -1,6 +1,6 @@
-# DRAFT, not wired into anything yet (see docker-compose.yml's own note and
-# JOURNAL Session 16): originally written assuming a dedicated Grafana
-# container this project would run itself. The host already runs a
+# DRAFT, not wired into anything yet (see docker-compose.yml's own note):
+# originally written assuming a dedicated Grafana container this project
+# would run itself. The host already runs a
 # general Grafana instance instead -- this is reference material for adding
 # train-tracker's alerting to THAT instance, not something to file-provision
 # as-is without review, for two reasons:

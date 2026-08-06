@@ -242,8 +242,7 @@ class InsightsResponse(BaseModel):
     of 7 -- the UI's "(N of 7 days)" indicator is built directly from
     this pair, not inferred from date arithmetic client-side.
 
-    `generated_at_by_date` backs the staleness tooltip (locked 2026-08-04,
-    after Ronnie asked how often the data actually refreshes): only
+    `generated_at_by_date` backs the staleness tooltip: only
     "today" has a genuine freshness concept (closed days are finalized
     once and never touched again), so the frontend looks up whichever
     date it cares about rather than this response collapsing to one

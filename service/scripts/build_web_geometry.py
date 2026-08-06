@@ -1,5 +1,5 @@
-"""One-off build tool for M4's static geometry file (see work-docs
-milestones/04-map.md, "Stage 2 — Static geometry"). Not part of the running
+"""One-off build tool for the static geometry file ("Stage 2 — Static
+geometry" in the map milestone). Not part of the running
 service — reuses `traintracker.gtfs`'s static-GTFS parsing (fetch/extract/
 stops) to derive a small station+route JSON consumed by the frontend, and
 writes it straight into ../../web/src/data/geometry.json (crosses the
@@ -42,8 +42,8 @@ BOUNDS_BUFFER_KM = 5.0
 KM_PER_DEGREE_LAT = 111.0
 
 # The live feed's `route_color` disagrees with PTV's own published metro
-# line-color spec sheet for these five (confirmed by Ronnie against the
-# official palette, 2026-07-30): Werribee/Williamstown come through pink
+# line-color spec sheet for these five (checked against the official
+# palette): Werribee/Williamstown come through pink
 # (Sandringham's color) instead of green (Frankston's group), Sunbury comes
 # through light blue (Cranbourne/Pakenham's group) instead of yellow
 # (Craigieburn/Upfield's group), and Cranbourne/Pakenham are a close but

@@ -54,9 +54,8 @@ _CREATE_HOURLY_ROLLUPS_SQL = """
 # idempotent delete+reinsert of the line rows shouldn't need to duplicate
 # it once per route_id.
 #
-# Ronnie asked (2026-08-04, after the aggregation-cadence question) for a
-# staleness tooltip in the UI -- "data fresh as of HH:MM" -- so this needs
-# to exist BEFORE the API/frontend layer is built, not bolted on after.
+# A staleness tooltip in the UI -- "data fresh as of HH:MM" -- needs
+# this to exist BEFORE the API/frontend layer is built, not bolted on after.
 # Only "today" is ever meaningfully stale (closed days are finalized once
 # and never touched again -- there is no "staleness" concept for a day
 # that's genuinely done), but every service_date still gets a real

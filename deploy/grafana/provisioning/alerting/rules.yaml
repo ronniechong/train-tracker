@@ -1,9 +1,9 @@
 # Reference/template for the shared Grafana instance's provisioning, not
 # something applied by file-provisioning directly (see contact-points.yaml's
 # header for why -- the host runs a shared Grafana/Prometheus, not a
-# dedicated instance for this project; JOURNAL Session 16). **The first
-# three rules below (feed-staleness, poller-down, disk-headroom) were
-# confirmed LIVE in the shared instance 2026-07-30** -- applied via the
+# dedicated instance for this project). **The first three rules below
+# (feed-staleness, poller-down, disk-headroom) were confirmed LIVE in the
+# shared instance** -- applied via the
 # provisioning API with the instance's real datasource/folder UIDs
 # substituted for the placeholder values below, not by pointing Grafana's
 # file-provisioner at this file as-is. `rate-limit-abuse` (added 2026-07-30)

@@ -1,9 +1,7 @@
 """The archival Parquet schema for each of `history/store.py`'s five event
-tables — the versioned contract milestone 09 treats as its "archival
-contract" (see `work-docs/train-tracker/milestones/09-hf-archive-pipeline.md`,
-"Column-by-column schema"). Every column here traces to a decision made in
-that spec-review session on 2026-08-07; changing a column here is a schema
-decision, not a refactor.
+tables — the versioned contract this milestone treats as its "archival
+contract". Every column here traces to a deliberate decision; changing a
+column here is a schema decision, not a refactor.
 
 Every table gets the same four archive-derived columns appended (not
 duplicated in each table's own column list below):

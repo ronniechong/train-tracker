@@ -5,8 +5,7 @@ computation and persistence -- `aggregate_day` below takes one service_date's
 already-read `TripCompletionEvent`s and produces what `InsightsStore` persists.
 
 `-R` replacement-bus route_ids (`gtfs/routes.py`) are corrected against
-PTV's own published reliability methodology (2026-08-04 design review,
-work-docs milestone doc): a cancelled train counts against reliability
+PTV's own published reliability methodology: a cancelled train counts against reliability
 regardless of whether a substitute bus covered the corridor, so `-R`
 completions are NEVER merged into the parent line's on-time/volume counts --
 merging would double-count an already-`cancelled` scheduled trip as if it

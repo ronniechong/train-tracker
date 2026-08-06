@@ -402,10 +402,9 @@ class HistoryStore:
             except sqlite3.OperationalError:
                 # The partition file exists but predates
                 # `trip_completion_events` (e.g. a day from before that
-                # table shipped, never reopened by rotate() since --
-                # caught live in production on this feature's first
-                # post-deploy cycle, 2026-08-01) -- same honest "no real
-                # data here" signal as a missing file entirely, not a crash.
+                # table shipped, never reopened by rotate() since) -- same
+                # honest "no real data here" signal as a missing file
+                # entirely, not a crash.
                 missing.append(service_date)
                 continue
             finally:

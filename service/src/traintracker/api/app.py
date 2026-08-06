@@ -394,8 +394,8 @@ def create_app(
     rate_limiter: RateLimiter | None = None,
     heartbeat_interval_s: float = SSE_HEARTBEAT_INTERVAL_S,
     schedule_cache: PinnedScheduleCache | None = None,
-    # 2026-08-01: on-demand briefings replaced automatic per-cycle
-    # triggering (cost control -- Ronnie's call). All four None by
+    # On-demand briefings replaced automatic per-cycle
+    # triggering (cost control). All four None by
     # default, same "feature not configured" 503 convention
     # `schedule_cache` already uses -- lets tests/dev construct an app
     # without wiring the whole AI stack when they don't need it.
@@ -410,11 +410,11 @@ def create_app(
     # convention -- lets tests/dev construct an app before the aggregation
     # job has ever run without wiring a real store.
     insights_store: InsightsStore | None = None,
-    # M7 P1: app-level defense-in-depth for /briefing/trigger, on top of
-    # (not instead of) the tailnet-only network isolation Ronnie chose at
-    # M5 kickoff -- that isolation turned out narrower than "tailnet-only"
-    # in practice (also reachable via the shared `monitoring` network and
-    # `tailscale serve` to the whole tailnet, see the milestone doc), so a
+    # App-level defense-in-depth for /briefing/trigger, on top of
+    # (not instead of) the tailnet-only network isolation chosen for this
+    # route -- that isolation turned out narrower than "tailnet-only" in
+    # practice (also reachable via the shared `monitoring` network and
+    # `tailscale serve` to the whole tailnet), so a
     # second, independent check is worthwhile. None by default = auth not
     # enforced, same "feature not configured" convention as the params
     # above -- lets tests/dev exercise this route without wiring a token.
@@ -507,14 +507,14 @@ def create_app(
     )
     async def trigger_briefing(request: Request) -> BriefingTriggerResponse:
         # Network-level isolation (deploy/Caddyfile's :8081 block +
-        # `tailscale serve`, NOT the publicly-funnelled :8080) was Ronnie's
-        # original, deliberate choice over an app-level token at M5
-        # kickoff. M7 P1 adds this bearer check on top, not instead of
-        # that: the route turned out reachable from more than "tailnet-
-        # only" in practice (the shared `monitoring` network; `tailscale
-        # serve` also exposes it to the whole tailnet, not just this
-        # deployment's own callers) -- see the milestone doc. Security
-        # invariant #1 is unaffected either way: this only ever reads
+        # `tailscale serve`, NOT the publicly-funnelled :8080) was the
+        # original, deliberate choice over an app-level token. This bearer
+        # check adds a layer on top, not instead of that: the route turned
+        # out reachable from more than "tailnet-only" in practice (the
+        # shared `monitoring` network; `tailscale serve` also exposes it to
+        # the whole tailnet, not just this deployment's own callers).
+        # Security invariant #1 is unaffected either way: this only ever
+        # reads
         # already-polled local state via `ai_tool_context`, same as every
         # AI-layer tool.
         if briefing_token:

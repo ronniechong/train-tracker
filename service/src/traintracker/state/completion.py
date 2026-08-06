@@ -17,7 +17,7 @@ departure value -- the same signal station.py uses to render "at genuine
 terminus" for live station state, applied here to detect trip *completion*
 instead.
 
-Ronnie's call (05-ai-layer scoping, 2026-07-31): a trip that drops off
+By design: a trip that drops off
 tracking before reaching its terminus (coverage gap, ghost-timeout) still
 gets an honest `undetermined_gap` event recorded here -- the internal
 event log stays gap-honest regardless of what any consuming digest chooses
@@ -199,10 +199,9 @@ class TripCompletionTracker:
                 # stringifies int64 fields (arrival_delay is int32, stays a
                 # real number). Same coercion station.py's `_epoch()` and
                 # api/app.py's `_scheduled_train` already apply for the
-                # identical reason -- missed here first, caught live on the
-                # homeserver (crash-looped the poller within seconds of the
-                # first real terminus arrival), not by any test, since every
-                # test fixture used a real int.
+                # identical reason -- every test fixture used a real int, so
+                # this needs the explicit cast rather than trusting the type
+                # hint.
                 actual_arrival = datetime.fromtimestamp(int(terminus_stu.arrival_time), tz=timezone.utc)
                 delay = (
                     terminus_stu.arrival_delay

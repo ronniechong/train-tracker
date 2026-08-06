@@ -1,20 +1,20 @@
-"""Queryable/exportable failure & gap report (milestone 09's "Failure/gap
-report" task, 2026-08-07). Plain JSON-lines file, one entry per event --
-append-only, matching this project's existing preference for simple,
-inspectable file formats over a database for low-volume operational logs.
+"""Queryable/exportable failure & gap report for the archive pipeline.
+Plain JSON-lines file, one entry per event -- append-only, matching this
+project's existing preference for simple, inspectable file formats over a
+database for low-volume operational logs.
 
-Lives on its own small persistent bind mount (`/archive-state`, decided
-2026-08-07) -- the archiver's `/data` mount is read-only (partitions only)
-and `/staging` may be ephemeral scratch, so the report needs a home that
-survives container restarts independently of either. It's also the only
-local state this container needs at all; catch-up itself works by diffing
-against Hugging Face's own file listing, no state file required for that.
+Lives on its own small persistent bind mount (`/archive-state`) -- the
+archiver's `/data` mount is read-only (partitions only) and `/staging` is
+ephemeral scratch, so the report needs a home that survives container
+restarts independently of either. It's also the only local state this
+container needs at all; catch-up itself works by diffing against Hugging
+Face's own file listing, no state file required for that.
 
-Pruned to the last `REPORT_RETENTION_DAYS` (Ronnie's call, 2026-08-07: ~6
-months) by `detected_at` age, not `service_date` -- an old, once-permanent
-gap is still worth keeping visible near its original detection time, but
-the report itself shouldn't grow forever on a project with only a 60-day
-raw data retention window.
+Pruned to the last `REPORT_RETENTION_DAYS` (~6 months) by `detected_at`
+age, not `service_date` -- an old, once-permanent gap is still worth
+keeping visible near its original detection time, but the report itself
+shouldn't grow forever on a project with only a 60-day raw data retention
+window.
 """
 
 from __future__ import annotations

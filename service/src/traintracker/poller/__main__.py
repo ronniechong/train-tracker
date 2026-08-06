@@ -191,17 +191,15 @@ async def _maybe_send_weekly_digest(
 async def main() -> int:
     # The dead-man ping URL carries its own secret as a path segment (not a
     # header, like the API key) -- httpx's own request logging prints full
-    # URLs at INFO level, so without registering it here it leaks straight
-    # into logs on every successful cycle. Caught live 2026-07-21: the real
-    # URL appeared in a docker compose logs capture during 2b verification.
+    # URLs at INFO level, so without registering it here it would leak
+    # straight into logs on every successful cycle.
     #
-    # M7 P0 (2026-08-02): same bug class, second instance -- the Slack
-    # webhook URL (`ai/briefing.py`/`weekly_digest.py`'s delivery path) also
-    # carries its secret as a URL path segment, and every briefing/weekly
-    # digest send was writing it straight into `docker compose logs` via the
-    # same httpx INFO-level request logging. Anthropic/Langfuse keys added
-    # too, belt-and-braces -- nothing today logs them, but registering costs
-    # nothing and this filter is the only backstop if that ever changes.
+    # Same bug class applies to the Slack webhook URL
+    # (`ai/briefing.py`/`weekly_digest.py`'s delivery path), which also
+    # carries its secret as a URL path segment. Anthropic/Langfuse keys
+    # registered too, belt-and-braces -- nothing today logs them, but
+    # registering costs nothing and this filter is the only backstop if
+    # that ever changes.
     configure_logging(
         os.environ.get(API_KEY_ENV, ""),
         os.environ.get(PING_URL_ENV, ""),
@@ -241,10 +239,10 @@ async def main() -> int:
         history.discrepancy_log, history.ghost_log, history.gap_log, history.completion_log,
         history.delay_observation_log,
     )
-    # 05-ai-layer (2026-08-01): real trip-completion tracking, Ronnie's
-    # explicit choice over a cheaper snapshot-based stat -- reuses the same
-    # `PinnedScheduleCache` instance the station-schedule feature already
-    # constructed above, so this needs no new I/O path of its own.
+    # Real trip-completion tracking, chosen over a cheaper snapshot-based
+    # stat -- reuses the same `PinnedScheduleCache` instance the
+    # station-schedule feature already constructed above, so this needs no
+    # new I/O path of its own.
     completion_tracker = TripCompletionTracker(completion_log, schedule_cache.terminus_for)
     # 05-ai-layer delay/ETA-prediction, step one (2026-08-01): the
     # observation logger training data for that feature doesn't exist
@@ -306,10 +304,9 @@ async def main() -> int:
     # consumer (the SSE route below) -- one hub instance, shared between
     # the poll loop (publishes) and the API (subscribes).
     hub = InProcessEventHub()
-    # 2026-08-01: briefings are on-demand only now (POST /briefing/trigger,
-    # cost control -- Ronnie's call, replacing automatic per-cycle
-    # triggering). The AI stack built above is handed to the API instead of
-    # driven from this poll loop.
+    # Briefings are on-demand only (POST /briefing/trigger, cost control --
+    # replacing automatic per-cycle triggering). The AI stack built above is
+    # handed to the API instead of driven from this poll loop.
     api = create_app(
         loop=loop, store=store, hub=hub, schedule_cache=schedule_cache,
         ai_client=ai_client, ai_tool_context=tool_context, ai_notify_client=notify_client,

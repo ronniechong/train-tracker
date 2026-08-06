@@ -1,6 +1,5 @@
-"""Real-data replay harness for `TripCompletionTracker` -- the item flagged
-in STATE.md after the live `arrival_time` string-coercion bug (05-session-30,
-2026-08-01) crash-looped the poller: every prior test used a hand-built
+"""Real-data replay harness for `TripCompletionTracker` -- follow-up after a
+live `arrival_time` string-coercion bug crash-looped the poller: every prior test used a hand-built
 `StopTimeUpdate` with a real int, which hid exactly that bug. This is the
 first end-to-end validation against a genuine 3h07m capture (2026-07-31
 22:35 - 2026-08-01 01:38 UTC, 1071 TU / 1074 VP polls, 100% success), fed
@@ -10,7 +9,7 @@ through the real `merge` -> `TripCompletionTracker` pipeline with a real
 what hand-built fixtures miss.
 
 `schedule/` is NOT the full ~140MB static snapshot paired with this capture
-(digest `06df78a8...`, see STATE.md) -- `stop_times.txt`/`trips.txt` are
+(digest `06df78a8...`) -- `stop_times.txt`/`trips.txt` are
 filtered to just the 484 trip_ids actually seen in this capture's Trip
 Updates (`calendar.txt`/`calendar_dates.txt`/`routes.txt`/`stops.txt` kept
 whole; all small). Real rows for real trips, not synthesized, just scoped
@@ -117,8 +116,7 @@ def test_replay_fixture_produces_real_completion_outcomes(tmp_path):
     assert len(trip_ids_seen) == 482  # no double-emission across the whole replay
 
     # The real breakdown for this slice, hand-verified against the raw
-    # capture before writing this assertion (see JOURNAL.md, session
-    # resuming 2026-08-01): 305 on_time, 6 late, 0 cancelled,
+    # capture before writing this assertion: 305 on_time, 6 late, 0 cancelled,
     # 171 undetermined_gap. Asserted exactly, not as a loose range --
     # this is a fixed, real recording, so the pipeline should reproduce it
     # deterministically every run; a changed count here means a real
@@ -138,9 +136,8 @@ def test_replay_fixture_produces_real_completion_outcomes(tmp_path):
     assert all(e.scheduled_terminus_arrival >= last_cycle_time.replace(tzinfo=tz) for e in gaps)
 
     # This 3h07m slice happened to contain zero cancellations -- a real,
-    # honest property of this specific recording (see milestone doc /
-    # JOURNAL for the "will a short window surface one?" uncertainty this
-    # answers), not an assumption the tracker enforces. `cancelled_trip_
+    # honest property of this specific recording, not an assumption the
+    # tracker enforces. `cancelled_trip_
     # finalizes_immediately_not_as_undetermined_gap` in test_completion.py
     # is what actually exercises that path.
     assert counts["cancelled"] == 0
