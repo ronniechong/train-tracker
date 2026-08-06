@@ -17,6 +17,7 @@ dependencies = [
     "langfuse>=4.14.2",
     "flagsmith>=6.1.0",
     "pyarrow>=25.0.0",
+    "huggingface-hub>=1.26.1",
 ]
 
 [build-system]
