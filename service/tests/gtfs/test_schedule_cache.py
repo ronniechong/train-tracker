@@ -84,8 +84,8 @@ _MAJORITY_VOTE_FILES = {
 def test_routes_most_likely_for_stops_resolves_by_majority_despite_one_dissenting_stop(
     tmp_path,
 ):
-    # Real production shape (verified live 2026-08-04): a 3-stop alert
-    # where 2 stops are A-only and 1 is shared with B -- a strict
+    # Real production shape: a 3-stop alert where 2 stops are A-only and 1
+    # is shared with B -- a strict
     # "every stop must agree" intersection would return nothing (STOP_1/
     # STOP_2 never see ROUTE_B), but the majority (2 of 3, and ahead of
     # ROUTE_B's 1) correctly resolves to A.
@@ -101,7 +101,7 @@ def test_routes_most_likely_for_stops_resolves_by_majority_despite_one_dissentin
 def test_routes_most_likely_for_stops_resolves_by_parent_station(tmp_path):
     # STOP_1's parent is STATION_1 -- Service Alerts carry the parent
     # station id, not the platform-level id stop_times.txt actually keys
-    # on (real live shape, verified 2026-08-04). Proves the parent id
+    # on. Proves the parent id
     # participates in the vote at all, not just the raw platform id.
     cache = _pinned_cache_from_files(tmp_path, _MAJORITY_VOTE_FILES)
 

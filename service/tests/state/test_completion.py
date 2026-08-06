@@ -64,9 +64,8 @@ def _terminus_arrived_stu(arrival_delay=None, arrival_time=None) -> StopTimeUpda
     #
     # `arrival_time` is passed as a STRING, deliberately -- protobuf's JSON
     # mapping stringifies int64 fields (this one), unlike arrival_delay
-    # (int32, stays a real number). A real int here would have hidden the
-    # exact bug that crash-looped the poller live on the homeserver
-    # (2026-08-01): every test previously used a real int, none caught it.
+    # (int32, stays a real number). A real int here would hide the crash
+    # this type mismatch caused in production.
     if arrival_time is None and arrival_delay is not None:
         arrival_time = str(int((SCHEDULED_ARRIVAL + timedelta(seconds=arrival_delay)).timestamp()))
     return StopTimeUpdate(

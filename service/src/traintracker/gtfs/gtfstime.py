@@ -69,8 +69,7 @@ def service_date_for_instant(
     belong to the previous service day until this boundary passes.
 
     `day_boundary_hour` is a config knob, not a settled decision — the
-    default (3am) matches common transit convention but should be revisited
-    if overnight service patterns suggest otherwise.
+    default (3am) matches common transit convention.
     """
     if instant_utc.tzinfo is None:
         raise ValueError("instant_utc must be timezone-aware")
@@ -89,7 +88,7 @@ def service_date_boundary_utc(
     """The UTC instant of `day_boundary_hour` local time on `service_date` —
     the exact inverse of `service_date_for_instant`: any instant at or past
     this one for `service_date + 1 day` has already rolled over to the next
-    service_date. Used by 2e's history store to know precisely when a
+    service_date. Used by the history store to know precisely when a
     service_date's partition can no longer receive writes (a 24:xx trip
     still attributed to the previous day)."""
     local_boundary = datetime(

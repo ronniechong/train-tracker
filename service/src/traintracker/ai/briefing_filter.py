@@ -2,13 +2,9 @@
 whether there's enough real signal in the currently active Service Alerts
 to make an LLM call worth its cost at all.
 
-Built off a concrete, observed failure mode (2026-08-01): several real
-on-demand briefings produced nothing useful -- "Unable to complete
-briefing... the alert metadata doesn't include the affected line" and
-generic "unknown route/stops" filler -- because the active alert(s) carried
-no `informed_entity` with a real `route_id` at all. Haiku correctly
-refused/hedged in each case, but only after a paid call. This check catches
-that exact class of alert BEFORE spending anything, not after.
+Catches alerts that carry no `informed_entity` with a real `route_id` --
+those produce nothing useful for a briefing writer to name, and this check
+catches that class BEFORE spending a call, not after.
 
 Deliberately narrower than `state/alerts.py`'s own "no informed_entity
 means network-wide, matches everything" semantics -- that reading is

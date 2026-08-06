@@ -5,7 +5,7 @@ settled feed-roles decision.
 Per-field freshness, not a single blanket "last updated": schedule fields
 (route_id, stop_time_update, ...) carry TU's timestamp, position fields carry
 VP's, because the two feeds are read at different cadences (TU ~10s, VP
-~29-30s per M1) and a caller reasoning about staleness needs to know which
+~29-30s) and a caller reasoning about staleness needs to know which
 half of a snapshot is old, not just that *something* is old.
 
 This module is a pure, single-cycle merge — it has no memory of previous
@@ -66,8 +66,8 @@ class TrainSnapshot:
 @dataclass(frozen=True)
 class DiscrepancyEvent:
     """A conflict between TU and VP for a trip present in both feeds this
-    cycle. Schema designed now (2d) so 2f's metrics and 2g's discrepancy-rate
-    gate have a stable shape to read from later - see finding #5.
+    cycle. Schema designed so downstream metrics and a discrepancy-rate
+    gate have a stable shape to read from later.
 
     Deliberately excludes trips present in only one feed: TU-without-VP is
     the normal coasting/ghost baseline (the state machine's job, not a data

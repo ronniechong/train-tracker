@@ -2,11 +2,10 @@
 not-yet-archived closed days, self-heal from backup where needed, upload to
 the private Hugging Face dataset repo). Same one-shot-entrypoint pattern as
 `traintracker.history`'s nightly job -- this module builds the callable
-pass only, it doesn't schedule itself. Milestone 09's decision: this job
-runs in the SAME nightly cron slot as the existing backup/retention job
-(not an independent schedule), to shrink the window where a day's data
-exists in only one failure domain before Hugging Face becomes a genuine
-offsite copy.
+pass only, it doesn't schedule itself. This job runs in the SAME nightly
+cron slot as the existing backup/retention job (not an independent
+schedule), to shrink the window where a day's data exists in only one
+failure domain before Hugging Face becomes a genuine offsite copy.
 
 `/data`, `/backup` are the same fixed container-internal mount points
 `traintracker.history` already uses, both READ-ONLY for this container
@@ -47,8 +46,7 @@ def main() -> int:
 
     # Redaction filter registered before anything else logs a single line --
     # same pattern as `gateway.__main__`'s `API_KEY_ENV` wiring, closing the
-    # same leak-vector class (this token would otherwise be as exposed as
-    # the PTV key was before that filter existed).
+    # same leak-vector class this token would otherwise be exposed to.
     configure_logging(token, level=logging.INFO)
 
     if not token or not repo_id:

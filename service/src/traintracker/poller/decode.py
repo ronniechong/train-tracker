@@ -1,7 +1,7 @@
 """Decode a raw GTFS-Realtime protobuf payload into the plain dict shape
 `state/merge.py` and the replay fixtures already expect:
 `{"header": {...}, "entity": [...]}`, field names unconverted from
-snake_case (`preserving_proto_field_name=True`) to match the M1 capture
+snake_case (`preserving_proto_field_name=True`) to match the capture
 format this codebase has used from the start."""
 
 from __future__ import annotations

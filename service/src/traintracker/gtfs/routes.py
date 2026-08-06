@@ -40,8 +40,7 @@ def routes_from_zip_bytes(data: bytes) -> dict[str, Route]:
     return parse_routes(routes_txt)
 
 
-# Confirmed live against the real pinned snapshot (2026-07-31): every one
-# of the 15 real lines is paired with a second "-R" route_id whose
+# Every real line is paired with a second "-R" route_id whose
 # route_short_name is always this literal string (route_long_name and
 # route_id are what actually distinguish which line it belongs to) --
 # this is a bus-replacement variant of the parent line, not a reverse
@@ -52,11 +51,9 @@ REPLACEMENT_BUS_SHORT_NAME = "Replacement Bus"
 
 def replacement_bus_route_id(route_id: str) -> str:
     """The bus-replacement route_id paired with a real line's route_id.
-    GTFS-R alerts reference both ids during a real disruption (confirmed
-    live against the 2026-07-31 Belgrave "buses replace trains" alert,
-    whose `informed_entity` listed `...BEG:` and `...BEG-R:` together) --
-    callers that filter by line name need to check both, not just the
-    line's own base id."""
+    GTFS-R alerts reference both ids during a real disruption -- callers
+    that filter by line name need to check both, not just the line's own
+    base id."""
     return route_id.rstrip(":") + "-R:"
 
 

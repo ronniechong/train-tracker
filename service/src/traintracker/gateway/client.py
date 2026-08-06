@@ -4,7 +4,7 @@ The ONLY code path allowed to call the upstream Metro Train feeds (security
 invariant #1 — exactly one upstream consumer; no per-user passthrough).
 
 Auth is the `KeyId` header, not the `Ocp-Apim-Subscription-Key` the
-published OpenAPI docs claim — verified live 2026-07-17 against a legacy
+published OpenAPI docs claim — verified live against a legacy
 Axway/Vordel gateway fronting the documented API (see spike/probes.md).
 A 401 for a *recognized but unauthorized* key echoes the key verbatim in
 `WWW-Authenticate`'s `error_description` — this client never logs or
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 API_KEY_ENV = "VIC_TRANSPORT_API_KEY"
 BASE_URL_ENV = "TT_API_BASE_URL"
 
-# Confirmed live 2026-07-17 (spike/capture.py, spike/probes.md).
+# Confirmed live (spike/capture.py, spike/probes.md).
 DEFAULT_BASE_URL = (
     "https://api.opendata.transport.vic.gov.au/opendata/public-transport"
     "/gtfs/realtime/v1/metro"
@@ -68,8 +68,8 @@ class FeedResponse:
 
 def _parse_rate_limit(header_value: str | None) -> tuple[ThrottleWindow, ...]:
     """VP/TU send `x-rate-limit` as a JSON array of throttle windows; SA
-    sends none (M1 finding). Malformed input degrades to "unknown", not a
-    hard failure — this header is an optimization signal, not load-bearing."""
+    sends none. Malformed input degrades to "unknown", not a hard failure
+    — this header is an optimization signal, not load-bearing."""
     if not header_value:
         return ()
     try:
@@ -90,13 +90,13 @@ def base_url() -> str:
 class GatewayClient:
     """Thin, single-purpose HTTP client for the three Metro Train feeds.
 
-    Async since M3 (2026-07-30): the poll loop now runs on the same asyncio
-    event loop as the FastAPI/SSE server it shares a process with, so this
-    can no longer block the loop with a synchronous call.
+    Async: the poll loop runs on the same asyncio event loop as the
+    FastAPI/SSE server it shares a process with, so this cannot block
+    the loop with a synchronous call.
 
-    `httpx.AsyncClient` honours standard proxy env vars (`HTTPS_PROXY` etc —
-    `trust_env=True` is the default) so the 2a egress-sidecar decision stays
-    a compose/env config swap, never a code change, if it's ever revisited.
+    `httpx.AsyncClient` honours standard proxy env vars (`HTTPS_PROXY` etc
+    — `trust_env=True` is the default) so an egress-sidecar setup stays a
+    compose/env config swap, never a code change, if it's ever revisited.
     """
 
     def __init__(

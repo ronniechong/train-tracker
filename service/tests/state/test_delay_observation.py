@@ -219,9 +219,8 @@ def test_stops_remaining_never_negative_skips_the_observation():
     log = _FakeEventLog()
     tracker = DelayObservationTracker(log, _terminus_lookup())
 
-    # Nearest stop's stop_sequence (9) is past the terminus's (5) -- a
-    # rolling-window/terminus mismatch edge case, must not record a
-    # negative feature.
+    # Nearest stop's stop_sequence (9) is past the terminus's (5); must
+    # not record a negative feature.
     tracker.tick(
         {"t1": _snapshot(stop_time_updates=(_stu(9, arrival_delay=90),))}, _at(0), {},
     )

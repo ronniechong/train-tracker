@@ -43,9 +43,9 @@ def test_pin_get_returns_none_when_unpinned(tmp_path):
 
 
 def test_compare_trip_ids_matches_m1_shape():
-    # Mirrors the M1 finding: whole-snapshot trip_ids churn heavily across
-    # publishes (future-dated trips get regenerated ids), but trip_ids
-    # scoped to an elapsed/current service_date stay ~100% stable.
+    # Whole-snapshot trip_ids churn heavily across publishes (future-dated
+    # trips get regenerated ids), but trip_ids scoped to an elapsed/current
+    # service_date stay ~100% stable.
     old_whole_snapshot = frozenset(f"future_trip_{i}" for i in range(100))
     new_whole_snapshot = frozenset(f"future_trip_{i}" for i in range(56, 156))
     whole_churn = compare_trip_ids(old_whole_snapshot, new_whole_snapshot)

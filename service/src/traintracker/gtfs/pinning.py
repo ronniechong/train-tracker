@@ -3,9 +3,9 @@
 Pin exactly one static snapshot to each service_date, once, and never
 silently repin it — this is what makes the nightly refresh job safe against
 publish-timing races (the portal republishing before/after/twice around the
-nightly run). The manifest here is a simple JSON sidecar; milestone 2e may
-persist this differently (e.g. in the SQLite history store) but the pinning
-*logic* — idempotent, first-write-wins per service_date — stays the same.
+nightly run). The manifest here is a simple JSON sidecar; the pinning
+*logic* — idempotent, first-write-wins per service_date — is what matters
+if the storage backend ever changes.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ class PinResult:
 class PinManifest:
     """JSON-backed record of which snapshot digest is pinned to which
     service_date. Loads/saves the whole file on each call — fine at this
-    scale (one row per service day, retained 60 days per CLAUDE.md)."""
+    scale (one row per service day)."""
 
     def __init__(self, manifest_path: Path):
         self._path = manifest_path
@@ -93,11 +93,11 @@ class ChurnResult:
 def compare_trip_ids(
     old_ids: frozenset[str], new_ids: frozenset[str]
 ) -> ChurnResult:
-    """Compare two snapshots' trip_id sets. Mirrors the M1 finding: expect
-    high churn on future-dated trips (portal regenerates ids each publish)
-    but near-100% stability for trip_ids scoped to an elapsed/current
-    service_date — callers should pass `trip_ids_for_service_date(...)`
-    results, not the raw whole-snapshot `trip_ids`, to get that comparison.
+    """Compare two snapshots' trip_id sets. Expect high churn on future-dated
+    trips (portal regenerates ids each publish) but near-100% stability for
+    trip_ids scoped to an elapsed/current service_date — callers should pass
+    `trip_ids_for_service_date(...)` results, not the raw whole-snapshot
+    `trip_ids`, to get that comparison.
     """
     stable = old_ids & new_ids
     total_old = len(old_ids)

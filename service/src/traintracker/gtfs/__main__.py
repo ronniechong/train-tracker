@@ -1,9 +1,9 @@
-"""`python -m traintracker.gtfs` — run 2c's nightly static-GTFS fetch +
+"""`python -m traintracker.gtfs` — runs the nightly static-GTFS fetch +
 per-service-day pin once. Intended for host cron via `docker compose run
 --rm --entrypoint "python -m traintracker.gtfs" poller` (same one-shot-
-entrypoint pattern `traintracker.history`'s own `__main__.py` already
-documents) — this module builds and runs the job, it doesn't schedule
-itself. Real crontab wiring is a separate ops step.
+entrypoint pattern as `traintracker.history`'s `__main__.py`) — this module
+builds and runs the job, it doesn't schedule itself. Real crontab wiring is
+a separate ops step.
 
 `store_dir`/`manifest_path` must point at the SAME `/data/gtfs` directory
 `traintracker.poller`'s `PinnedScheduleCache` reads from (it looks up
@@ -38,11 +38,11 @@ DATA_DIR = Path("/data")
 
 
 def main() -> int:
-    # M7 P2: routed through the shared redaction filter for consistency
-    # with `poller`/`history` -- this job takes no secrets today, but
-    # `configure_logging` is also what raises httpx's own logger to
-    # WARNING, closing the same leak-vector class as M7 P0's fix even
-    # though nothing here currently triggers it.
+    # Routed through the shared redaction filter for consistency with
+    # `poller`/`history` -- this job takes no secrets today, but
+    # `configure_logging` also raises httpx's own logger to WARNING,
+    # closing the same leak-vector class even though nothing here
+    # currently triggers it.
     configure_logging(level=logging.INFO)
 
     gtfs_dir = DATA_DIR / "gtfs"

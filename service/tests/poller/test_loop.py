@@ -51,8 +51,7 @@ def _sa_bytes(timestamp: int, with_alert: bool = False) -> bytes:
 
 class ScriptedGateway:
     """Drives a GatewayClient's underlying transport from a per-feed
-    timestamp/status script the test controls between `run_cycle()` calls,
-    without needing a real network or a real API key."""
+    timestamp/status script, without needing a real network or API key."""
 
     def __init__(self):
         self.tu_ts = 1000
@@ -130,9 +129,8 @@ async def test_unchanged_header_is_deduped_but_store_still_ticks_forward():
     result = await loop.run_cycle(T0 + timedelta(seconds=10))
 
     assert result.changed_feeds == frozenset()
-    # Cached content must still be re-ingested with the new cycle_time, not
-    # dropped -- otherwise the trip would look VP-less and start coasting
-    # even though nothing upstream actually changed.
+    # Cached content must still be re-ingested with the new cycle_time,
+    # or the trip would look VP-less and start coasting for no reason.
     assert "T1" in store.latest_snapshots
     assert store.status_of("T1") == "live"
 
@@ -182,8 +180,7 @@ async def test_backoff_active_is_passed_through_to_state_store():
     await loop.run_cycle(T0 + timedelta(seconds=5))
 
     # A live trip must not start coasting/ghosting just because backoff is
-    # active this tick (2d finding #6) -- confirmed indirectly: the trip
-    # seen with a fresh position stays "live" even mid-backoff.
+    # active this tick.
     assert store.status_of("T1") == "live"
 
 

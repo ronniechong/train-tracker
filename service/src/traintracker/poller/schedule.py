@@ -1,16 +1,15 @@
-"""Service-hours-aware poll cadence (CLAUDE.md's settled poll-interval
-decision + M2 spec-review finding #7: overnight slowdown must be
-schedule/calendar-hour-based, not entity-count-based).
+"""Service-hours-aware poll cadence: overnight slowdown is
+schedule/calendar-hour-based, not entity-count-based.
 
-The overnight window (00:00-07:00 Australia/Melbourne) is M1's own measured
+The overnight window (00:00-07:00 Australia/Melbourne) is a measured
 "overnight" band (`spike/analyze.py`'s `Q2_BANDS`) -- real measured data
 (33-83% coverage by band, 6.2% zero-entity within this exact window), not
 an arbitrary guess. GTFS `calendar.txt` only tells you which *day* a
 service pattern runs, not clock hours -- true per-day operating-hour
 boundaries would need `stop_times.txt`, which nothing in this codebase
-parses yet. A fixed, measured window is the right scope for this
-milestone; revisit only if that measured band turns out to be wrong, not
-as a placeholder for "the real thing" later.
+parses yet. A fixed, measured window is the right scope; revisit only if
+that measured band turns out to be wrong, not as a placeholder for "the
+real thing" later.
 """
 
 from __future__ import annotations

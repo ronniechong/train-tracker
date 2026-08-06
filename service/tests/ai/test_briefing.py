@@ -34,9 +34,8 @@ async def test_compose_briefing_returns_the_final_text():
 
 
 async def test_compose_briefing_asks_for_a_current_summary_not_a_change_explanation():
-    # On-demand framing (2026-08-01): no trigger reason exists anymore --
-    # the user message asks for whatever's currently active, not "what
-    # changed since last cycle".
+    # No trigger reason exists anymore -- the user message asks for whatever's
+    # currently active, not "what changed since last cycle".
     client = _ScriptedLLMClient(
         [LLMResponse(text="ok", tool_uses=(), stop_reason="end_turn", input_tokens=1, output_tokens=1)]
     )

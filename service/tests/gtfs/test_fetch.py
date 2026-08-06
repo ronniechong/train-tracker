@@ -24,7 +24,7 @@ def _wrap_as_outer_zip(inner_zip_bytes: bytes, mode: str = "2") -> bytes:
 
 class _FakeHttp:
     """Stands in for httpx.get/httpx.head, counting calls so tests can
-    assert the 270MB GET was actually skipped when the ETag matches."""
+    assert the download was actually skipped when the ETag matches."""
 
     def __init__(self, outer_zip_bytes: bytes, etag: str):
         self.outer_zip_bytes = outer_zip_bytes
@@ -109,8 +109,8 @@ def test_refresh_and_pin_skips_download_when_etag_unchanged(
     )
     assert day_one.downloaded is True
 
-    # Next day: portal's ETag hasn't changed (weekly update cadence) — the
-    # job must still pin a new service_date, but without re-downloading.
+    # Next day: portal's ETag hasn't changed -- must still pin a new
+    # service_date, but without re-downloading.
     day_two = refresh_and_pin(
         date(2026, 7, 21), store_dir, manifest_path, cache_path,
         url="https://example.invalid/gtfs.zip",

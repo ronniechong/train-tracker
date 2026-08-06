@@ -1,17 +1,17 @@
-"""M8 Insights: per-day rollup aggregation (milestones/08-analytics-insights.md).
+"""Insights: per-day rollup aggregation.
 
 Pure computation, no I/O, mirroring `ai/weekly_digest.py`'s split between
 computation and persistence -- `aggregate_day` below takes one service_date's
 already-read `TripCompletionEvent`s and produces what `InsightsStore` persists.
 
 `-R` replacement-bus route_ids (`gtfs/routes.py`) are corrected against
-PTV's own published reliability methodology: a cancelled train counts against reliability
-regardless of whether a substitute bus covered the corridor, so `-R`
-completions are NEVER merged into the parent line's on-time/volume counts --
-merging would double-count an already-`cancelled` scheduled trip as if it
-had been delivered. `-R` volume is tracked separately, per line, purely as
-the reason source for a zero/low-completion row ("ran as replacement
-buses").
+PTV's own published reliability methodology: a cancelled train counts against
+reliability regardless of whether a substitute bus covered the corridor, so
+`-R` completions are NEVER merged into the parent line's on-time/volume
+counts -- merging would double-count an already-`cancelled` scheduled trip
+as if it had been delivered. `-R` volume is tracked separately, per line,
+purely as the reason source for a zero/low-completion row ("ran as
+replacement buses").
 """
 
 from __future__ import annotations
@@ -43,8 +43,7 @@ class LineDayRollup:
 @dataclass(frozen=True)
 class HourlyDayRollup:
     """Completions at terminus, bucketed by Melbourne-local hour of arrival
-    (chart 4) -- NOT a departure-frequency count, see milestone doc's
-    honesty note on this chart's framing. `route_id=None` means network-wide
+    -- NOT a departure-frequency count. `route_id=None` means network-wide
     (summed across all real lines), used for the "All lines" view."""
 
     route_id: str | None
@@ -52,22 +51,20 @@ class HourlyDayRollup:
     completion_count: int
 
 
-# Chart 3 (on-time performance histogram). Bucket boundaries deliberately
-# do NOT match the milestone doc's original "1-5min/5-10min/10+min" sketch
-# -- that would double-count against the already-locked on-time threshold
-# (<=4:59, ON_TIME_THRESHOLD_S in state/completion.py), since a delay of
-# 1-4:59 is already scored on_time. Buckets here start where "late"
-# actually starts, avoiding that overlap. Found and fixed 2026-08-04 while
-# finally building this chart (was deferred at design-review time).
+# On-time performance histogram. Bucket boundaries deliberately don't start
+# at "1-5min" -- that would double-count against the already-locked on-time
+# threshold (<=4:59, ON_TIME_THRESHOLD_S in state/completion.py), since a
+# delay of 1-4:59 is already scored on_time. Buckets here start where "late"
+# actually starts, avoiding that overlap.
 LATE_10_MIN_THRESHOLD_S = 600
 
 
 @dataclass(frozen=True)
 class DelayHistogramDayRollup:
-    """Network-wide (not per-line, matching the KPI row's own scope) delay
-    distribution for one service_date. `gap_count` included for the same
-    honesty reason `undetermined_gap` is always its own segment elsewhere
-    in this codebase -- never silently folded into another bucket."""
+    """Network-wide (not per-line) delay distribution for one service_date.
+    `gap_count` included for the same honesty reason `undetermined_gap` is
+    always its own segment elsewhere in this codebase -- never silently
+    folded into another bucket."""
 
     on_time_count: int
     late_5_10_count: int

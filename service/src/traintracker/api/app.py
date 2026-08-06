@@ -1,12 +1,10 @@
-"""M3's FastAPI app: read-only, GET-only, serves 2d's derived state directly
-out of the same process's memory -- no new path to the upstream API
-(security invariant #1), this only ever reads what the poll loop already
-fetched.
+"""FastAPI app: read-only, GET-only, serves derived state directly out of
+the same process's memory -- no new path to the upstream API (security
+invariant #1), this only ever reads what the poll loop already fetched.
 
 Docs/OpenAPI endpoints are disabled by default: this is a small, fixed,
-already-documented (see ops/runbook.md and this milestone's spec) public
-surface, not a browsable API product -- no reason to publish a live schema
-explorer alongside it.
+already-documented public surface, not a browsable API product -- no
+reason to publish a live schema explorer alongside it.
 """
 
 from __future__ import annotations
@@ -74,11 +72,11 @@ from .schemas import (
     WeeklyLineStat,
 )
 
-# M3 finding #11: both the static GTFS schedule and the realtime feeds are
-# published by Vic DoT under CC BY 4.0 (confirmed live, M1 spike). Neither
-# dataset page mandates an exact credit-line format, so this follows
-# standard CC BY 4.0 practice: name the source, link the license text,
-# note the data is derived/processed rather than the original feed as-is.
+# Both the static GTFS schedule and the realtime feeds are published by
+# Vic DoT under CC BY 4.0 (confirmed live). Neither dataset page mandates
+# an exact credit-line format, so this follows standard CC BY 4.0
+# practice: name the source, link the license text, note the data is
+# derived/processed rather than the original feed as-is.
 DATA_ATTRIBUTION = AttributionResponse(
     source="Victoria Department of Transport and Planning",
     license="CC BY 4.0",
@@ -93,12 +91,12 @@ DATA_ATTRIBUTION = AttributionResponse(
 logger = logging.getLogger("traintracker.api")
 
 CORS_ORIGINS_ENV = "TT_CORS_ORIGINS"
-# M7 P1: shared-secret bearer token for POST /briefing/trigger, defense-
-# in-depth on top of the tailnet-only network isolation (see create_app's
+# Shared-secret bearer token for POST /briefing/trigger, defense-in-depth
+# on top of the tailnet-only network isolation (see create_app's
 # briefing_token docstring above).
 BRIEFING_TOKEN_ENV = "TT_BRIEFING_TOKEN"
 
-# M3 finding #5's resolution: this is a cap on connection *idleness*, not a
+# This is a cap on connection *idleness*, not a
 # promised data-freshness cadence -- the actual delta cadence is whatever
 # the poll loop's real cadence is (10s or the overnight 30-60s), since a
 # tick only fires after a real poll cycle completes. This value only
@@ -124,12 +122,12 @@ def _feed_status(loop: PollerLoop, feed: Feed, now: datetime) -> FeedStatus:
 def _is_current(tracked: TrackedTrainView, now: datetime) -> bool:
     # `last_touched_at` (unlike `last_seen_at`) is set on every tick
     # regardless of feed, so this correctly ages out TU-only trips too --
-    # `last_seen_at` alone stayed None forever for those, the exact hole
-    # that let stale ghosts accumulate and still pass this check (found
-    # 2026-07-31, see state/ghost.py). `_trains` itself now also evicts on
-    # this same age via `TrainLifecycleTracker._evict_stale` (called every
-    # tick) -- this check exists in addition because a request can land
-    # between ticks, when the tracker hasn't had a chance to sweep yet.
+    # `last_seen_at` alone stayed None forever for those, letting stale
+    # ghosts accumulate and still pass this check (see state/ghost.py).
+    # `_trains` itself now also evicts on this same age via
+    # `TrainLifecycleTracker._evict_stale` (called every tick) -- this
+    # check exists in addition because a request can land between ticks,
+    # when the tracker hasn't had a chance to sweep yet.
     if tracked.last_touched_at is None:
         return True  # not yet ticked even once; shouldn't happen in practice
     return (now - tracked.last_touched_at).total_seconds() <= MAX_GHOST_AGE_S
@@ -286,26 +284,24 @@ def _current_state(loop: PollerLoop, store: StateStore) -> StateResponse:
 
 
 def _client_ip(request: Request) -> str:
-    # M7 P1 correction: the old version of this comment claimed nothing but
-    # `caddy` could reach this port, which was never true -- `poller` also
-    # carries the host's shared `monitoring` network (2f, for Prometheus
-    # scraping) and `internal` (for its own egress calls), so this header
-    # is only trustworthy for traffic that actually arrived via Caddy.
-    # Caddy itself now only forwards a trustworthy value here (see the
-    # `trusted_proxies` config in deploy/Caddyfile, M7 P1) -- it trusts
+    # `poller` carries the host's shared `monitoring` network (for
+    # Prometheus scraping) and `internal` (for its own egress calls), so
+    # this header is only trustworthy for traffic that actually arrived
+    # via Caddy. Caddy itself only forwards a trustworthy value here (see
+    # the `trusted_proxies` config in deploy/Caddyfile) -- it trusts
     # `X-Forwarded-For` only on the loopback hop from the co-located
     # Tailscale sidecar, not from an arbitrary client. Something on the
     # `monitoring` network forging this header directly against `poller`,
     # bypassing Caddy, is a real residual gap -- explicitly accepted, not
-    # closed, as of M7 P2 (2026-08-03): `monitoring` is this same host's
-    # own single-operator stack, no untrusted tenants, so this is
-    # host-compromise-equivalent risk rather than a genuine additional
-    # attack surface (see deploy/docker-compose.yml's `monitoring`
-    # network definition for the full reasoning).
+    # closed: `monitoring` is this same host's own single-operator stack,
+    # no untrusted tenants, so this is host-compromise-equivalent risk
+    # rather than a genuine additional attack surface (see
+    # deploy/docker-compose.yml's `monitoring` network definition for the
+    # full reasoning).
     forwarded = request.headers.get("x-forwarded-for")
     resolved = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
     if os.environ.get("TT_DEBUG_CLIENT_IP"):
-        # M7 P1 follow-up: one-off toggle to directly confirm what Caddy's
+        # One-off toggle to directly confirm what Caddy's
         # `trusted_proxies` config actually resolves per real request,
         # without permanently logging every client IP. Unset (default) =
         # no-op, same convention as this codebase's other optional features.
@@ -352,9 +348,9 @@ async def _event_source(
     to test the real route end-to-end without a live server. Extracting this
     function is what makes the actual event logic testable at all.)
 
-    No shared ring buffer (M3's steelman-informed scope cut) -- `sent` is
-    local to this one connection, diffed fresh against `store`/`loop` on
-    every tick.
+    No shared ring buffer (deliberate scope cut) -- `sent` is local to
+    this one connection, diffed fresh against `store`/`loop` on every
+    tick.
     """
     # Bounded to 1: this queue only ever carries "something changed, go
     # recompute" wake-ups (the value itself is never read below), so a
@@ -394,21 +390,21 @@ def create_app(
     rate_limiter: RateLimiter | None = None,
     heartbeat_interval_s: float = SSE_HEARTBEAT_INTERVAL_S,
     schedule_cache: PinnedScheduleCache | None = None,
-    # On-demand briefings replaced automatic per-cycle
-    # triggering (cost control). All four None by
-    # default, same "feature not configured" 503 convention
-    # `schedule_cache` already uses -- lets tests/dev construct an app
-    # without wiring the whole AI stack when they don't need it.
+    # On-demand briefings replaced automatic per-cycle triggering (cost
+    # control). All four None by default, same "feature not configured"
+    # 503 convention `schedule_cache` already uses -- lets tests/dev
+    # construct an app without wiring the whole AI stack when they don't
+    # need it.
     ai_client: LLMClient | None = None,
     ai_tool_context: ToolContext | None = None,
     ai_notify_client: httpx.AsyncClient | None = None,
     metrics: Metrics | None = None,
-    # 05-ai-layer weekly digest (locked 2026-08-01): None by default, same
-    # "feature not configured" 503 convention as the AI-stack params above.
+    # Weekly digest: None by default, same "feature not configured" 503
+    # convention as the AI-stack params above.
     digest_store: WeeklyDigestStore | None = None,
-    # M8 Insights (locked 2026-08-04): same "feature not configured" 503
-    # convention -- lets tests/dev construct an app before the aggregation
-    # job has ever run without wiring a real store.
+    # Insights: same "feature not configured" 503 convention -- lets
+    # tests/dev construct an app before the aggregation job has ever run
+    # without wiring a real store.
     insights_store: InsightsStore | None = None,
     # App-level defense-in-depth for /briefing/trigger, on top of
     # (not instead of) the tailnet-only network isolation chosen for this
@@ -445,9 +441,9 @@ def create_app(
 
     @app.exception_handler(Exception)
     async def _unhandled_exception(request: Request, exc: Exception) -> JSONResponse:
-        # Finding #8 (spec review): never let a stack trace or internal path
-        # reach a public response, regardless of what FastAPI's own default
-        # would otherwise do. Full detail stays server-side in the log.
+        # Never let a stack trace or internal path reach a public response,
+        # regardless of what FastAPI's own default would otherwise do.
+        # Full detail stays server-side in the log.
         logger.exception("unhandled error on %s %s", request.method, request.url.path)
         return JSONResponse(status_code=500, content={"detail": "internal error"})
 
@@ -514,9 +510,8 @@ def create_app(
         # shared `monitoring` network; `tailscale serve` also exposes it to
         # the whole tailnet, not just this deployment's own callers).
         # Security invariant #1 is unaffected either way: this only ever
-        # reads
-        # already-polled local state via `ai_tool_context`, same as every
-        # AI-layer tool.
+        # reads already-polled local state via `ai_tool_context`, same as
+        # every AI-layer tool.
         if briefing_token:
             authorization = request.headers.get("authorization", "")
             scheme, _, presented = authorization.partition(" ")
@@ -603,9 +598,9 @@ def create_app(
     ) -> InsightsResponse:
         # Read-only, GET-only, derived-only (invariant 3/1) -- same as
         # every other route here; this never triggers the aggregation
-        # job itself, only reads whatever it has already precomputed
-        # (locked 2026-08-04: "precomputed, cached, refreshed
-        # periodically", not computed on-demand per request).
+        # job itself, only reads whatever it has already precomputed,
+        # cached, and refreshed periodically -- not computed on-demand
+        # per request.
         if insights_store is None:
             raise HTTPException(status_code=503, detail="insights feature not configured")
         try:

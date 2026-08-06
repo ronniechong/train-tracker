@@ -4,9 +4,8 @@ from traintracker.gtfs.joinrate import RealtimeTripRef, compute_join_rate
 
 
 def test_join_rate_matches_m1_methodology_shape():
-    # Mirrors spike/FINDINGS.md Q5: SCHEDULED trips almost all join; ADDED
-    # trips are real-time-only and would unfairly depress the ratio if
-    # counted in the primary (scheduled-only) denominator.
+    # SCHEDULED trips almost all join; ADDED trips are real-time-only and
+    # would unfairly depress the ratio if counted in the scheduled-only denominator.
     snapshot_ids = frozenset({"SCHED_1", "SCHED_2", "SCHED_3"})
     realtime = [
         RealtimeTripRef("SCHED_1", "SCHEDULED"),

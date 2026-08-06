@@ -62,9 +62,8 @@ def test_recovery_emits_one_gap_episode_with_reason_code():
 
 
 def test_only_one_episode_recorded_across_a_multi_tick_backoff():
-    # Regression guard for the same over-logging shape 2d's discrepancy log
-    # had to edge-trigger against: a gap row per escalated tick, not per
-    # episode, would flood the log during a long backoff.
+    # Regression guard: a gap row per escalated tick, not per episode,
+    # would flood the log during a long backoff.
     breaker = _breaker()
     for i in range(5):
         assert breaker.record_success(T0 + timedelta(seconds=i), remaining=2) is None

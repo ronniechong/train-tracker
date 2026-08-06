@@ -14,9 +14,9 @@ once rows are spread across many daily Parquet files.
 Nullability note: every "real data" column in the four `GAP_MARKER_TABLES`
 is nullable here even where the live SQLite table enforces NOT NULL for a
 genuinely captured row (e.g. `trip_id`, `discrepancy_type`) -- a gap-marker
-row nulls out every real data column by design (milestone's "Gap-marker
-rows" decision), so the archived schema has to allow that. SQLite's own
-constraint is unaffected; this is a Parquet-only relaxation.
+row nulls out every real data column by design, so the archived schema has
+to allow that. SQLite's own constraint is unaffected; this is a
+Parquet-only relaxation.
 """
 
 from __future__ import annotations

@@ -1,6 +1,4 @@
-"""Persistence for the weekly performance digest (05-ai-layer, scoped
-2026-08-01, see milestones/05-ai-layer.md's "Weekly performance digest"
-section for the locked spec).
+"""Persistence for the weekly performance digest.
 
 Deliberately separate from `history/store.py`'s `HistoryStore`: that store
 is day-partitioned raw events with a 60-day rolling retention cap; this is
@@ -12,7 +10,7 @@ daily rotation here at all.
 
 Trigger idempotency (has this week's digest already been sent) is
 deliberately NOT this module's job -- `poller/weekly_digest_trigger.py`
-owns its own small JSON sidecar for that, `gtfs/pinning.py`'s
+owns its own small JSON sidecar for that, following `gtfs/pinning.py`'s
 `PinManifest` pattern, keeping this store scoped to digest content only.
 """
 
@@ -27,10 +25,10 @@ from pathlib import Path
 @dataclass(frozen=True)
 class LineStat:
     """One line's breakdown within a single week's digest. Trips below the
-    per-line minimum-sample-size floor (20/week, locked 2026-08-01) are
-    never turned into a `LineStat` at all by the aggregation step
-    (`ai/weekly_digest.py`) -- this store persists whatever it's given,
-    it doesn't apply the floor itself."""
+    per-line minimum-sample-size floor (20/week) are never turned into a
+    `LineStat` at all by the aggregation step (`ai/weekly_digest.py`) --
+    this store persists whatever it's given, it doesn't apply the floor
+    itself."""
 
     route_id: str
     trip_count: int
@@ -107,7 +105,7 @@ class WeeklyDigestStore:
     def __init__(self, db_path: Path):
         self._db_path = db_path
         db_path.parent.mkdir(parents=True, exist_ok=True)
-        # Autocommit, matching HistoryStore's own reasoning: write volume
+        # Autocommit, matching HistoryStore's reasoning: write volume
         # here is once a week, so per-statement commit overhead is
         # irrelevant, and a crash mid-write can never leave an uncommitted
         # row silently lost.

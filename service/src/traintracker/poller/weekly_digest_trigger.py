@@ -1,6 +1,5 @@
 """Fires the weekly performance digest once when the poll loop crosses
-Monday 8am Melbourne time (05-ai-layer, locked 2026-08-01 -- see
-milestones/05-ai-layer.md's "Weekly performance digest" section).
+Monday 8am Melbourne time.
 
 Own small JSON sidecar for idempotency across poller restarts --
 `gtfs/pinning.py`'s `PinManifest` is the precedent (a manifest class
@@ -8,12 +7,12 @@ owning exactly one JSON file for exactly one caller), deliberately NOT
 `digests/store.py`'s SQLite content history: this is trigger idempotency
 state, not digest content (see that module's own docstring).
 
-Cold-start (locked 2026-08-01): this trigger has no opinion about how
-much history exists when it fires -- it only ever answers "has the poll
-loop crossed a Monday-8am boundary we haven't already fired for", the
-same way on the very first Monday after deploy as on any other. The
-caller (`poller/__main__.py`) is what reads however many of the 7
-preceding service_dates actually exist and reports that honestly.
+Cold-start: this trigger has no opinion about how much history exists
+when it fires -- it only ever answers "has the poll loop crossed a
+Monday-8am boundary we haven't already fired for", the same way on the
+very first Monday after deploy as on any other. The caller
+(`poller/__main__.py`) is what reads however many of the 7 preceding
+service_dates actually exist and reports that honestly.
 """
 
 from __future__ import annotations
@@ -66,9 +65,8 @@ class WeeklyDigestTrigger:
 
     def mark_fired(self, boundary_monday: date) -> None:
         """Must only be called AFTER the digest has actually been
-        generated and delivered -- see milestones/05-ai-layer.md's crash-
-        safety note. Calling this first and then failing to deliver would
-        silently lose that week forever: the next check would see this
-        boundary as already fired and stay quiet."""
+        generated and delivered. Calling this first and then failing to
+        deliver would silently lose that week forever: the next check
+        would see this boundary as already fired and stay quiet."""
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._path.write_text(json.dumps({"last_fired_monday": boundary_monday.isoformat()}))

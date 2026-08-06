@@ -1,8 +1,7 @@
-"""Replay harness — the last item in 2d's acceptance criteria: feed the
-real 3.5h capture slice through merge -> station-state -> ghost tracking in
-correct temporal order and spot-check against what we independently know
-about this slice (found via `spike/loop_gap_estimate.py`'s gap list when
-the fixture was cut - see milestone 2d's log, 2026-07-21).
+"""Replay harness — feeds a real captured slice through merge ->
+station-state -> ghost tracking in correct temporal order and spot-checks
+against what we independently know about this slice (found via
+`spike/loop_gap_estimate.py`'s gap list when the fixture was cut).
 
 Unlike every other test in this package, this one runs on real captured
 data, not hand-built fixtures - that's the whole point: two real bugs

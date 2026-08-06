@@ -1,6 +1,6 @@
-"""The 3 read-only agent tools scoped at M5 kickoff: get_line_status,
-get_trip, get_active_alerts. All three read ONLY this process's own
-already-polled local state (`StateStore.latest_snapshots`/`.latest_alerts`,
+"""The 3 read-only agent tools: get_line_status, get_trip,
+get_active_alerts. All three read ONLY this process's own already-polled
+local state (`StateStore.latest_snapshots`/`.latest_alerts`,
 `PinnedScheduleCache`'s already-pinned static snapshot) -- security
 invariant #1 (exactly one upstream consumer, the poller) means no tool
 here may ever trigger a fresh request to the upstream GTFS-R API, no
@@ -16,13 +16,13 @@ trip). `TOOLS` is the Anthropic tool-schema list handed to
 `ai/agent.py`'s loop dispatches through.
 
 `get_trip`/`get_line_status` also carry ghost-inference evidence
-(`position_source`, `last_seen_at`, `ghost_duration_s` -- 2026-08-02,
+(`position_source`, `last_seen_at`, `ghost_duration_s`, see
 `state/ghost.py`'s `TrackedTrainView`): a caller must not treat a
 `position_source` of `"last_confirmed"` as equivalent to `"live"` when
-narrating a position, per CLAUDE.md invariant 7 (every inference
-labelled with its evidence). The narration-level instruction lives in
-each caller's system prompt (e.g. `ai/briefing.py`), not here -- this
-module only supplies the data.
+narrating a position -- every inference should be labelled with its
+evidence. The narration-level instruction lives in each caller's system
+prompt (e.g. `ai/briefing.py`), not here -- this module only supplies the
+data.
 """
 
 from __future__ import annotations
@@ -68,17 +68,17 @@ def _line_route_ids(ctx: ToolContext, now: datetime, line_name: str) -> list[str
 
 
 def _ghost_evidence(tracked, now: datetime) -> dict[str, Any]:
-    """Shared evidence fields for a tracked (possibly ghost/coasting) trip
-    -- 2026-08-02, ghost-inference annotations. `tracked` is a
-    `TrackedTrainView` or `None` (never ticked by the lifecycle tracker at
-    all, e.g. a snapshot injected directly in a test without `ingest()`).
+    """Shared evidence fields for a tracked (possibly ghost/coasting) trip.
+    `tracked` is a `TrackedTrainView` or `None` (never ticked by the
+    lifecycle tracker at all, e.g. a snapshot injected directly in a test
+    without `ingest()`).
 
     `position_source` distinguishes a real live fix ("live") from a
     last-known live fix carried forward while ghost/coasting
     ("last_confirmed") -- deliberately NOT "scheduled": a genuine
     schedule-derived position for a fully-vanished ghost was never built
-    (see `state/ghost.py`'s own docstring, M4-scoped), so this must not
-    imply a fidelity the system doesn't actually have."""
+    (see `state/ghost.py`'s own docstring), so this must not imply a
+    fidelity the system doesn't actually have."""
     if tracked is None:
         return {"last_seen_at": None, "ghost_duration_s": None}
     ghost_duration_s = (
@@ -156,11 +156,10 @@ async def get_line_status(ctx: ToolContext, *, line_name: str) -> dict[str, Any]
 
     status_counts = {"live": 0, "coasting": 0, "ghost": 0}
     cancelled_trip_ids: list[str] = []
-    # Per-trip evidence for non-live trips only -- 2026-08-02, ghost-
-    # inference annotations -- so a briefing/query can cite "trip X has
-    # been ghost-tracked for Ys" rather than just a bare count. Same
-    # route-attribution limit as before: a trip that has dropped out of
-    # BOTH feeds entirely loses its route_id project-wide (see
+    # Per-trip evidence for non-live trips only, so a briefing/query can
+    # cite "trip X has been ghost-tracked for Ys" rather than just a bare
+    # count. Same route-attribution limit as before: a trip that has
+    # dropped out of BOTH feeds entirely loses its route_id project-wide (see
     # `api/app.py`'s `_train`, which accepts the identical gap), so this
     # can only cover coasting/ghost trips still present in this cycle's
     # merge output, not fully-vanished ones -- unlike `get_trip`, which

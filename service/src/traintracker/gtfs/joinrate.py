@@ -1,15 +1,14 @@
 """trip_id join-rate computation: realtime feed entities against a pinned
 static snapshot's trip_ids.
 
-Pure function, no I/O — the actual realtime trip_id stream comes from the
-state store (milestone 2d) and metric emission from Prometheus (2f); this
-module only computes the ratio, matching the exact methodology M1's
-FINDINGS.md used (Q5 — see spike/FINDINGS.md) so the numbers stay comparable.
+Pure function, no I/O — the realtime trip_id stream comes from the state
+store and metric emission from Prometheus; this module only computes the
+ratio.
 
-M1's methodology counts only `SCHEDULED`-relationship entities in the primary
-ratio's denominator: `ADDED`/`DUPLICATED`/`UNSCHEDULED` trip_ids are
-real-time-only by the GTFS-RT spec and will never appear in the static
-timetable, so they would unfairly depress the ratio if included.
+The primary ratio's denominator counts only `SCHEDULED`-relationship
+entities: `ADDED`/`DUPLICATED`/`UNSCHEDULED` trip_ids are real-time-only by
+the GTFS-RT spec and will never appear in the static timetable, so they
+would unfairly depress the ratio if included.
 """
 
 from __future__ import annotations

@@ -1,17 +1,15 @@
-"""Resolves the Insights dashboard's global date-range filter (locked
-2026-08-04 design review, milestones/08-analytics-insights.md) into a
+"""Resolves the Insights dashboard's global date-range filter into a
 concrete list of service_dates -- kept separate from `InsightsStore`,
 which deliberately "has no opinion on calendar-aligned vs. rolling
 ranges" (its own docstring) so this is the one place that decision lives.
 
-**Calendar-aligned, not rolling** (locked): "Last 7 days" = the current
-ISO week (Mon-Sun); "Last 30 days" = the current calendar month. Both are
-frequently PARTIAL -- picking "Last 7 days" on a Tuesday covers 2 days,
-not 7 -- and a range never extends past "today" (there is no data for a
-future date). `ResolvedRange.expected_days` is what the UI's
-"(N of 7 days)" honesty indicator (locked alongside this decision) is
-built from: the full calendar period's length, regardless of how much of
-it has actually elapsed.
+**Calendar-aligned, not rolling**: "Last 7 days" = the current ISO week
+(Mon-Sun); "Last 30 days" = the current calendar month. Both are frequently
+PARTIAL -- picking "Last 7 days" on a Tuesday covers 2 days, not 7 -- and a
+range never extends past "today" (there is no data for a future date).
+`ResolvedRange.expected_days` is what the UI's "(N of 7 days)" honesty
+indicator is built from: the full calendar period's length, regardless of
+how much of it has actually elapsed.
 
 "Today" here means `service_date_for_instant(now)`, matching this
 project's post-midnight-trains-belong-to-the-prior-service-day

@@ -11,8 +11,7 @@ class _FakeRoute:
 
 async def _run_app(scope, receive, send, messages):
     """A minimal ASGI app that sends exactly `messages`, in order, with no
-    buffering of its own -- lets tests observe HttpMetricsMiddleware's own
-    forwarding behavior in isolation from any real framework."""
+    buffering of its own."""
     for message in messages:
         await send(message)
 
@@ -77,8 +76,7 @@ async def test_records_request_total_and_duration_on_response_start():
 
 async def test_forwards_every_message_unmodified_in_order():
     # No buffering: each message the inner app sends must reach the real
-    # `send` callable, in the same order, with the same content -- the
-    # exact property that matters for not breaking a streaming response.
+    # `send` callable, in the same order and content, to not break streaming.
     registry = CollectorRegistry()
     metrics = Metrics(registry)
     middleware = _make_middleware(metrics)
@@ -101,9 +99,7 @@ async def test_forwards_every_message_unmodified_in_order():
 async def test_does_not_wait_for_the_final_message_before_forwarding_the_first():
     # Simulates a slow/infinite generator: the middleware must forward
     # http.response.start (and record the metric) as soon as it arrives,
-    # not after later messages exist -- confirmed by only ever handing it
-    # ONE message and checking it was already forwarded, rather than
-    # requiring the whole sequence to complete first.
+    # not wait for the whole sequence to complete.
     registry = CollectorRegistry()
     metrics = Metrics(registry)
     forwarded = []
@@ -112,8 +108,7 @@ async def test_does_not_wait_for_the_final_message_before_forwarding_the_first()
         scope["route"] = _FakeRoute("/api/stream")
         await send({"type": "http.response.start", "status": 200, "headers": []})
         forwarded.append("start-forwarded")
-        # An infinite SSE generator would sit here indefinitely; the
-        # assertion below only depends on what happened before this point.
+        # An infinite SSE generator would sit here indefinitely.
 
     middleware = HttpMetricsMiddleware(inner_app, metrics)
 
@@ -141,7 +136,7 @@ async def test_unmatched_route_uses_the_fixed_label():
     metrics = Metrics(registry)
     middleware = _make_middleware(metrics)
     scope = _http_scope(
-        route=None,  # no FastAPI route matched -- a genuine 404
+        route=None,  # no FastAPI route matched
         messages=[{"type": "http.response.start", "status": 404, "headers": []}],
     )
 
@@ -166,8 +161,8 @@ async def test_is_a_noop_without_a_metrics_instance():
 
 
 async def test_ignores_non_http_scopes():
-    # A lifespan/websocket scope must pass straight through -- this
-    # middleware only ever instruments "type": "http".
+    # A lifespan/websocket scope must pass straight through; this
+    # middleware only instruments "type": "http".
     registry = CollectorRegistry()
     metrics = Metrics(registry)
     middleware = _make_middleware(metrics)

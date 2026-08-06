@@ -240,10 +240,9 @@ async def test_compose_weekly_digest_falls_back_to_route_id_when_name_unknown():
 
 
 async def test_compose_weekly_digest_prompt_includes_days_covered_for_partial_weeks():
-    # The prompt must surface a partial window plainly (cold-start /
-    # gap-day case, locked 2026-08-01) rather than silently presenting 5
-    # days of data as if it were a complete week -- Haiku can only be
-    # honest about this if the fact is actually in its input.
+    # The prompt must surface a partial window plainly rather than silently
+    # presenting a partial week as if it were complete -- the model can only
+    # be honest about this if the fact is actually in its input.
     partial_stats = WeeklyStats(
         week_start=WEEK_START, week_end=WEEK_END, days_covered=5,
         on_time_count=200, late_count=4, cancelled_count=0, on_time_pct=98.04,

@@ -8,9 +8,9 @@ SQLite) -- each module has exactly one I/O boundary, matching the
 architecture principle that this whole pipeline is a chain of small,
 independently-testable stages.
 
-Every table gets a file every closed day, even with zero rows (milestone
-09's "Empty tables" decision, 2026-08-07) -- so "does this day's file
-exist" stays a single, unambiguous check for every consumer of this output
+Every table gets a file every closed day, even with zero rows -- so "does
+this day's file exist" stays a single, unambiguous check for every
+consumer of this output
 (self-healing, catch-up diff, the 23-day safety net), rather than needing a
 second rule for "was it legitimately empty."
 """

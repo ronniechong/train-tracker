@@ -1,6 +1,5 @@
-"""Refreshes M8's precomputed Insights rollups (milestones/08-analytics-
-insights.md's locked "aggregation job ships first, ahead of any chart UI"
-build order).
+"""Refreshes precomputed Insights rollups; the aggregation job ships ahead
+of any chart UI, deliberately.
 
 Two distinct paths, deliberately not the same code path:
 
@@ -23,7 +22,7 @@ Two distinct paths, deliberately not the same code path:
   of `read_completion_events` is untouched.
 
 Idempotency state (which day was last finalized, when today was last
-refreshed) uses its own small JSON sidecar, same precedent as
+refreshed) uses its own small JSON sidecar, following the same pattern as
 `WeeklyDigestTrigger` / `gtfs/pinning.py`'s `PinManifest` -- trigger state,
 not rollup content, which is what `InsightsStore` already owns.
 """

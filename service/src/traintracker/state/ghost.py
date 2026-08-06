@@ -1,19 +1,18 @@
-"""Live -> coasting -> ghost state machine (CLAUDE.md's settled "missing
-trains" decision), stateful across poll cycles - the layer `merge.py`
-explicitly defers ("carrying a snapshot forward across polls ... is the
-state store's job, layered on top").
+"""Live -> coasting -> ghost state machine, stateful across poll cycles -
+the layer `merge.py` explicitly defers ("carrying a snapshot forward
+across polls ... is the state store's job, layered on top").
 
 Coasting is not a separate trigger, just elapsed time since a trip last had
 a live VP position: under `COASTING_TIMEOUT_S` -> "coasting" (keep showing
 the last fix), at/over it -> "ghost" (render the scheduled position
 instead, handled by station.py once schedule-only rendering lands).
 
-Finding #6 (backoff must not ghost every train): a poller-wide backoff is
-signalled per tick via `backoff_active`. While active, NO train's coasting
-clock advances - the state machine literally cannot age a live train into
+Backoff must not ghost every train: a poller-wide backoff is signalled per
+tick via `backoff_active`. While active, NO train's coasting clock
+advances - the state machine literally cannot age a live train into
 "ghost" during a backoff, rather than relying on a label to suppress it
 after the fact. `GhostEvent.backoff_overlapped` records whether backoff
-touched the gap at all, for 2f/2g's benefit, but is not what prevents the
+touched the gap at all, for observability, but is not what prevents the
 false ghosting - the frozen clock is.
 """
 
@@ -27,21 +26,19 @@ from .eventlog import EventLog
 from .geo import in_city_loop_bbox
 from .merge import TrainSnapshot
 
-# Midpoint of CLAUDE.md's settled "~60-90s" coasting window; matches the
-# ghost-eligible threshold `spike/loop_gap_estimate.py` used for the 2d
-# pre-analysis. First-cut constant, revisit at 2g like GEOFENCE_RADIUS_M.
+# Midpoint of the settled "~60-90s" coasting window; matches the
+# ghost-eligible threshold `spike/loop_gap_estimate.py` used. First-cut
+# constant, revisit like GEOFENCE_RADIUS_M.
 COASTING_TIMEOUT_S = 90.0
 
 # A tracked trip untouched by either feed for longer than this is evicted
-# outright -- moved here from api/app.py (session 2026-07-31), where it
-# was only a presentation-layer filter: `_trains` itself had no eviction,
-# so a trip seen only in Trip Updates (never confirmed live, `last_seen_at`
-# staying None forever) accumulated in this dict indefinitely, across
-# service days, for the life of the process -- hundreds of stale ghosts
-# were observed live on the map before this was found and fixed. Same
-# generous-relative-to-actual-ghost-durations value as before (the 2g soak
-# week's ghosts typically resolved in ~90s-few-minutes); not tuned against
-# eviction load specifically.
+# outright -- `_trains` itself previously had no eviction, so a trip seen
+# only in Trip Updates (never confirmed live, `last_seen_at` staying None
+# forever) accumulated in this dict indefinitely, across service days, for
+# the life of the process -- hundreds of stale ghosts were observed live
+# on the map before this was fixed. Generous relative to real ghost
+# durations (typically ~90s-few-minutes); not tuned against eviction load
+# specifically.
 MAX_GHOST_AGE_S = 2 * 60 * 60
 
 Status = Literal["live", "coasting", "ghost"]
@@ -76,9 +73,8 @@ class _TrackedTrain:
 
 @dataclass(frozen=True)
 class TrackedTrainView:
-    """Read-only snapshot of one tracked trip, for M3's API/SSE consumers
-    and (2026-08-02, 05-ai-layer ghost-inference annotations) the AI tool
-    layer's evidence fields.
+    """Read-only snapshot of one tracked trip, for API/SSE consumers and
+    the AI tool layer's evidence fields.
 
     Deliberately minimal (status + last-known position only) -- this is all
     `_TrackedTrain` actually retains once a trip drops out of both live
@@ -86,7 +82,7 @@ class TrackedTrainView:
     here; `merge.py`'s output (`StateStore.latest_snapshots`) is the only
     source for those, and only while the trip is still present in at least
     one feed. A consumer wanting a real "scheduled position" for a fully-
-    vanished ghost needs M4's not-yet-built schedule-lookup, not this."""
+    vanished ghost needs a schedule-lookup, not this."""
 
     trip_id: str
     status: Status
@@ -224,16 +220,14 @@ class TrainLifecycleTracker:
         """Every trip this tracker has ever seen (live, coasting, or ghost),
         not just the ones present in the current cycle's merge output --
         `StateStore.latest_snapshots` alone under-reports ghost/coasting
-        trips once they drop out of both feeds entirely (M3 finding, caught
-        while building `/api/state`: it only iterated `latest_snapshots`,
-        so a fully-vanished train just silently disappeared from the API
-        instead of being honestly labelled "ghost").
+        trips once they drop out of both feeds entirely: a fully-vanished
+        train would otherwise just silently disappear from the API instead
+        of being honestly labelled "ghost".
 
-        No age-based filtering *by this method* -- `tick()` itself now
-        evicts anything untouched for `MAX_GHOST_AGE_S` (session
-        2026-07-31, closing CLAUDE.md's "ghost ... fade at journey end"
-        gap), so `_trains` is already bounded by the time this is called;
-        this method just reports it as-is rather than re-filtering."""
+        No age-based filtering *by this method* -- `tick()` itself evicts
+        anything untouched for `MAX_GHOST_AGE_S`, so `_trains` is already
+        bounded by the time this is called; this method just reports it
+        as-is rather than re-filtering."""
         return tuple(self._view(trip_id, tracked) for trip_id, tracked in self._trains.items())
 
     def flush(self, at: datetime) -> None:

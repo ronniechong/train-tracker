@@ -1,17 +1,16 @@
-"""Langfuse tracing wrapper for `LLMClient` (M5 05b-iii, 2026-07-31).
+"""Langfuse tracing wrapper for `LLMClient`.
 
-Wired once at the single `LLMClient` interface every AI-layer caller (05b's
-tool-calling loop, 05e's briefings, 05f's NL query) routes through --
-CLAUDE.md invariant 7 requires every inference reconstructable (prompt
+Wired once at the single `LLMClient` interface every AI-layer caller
+routes through -- every inference should be reconstructable (prompt
 version, inputs, cost), and this is the one instrumentation point that
-covers all three call paths without three separate wiring jobs.
+covers all call paths without separate wiring per caller.
 
 Uses `start_as_current_observation(as_type="generation")` rather than a
 bespoke root-trace helper: the Langfuse SDK's OTEL context propagation
-means a call made while another span is already current (e.g. a future
-05e/05f request-level span) nests under it automatically -- this module
-never needs to know whether it's the only LLM call in a request or one of
-several tool-calling round-trips inside a single agent turn.
+means a call made while another span is already current nests under it
+automatically -- this module never needs to know whether it's the only
+LLM call in a request or one of several tool-calling round-trips inside a
+single agent turn.
 """
 
 from __future__ import annotations
@@ -41,11 +40,11 @@ class LangfuseTracedLLMClient:
     `LANGFUSE_SECRET_KEY`/`LANGFUSE_BASE_URL` from the environment.
 
     `name` identifies the call site in the Langfuse dashboard (e.g.
-    "agent-tool-loop", "disruption-briefing", "nl-query") -- a caller
-    constructs its own instance with its own name rather than this module
-    threading a per-call name through the shared `LLMClient.complete()`
-    signature, which every other wrapper and `run_agent()` also depend on
-    staying fixed."""
+    "agent-tool-loop", "disruption-briefing") -- a caller constructs its
+    own instance with its own name rather than this module threading a
+    per-call name through the shared `LLMClient.complete()` signature,
+    which every other wrapper and `run_agent()` also depend on staying
+    fixed."""
 
     def __init__(
         self,
@@ -86,8 +85,7 @@ class LangfuseTracedLLMClient:
                 # Real bug or upstream failure, not an expected tool
                 # outcome (those are `{"error": ...}` payloads handled in
                 # ai/agent.py, never exceptions) -- record it on the trace
-                # then let it propagate, same "don't swallow real
-                # exceptions" stance ai/agent.py already takes.
+                # then let it propagate.
                 generation.update(level="ERROR", status_message=str(exc))
                 raise
 

@@ -84,10 +84,10 @@ def _informed_entities(raw: list[dict]) -> tuple[InformedEntity, ...]:
 
 def parse_alerts(sa_feed: dict) -> dict[str, Alert]:
     """One entry per SA feed entity, keyed by the feed's own entity id
-    (stable across polls per the live fixture -- verified against the
-    2026-07-18 replay capture). Entities with no `alert` payload or no id
-    are skipped rather than raising -- an SA feed decode producing a
-    malformed entity should not take down the whole poll cycle."""
+    (stable across polls per the live fixture). Entities with no `alert`
+    payload or no id are skipped rather than raising -- an SA feed decode
+    producing a malformed entity should not take down the whole poll
+    cycle."""
     alerts: dict[str, Alert] = {}
     for entity in sa_feed.get("entity", []):
         alert = entity.get("alert")
@@ -153,7 +153,7 @@ def alerts_matching(
     always matches. Calling with no filters returns every active alert.
 
     This is a coarse route/stop/direction join, not trip-level confirmation
-    -- see module docstring. Callers (05b's `get_active_alerts` tool, the
+    -- see module docstring. Callers (the `get_active_alerts` tool, the
     station-schedule overlay) must not present a match here as certainty
     about a specific train."""
     matched = []

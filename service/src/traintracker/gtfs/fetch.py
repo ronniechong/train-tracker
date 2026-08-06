@@ -10,19 +10,13 @@ outer archive, so it's extracted before parsing or storing — storing the
 full 270MB nightly for 60 days of retention would be ~16GB vs. ~1.2GB for
 just the Metro Train slice.
 
-Unlike the realtime feeds (M1 found no conditional-GET support at all), this
-static endpoint sends real `ETag`/`Last-Modified` headers, and the site says
-the content itself only changes weekly. A HEAD request costs ~0.25s vs. a
-multi-second 270MB GET, so the job checks the ETag first and only downloads
-when it's actually different from the last one seen — a service_date still
-gets a pin every day (one row per service day is required regardless of
-whether the underlying content changed), it just reuses the already-stored
-digest on the ~6 days out of 7 where nothing changed.
-
-Side note (not this milestone's concern): the current live download includes
-`shapes.txt`, which M1's captured reference snapshot did not — the earlier
-"no shapes.txt, straight-line rendering" note in CLAUDE.md may be worth
-revisiting at M4.
+Unlike the realtime feeds, this static endpoint sends real `ETag`/
+`Last-Modified` headers, and the site says the content itself only changes
+weekly. A HEAD request costs far less than a multi-second 270MB GET, so the
+job checks the ETag first and only downloads when it's actually different
+from the last one seen — a service_date still gets a pin every day (one row
+per service day is required regardless of whether the underlying content
+changed), it just reuses the already-stored digest when nothing changed.
 """
 
 from __future__ import annotations
@@ -42,8 +36,8 @@ from .snapshot import StaticSnapshot
 
 GTFS_STATIC_URL_ENV = "TT_GTFS_STATIC_URL"
 
-# Confirmed 2026-07-20 (see module docstring). Overridable via the env var
-# above in case the portal ever changes the resource id.
+# Overridable via the env var above in case the portal ever changes the
+# resource id.
 DEFAULT_GTFS_STATIC_URL = (
     "https://opendata.transport.vic.gov.au/dataset/3f4e292e-7f8a-4ffe-831f-"
     "1953be0fe448/resource/fb152201-859f-4882-9206-b768060b50ad/download/"
@@ -139,8 +133,7 @@ def refresh_and_pin(
     """The nightly job: check whether the static feed actually changed
     (cheap HEAD + ETag compare), download + extract + parse only if it did,
     then pin the result to `service_date` if that date has no pin yet
-    (idempotent — a second call for the same service_date, whether from a
-    re-run or a race with another nightly invocation, is a no-op that
+    (idempotent — a repeat call for the same service_date is a no-op that
     returns the original pin)."""
     resolved_url = url or static_gtfs_url()
     cache = FetchCache(cache_path)

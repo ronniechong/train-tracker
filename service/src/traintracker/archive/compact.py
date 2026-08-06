@@ -6,7 +6,7 @@ Read-only by construction: opens the partition with SQLite's `mode=ro` URI
 (refuses to create a missing file, matches `store.py.read_completion_events`'s
 own pattern), never touches the live writer's connection -- this module is
 the archiver's read side of the "read-only consumer of immutable artifacts"
-architecture principle (milestone 09).
+architecture principle.
 
 `service_date` is NOT re-derived per row from a timestamp -- the partition
 filename already IS the service_date every row in this file belongs to

@@ -1,11 +1,10 @@
 """Circuit breaker for the poll loop: 10s -> 30s -> 60s -> 5min ladder,
 jittered, driven by consecutive failures AND the `x-rate-limit` remaining
-count (CLAUDE.md's settled poll-interval decision + M2 spec-review finding
-#6/#7). Escalating on a low remaining count, not just on outright failures,
+count. Escalating on a low remaining count, not just on outright failures,
 is what makes this a *polite* consumer rather than one that only backs off
 after already tripping the real rate limit.
 
-`backoff_active` is the same reason-code contract 2d's ghost tracker and
+`backoff_active` is the same reason-code contract the ghost tracker and
 `StateStore.ingest()` already consume — this breaker is the one thing that
 sets it, nothing new to build on that side.
 """
@@ -28,12 +27,12 @@ RATE_LIMIT_LOW_WATERMARK = 5
 @dataclass(frozen=True)
 class PollGapEvent:
     """One row per backoff *episode* (escalate -> eventually recover), not
-    one row per tick -- matches 2d's edge-triggering precedent for exactly
-    the same reason (StateStore's discrepancy log)."""
+    one row per tick -- matches the edge-triggering precedent used
+    elsewhere (StateStore's discrepancy log)."""
 
     started_at: datetime
     ended_at: datetime
-    reason: str  # "circuit_breaker" -- the only reason code this milestone defines
+    reason: str  # "circuit_breaker" -- the only reason code defined so far
     consecutive_failures: int
     max_level_reached_s: float
 

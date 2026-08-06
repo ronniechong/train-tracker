@@ -1,35 +1,31 @@
 # Allowlist ONLY these hosts. One host per line, matched as an FQDN
 # (see tinyproxy.conf: FilterExtended On).
-# 1. The upstream Metro Train GTFS-Realtime gateway (2a).
+# 1. The upstream Metro Train GTFS-Realtime gateway.
 ^api\.opendata\.transport\.vic\.gov\.au$
 # 2. The external dead-man's-switch ping target — deliberate, narrow
 # widening, not the default upstream host.
 ^hc-ping\.com$
-# 3. The static GTFS schedule portal (2c/05a) — deliberately the PLAIN
-# host, not the `api.` gateway above: this is a different, unauthenticated
-# CKAN endpoint on the same parent domain. Confirmed 2026-07-31 this is the
-# actual download host, not a redirect target — see 05a session notes for
-# the live-container verification this line depends on.
+# 3. The static GTFS schedule portal — deliberately the PLAIN host, not the
+# `api.` gateway above: this is a different, unauthenticated CKAN endpoint
+# on the same parent domain, not a redirect target.
 ^opendata\.transport\.vic\.gov\.au$
-# 4. Anthropic API (05b) — Haiku calls from ai/llm_client.py.
+# 4. Anthropic API — Haiku calls from ai/llm_client.py.
 ^api\.anthropic\.com$
-# 5. Langfuse Cloud (05b-iii) — matches the actual configured
-# LANGFUSE_BASE_URL value, not assumed; confirmed 2026-07-31.
+# 5. Langfuse Cloud — matches the actual configured LANGFUSE_BASE_URL
+# value, not assumed.
 ^cloud\.langfuse\.com$
-# 6. Slack incoming webhooks (05e) — fixed host regardless of which
+# 6. Slack incoming webhooks — fixed host regardless of which
 # webhook/workspace/channel TT_ALERT_WEBHOOK_URL actually points at (also
-# now used by the poller directly, not just Grafana — see docker-compose.yml).
+# used by the poller directly, not just Grafana — see docker-compose.yml).
 ^hooks\.slack\.com$
 # 7. Flagsmith remote-evaluation API (feature-toggle system) — SaaS default
 # host; only the api service's process calls this (flags/client.py), not
-# the poller. Added ahead of real key generation; verify still correct once
-# a Flagsmith environment actually exists.
+# the poller.
 ^edge\.api\.flagsmith\.com$
-# 8. Hugging Face archive pipeline (M9) — huggingface_hub's real upload
-# path hits TWO hosts, not one: the main API, and a separate "xet"
-# storage/CDN backend that actually carries the file bytes. Confirmed by
-# routing a real (test) upload through a logging proxy 2026-08-07 rather
-# than guessed — a single-hostname filter would have silently broken real
-# uploads. Only the archiver service calls these, not the poller.
+# 8. Hugging Face archive pipeline — huggingface_hub's real upload path
+# hits TWO hosts, not one: the main API, and a separate "xet" storage/CDN
+# backend that actually carries the file bytes. A single-hostname filter
+# would silently break real uploads. Only the archiver service calls these,
+# not the poller.
 ^huggingface\.co$
 ^cas-server\.xethub\.hf\.co$

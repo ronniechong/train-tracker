@@ -1,23 +1,19 @@
-"""Real-data replay harness for `TripCompletionTracker` -- follow-up after a
-live `arrival_time` string-coercion bug crash-looped the poller: every prior test used a hand-built
-`StopTimeUpdate` with a real int, which hid exactly that bug. This is the
-first end-to-end validation against a genuine 3h07m capture (2026-07-31
-22:35 - 2026-08-01 01:38 UTC, 1071 TU / 1074 VP polls, 100% success), fed
-through the real `merge` -> `TripCompletionTracker` pipeline with a real
-(trimmed) static schedule for terminus resolution -- mirrors
-`test_replay.py`'s precedent for `station.py`/`ghost.py`: real data catches
-what hand-built fixtures miss.
+"""Real-data replay harness for `TripCompletionTracker` -- hand-built
+`StopTimeUpdate` fixtures using a real int previously hid an `arrival_time`
+string-coercion bug. This validates end-to-end against a genuine capture
+(a few hours of TU/VP polls, 100% success), fed through the real `merge` ->
+`TripCompletionTracker` pipeline with a real (trimmed) static schedule for
+terminus resolution -- mirrors `test_replay.py`'s precedent for
+`station.py`/`ghost.py`: real data catches what hand-built fixtures miss.
 
-`schedule/` is NOT the full ~140MB static snapshot paired with this capture
-(digest `06df78a8...`) -- `stop_times.txt`/`trips.txt` are
-filtered to just the 484 trip_ids actually seen in this capture's Trip
-Updates (`calendar.txt`/`calendar_dates.txt`/`routes.txt`/`stops.txt` kept
-whole; all small). Real rows for real trips, not synthesized, just scoped
-down from ~140MB to ~130KB. Committed as loose `.txt` files, zipped
+`schedule/` is NOT the full static snapshot paired with this capture --
+`stop_times.txt`/`trips.txt` are filtered to just the trip_ids actually
+seen in this capture's Trip Updates (`calendar.txt`/`calendar_dates.txt`/
+`routes.txt`/`stops.txt` kept whole; all small). Real rows for real trips,
+not synthesized, just scoped down. Committed as loose `.txt` files, zipped
 in-memory below, same as `conftest.py`'s `sample_static_zip_bytes` --
-`*.zip` is gitignored repo-wide (spike/raw-download protection), so a
-committed fixture can't be a real `.zip` file without carving out a gitignore
-exception this avoids needing.
+`*.zip` is gitignored repo-wide, so a committed fixture can't be a real
+`.zip` file without carving out a gitignore exception this avoids needing.
 """
 
 import gzip

@@ -65,9 +65,8 @@ async def _loop_with_vanished_train(first_seen_at: datetime) -> tuple[PollerLoop
     TU and VP entirely (empty entity lists, not just an unchanged header) on
     a second cycle 100s later -- past `COASTING_TIMEOUT_S` (90s), so it's
     tracked as "ghost" with `last_seen_at == first_seen_at` and no snapshot
-    left in `store.latest_snapshots` at all. Exercises the M3 fix: a fully
-    vanished train must still show up in `/api/state`, not silently
-    disappear."""
+    left in `store.latest_snapshots` at all. A fully vanished train must
+    still show up in `/api/state`, not silently disappear."""
     vanished = False
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -303,7 +302,7 @@ def _parse_sse_chunk(chunk: str) -> tuple[str, dict | None]:
     `_event_source` directly (below) is what actually exercises the event
     logic; the FastAPI route wiring around it (headers, media type,
     connection-cap 503) needs a real live server to verify, not a unit
-    test -- flagged as a genuine coverage gap in the M3 milestone doc."""
+    test -- a known coverage gap."""
     if chunk.startswith(":"):
         return "heartbeat", None
     event_line, data_line, _ = chunk.split("\n", 2)
@@ -468,13 +467,10 @@ def test_scheduled_train_is_schedule_only_when_no_live_snapshot():
 def test_scheduled_train_overlays_live_predicted_time_and_delay():
     # departure_time is a STRING here, not an int -- matches the real
     # runtime shape (protobuf's JSON mapping stringifies int64 fields),
-    # despite StopTimeUpdate's own `int | None` type hint. Caught live
-    # (2026-07-31, first deploy of this feature): a plain
-    # `datetime.fromtimestamp(time_epoch, ...)` crashed with "'str' object
-    # cannot be interpreted as an integer" against the real deployed
-    # backend -- state/station.py already has an `_epoch()` helper for
-    # this exact reason, which this test would have caught had it used a
-    # realistic (string) value from the start.
+    # despite StopTimeUpdate's own `int | None` type hint. A plain
+    # `datetime.fromtimestamp(time_epoch, ...)` crashes with "'str' object
+    # cannot be interpreted as an integer" against real data --
+    # state/station.py has an `_epoch()` helper for this reason.
     store = _empty_store()
     predicted_at = datetime(2026, 7, 20, 22, 4, tzinfo=timezone.utc)
     store.latest_snapshots["T1"] = TrainSnapshot(
@@ -599,7 +595,7 @@ def test_scheduled_train_is_cancelled_for_a_whole_trip_cancellation():
 
 
 def test_scheduled_train_is_cancelled_for_a_skipped_stop():
-    # 05a: a train that still runs but skips THIS platform -- the trip
+    # A train that still runs but skips THIS platform -- the trip
     # itself is "SCHEDULED", only this stop_time_update is "SKIPPED".
     store = _empty_store()
     store.latest_snapshots["T1"] = TrainSnapshot(
@@ -674,7 +670,7 @@ async def test_station_schedule_returns_well_formed_response_for_known_station(
 
 
 def test_scheduled_train_is_added_for_a_real_time_only_trip():
-    # 05a pass 3: TU schedule_relationship ADDED means a real-time-only
+    # TU schedule_relationship ADDED means a real-time-only
     # extra service (no static row) -- `_scheduled_train` reads it off the
     # same live-snapshot lookup `is_cancelled` already uses.
     store = _empty_store()
@@ -819,8 +815,8 @@ async def test_get_alerts_resolves_route_name_from_pinned_schedule(tmp_path, sam
 async def test_get_alerts_leaves_route_name_none_for_ambiguous_stop_only_entities(
     tmp_path, sample_static_zip_bytes
 ):
-    # Real-world shape (verified live 2026-08-04): a single-trip
-    # cancellation lists only stop_ids, no route_id at all. PLAT_A1/PLAT_B1
+    # Real-world shape: a single-trip cancellation lists only stop_ids, no
+    # route_id at all. PLAT_A1/PLAT_B1
     # are shared by both fixture routes (2-PKM, 2-CRB) with no majority
     # either way, so this must stay None rather than guess -- see
     # routes_most_likely_for_stops's docstring.

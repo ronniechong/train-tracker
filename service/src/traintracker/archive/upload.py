@@ -2,11 +2,10 @@
 Face dataset repo, and answer "which days are already archived" for the
 catch-up/self-healing orchestration in `run.py`.
 
-Atomic commit (decided 2026-08-07): a single `upload_file` call per table
-per day -- sufficient as long as the static-snapshot storage decision gate
-stays "inline per day" (still open). If that gate later resolves to
-deduplicated storage, a day's archive may need a multi-file commit; revisit
-this module then, not before.
+Atomic commit: a single `upload_file` call per table per day -- sufficient
+as long as the static-snapshot storage decision gate stays "inline per
+day". If that gate later resolves to deduplicated storage, a day's archive
+may need a multi-file commit; revisit this module then, not before.
 """
 
 from __future__ import annotations

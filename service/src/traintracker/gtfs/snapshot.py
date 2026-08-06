@@ -17,10 +17,10 @@ class TripRecord:
     trip_id: str
     service_id: str
     route_id: str
-    # direction_id is a clean, reliable inbound/outbound signal here (M1
-    # spike: confirmed consistent across all 15 routes, 1=city-bound,
-    # 0=outbound to terminus) -- unlike Vehicle Positions' own copy of the
-    # field, which is 0% populated and must never be used instead.
+    # direction_id is a clean, reliable inbound/outbound signal here
+    # (1=city-bound, 0=outbound to terminus) -- unlike Vehicle Positions'
+    # own copy of the field, which is unpopulated and must never be used
+    # instead.
     trip_headsign: str = ""
     direction_id: int | None = None
 

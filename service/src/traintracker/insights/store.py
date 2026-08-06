@@ -1,19 +1,16 @@
-"""Persistence for M8 Insights precomputed rollups
-(milestones/08-analytics-insights.md, "Compute strategy" + "Retention"
-decisions, locked 2026-08-04).
+"""Persistence for Insights precomputed rollups.
 
 Deliberately separate from `history/store.py`'s `HistoryStore`, same
 reasoning as `digests/store.py`'s `WeeklyDigestStore`: this holds small
 per-day, per-line aggregates (a handful of rows per service_date), not raw
 events, so it gets INDEFINITE retention rather than the 60-day rolling cap
 -- a "trends over time" dashboard that quietly loses history past 60 days
-would undercut the whole point of the milestone. One connection, one file,
-held for the process lifetime; no daily rotation.
+would undercut the whole point. One connection, one file, held for the
+process lifetime; no daily rotation.
 
-The aggregation job (not yet built) is the only writer, and must run BEFORE
-a service_date's `HistoryStore` partition ages out of the 60-day window --
-this store cannot retroactively backfill a rollup for data that's already
-been deleted (see milestone doc's architecture sketch).
+The aggregation job is the only writer, and must run BEFORE a service_date's
+`HistoryStore` partition ages out of the 60-day window -- this store cannot
+retroactively backfill a rollup for data that's already been deleted.
 """
 
 from __future__ import annotations
@@ -54,13 +51,11 @@ _CREATE_HOURLY_ROLLUPS_SQL = """
 # idempotent delete+reinsert of the line rows shouldn't need to duplicate
 # it once per route_id.
 #
-# A staleness tooltip in the UI -- "data fresh as of HH:MM" -- needs
-# this to exist BEFORE the API/frontend layer is built, not bolted on after.
-# Only "today" is ever meaningfully stale (closed days are finalized once
-# and never touched again -- there is no "staleness" concept for a day
-# that's genuinely done), but every service_date still gets a real
-# generated_at, for consistency and so a future UI decision isn't blocked
-# on a schema gap.
+# Backs a staleness tooltip in the UI -- "data fresh as of HH:MM". Only
+# "today" is ever meaningfully stale (closed days are finalized once and
+# never touched again -- there is no "staleness" concept for a day that's
+# genuinely done), but every service_date still gets a real generated_at,
+# for consistency.
 _CREATE_ROLLUP_META_SQL = """
     CREATE TABLE IF NOT EXISTS insights_rollup_meta (
         service_date TEXT PRIMARY KEY,
@@ -68,8 +63,8 @@ _CREATE_ROLLUP_META_SQL = """
     )
 """
 
-# Chart 3 (fast-follow, built 2026-08-04). Network-wide, one row per
-# service_date -- not per-line, matching the KPI row's own scope.
+# Network-wide, one row per service_date -- not per-line, matching the
+# KPI row's own scope.
 _CREATE_HISTOGRAM_ROLLUPS_SQL = """
     CREATE TABLE IF NOT EXISTS insights_histogram_rollups (
         service_date TEXT PRIMARY KEY,
@@ -86,11 +81,10 @@ _CREATE_HISTOGRAM_ROLLUPS_SQL = """
 class InsightsRangeQuery:
     """The result of summing rollups across a caller-supplied list of
     service_dates -- the store itself has no opinion on calendar-aligned
-    vs. rolling ranges (locked: calendar-aligned, see milestone doc); that
-    decision is made by whoever builds the `service_dates` list, not here.
-    `days_covered` is the honesty signal for a partial calendar period
-    (e.g. "Last 7 days" picked on a Tuesday) -- same pattern as
-    `CompletionEventsWindow.days_covered`."""
+    vs. rolling ranges; that decision is made by whoever builds the
+    `service_dates` list, not here. `days_covered` is the honesty signal
+    for a partial calendar period (e.g. "Last 7 days" picked on a Tuesday)
+    -- same pattern as `CompletionEventsWindow.days_covered`."""
 
     days_covered: tuple[date, ...]
     line_rollups: tuple[LineDayRollup, ...]  # one row per route_id, summed across days_covered

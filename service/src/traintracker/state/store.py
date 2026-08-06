@@ -1,5 +1,5 @@
 """Ties `merge()` and `TrainLifecycleTracker` together into the one thing a
-poller loop (2b) or a replay harness actually calls once per feed refresh.
+poller loop or a replay harness actually calls once per feed refresh.
 
 Station-state derivation is deliberately NOT folded in here: it's a pure
 function of a single snapshot + `now` + `stops`, with no cross-cycle memory,
@@ -32,19 +32,19 @@ class StateStore:
     ):
         self._discrepancy_log = discrepancy_log
         self._lifecycle = TrainLifecycleTracker(ghost_log)
-        # Optional (05-ai-layer, trip-completion tracking): a fresh
-        # StateStore built without a static-schedule-backed terminus lookup
-        # (e.g. most existing tests) simply never tracks completions --
-        # every other feature keeps working unchanged, matching `on_tick`'s
-        # own optional-hook precedent.
+        # Optional (trip-completion tracking): a fresh StateStore built
+        # without a static-schedule-backed terminus lookup (e.g. most
+        # existing tests) simply never tracks completions -- every other
+        # feature keeps working unchanged, matching `on_tick`'s own
+        # optional-hook precedent.
         self._completion_tracker = completion_tracker
-        # Optional (05-ai-layer, delay/ETA-prediction observation logging,
-        # 2026-08-01): same optional-hook convention as completion_tracker
-        # above. Needs `self.latest_alerts` for its active_alert_flag
-        # feature, which is why it's ticked from inside ingest() (below)
-        # rather than by a separate caller -- that's the one place both
-        # a fresh `snapshots` and a fresh `latest_alerts` are in hand
-        # together at the same cycle_time.
+        # Optional (delay/ETA-prediction observation logging): same
+        # optional-hook convention as completion_tracker above. Needs
+        # `self.latest_alerts` for its active_alert_flag feature, which is
+        # why it's ticked from inside ingest() (below) rather than by a
+        # separate caller -- that's the one place both a fresh `snapshots`
+        # and a fresh `latest_alerts` are in hand together at the same
+        # cycle_time.
         self._delay_observation_tracker = delay_observation_tracker
         # Optional hook fired with the fresh `all_tracked()` result after
         # every `ingest()` -- lets a caller (e.g. metrics) observe tracked-

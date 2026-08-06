@@ -1,7 +1,7 @@
 """Trip-completion tracking: classifies each trip on_time/late once it
 genuinely reaches its terminus, per the official Victorian punctuality
-definition researched at 05-ai-layer's digest-scoping stage (4:59 threshold,
-arrival AT THE TERMINUS -- not "how delayed is this trip right now").
+definition (4:59 threshold, arrival AT THE TERMINUS -- not "how delayed is
+this trip right now").
 
 Deliberately separate from `TrainLifecycleTracker` (ghost.py): that state
 machine answers "is this trip currently visible", this one answers "did
@@ -17,20 +17,19 @@ departure value -- the same signal station.py uses to render "at genuine
 terminus" for live station state, applied here to detect trip *completion*
 instead.
 
-By design: a trip that drops off
-tracking before reaching its terminus (coverage gap, ghost-timeout) still
-gets an honest `undetermined_gap` event recorded here -- the internal
-event log stays gap-honest regardless of what any consuming digest chooses
-to surface.
+By design: a trip that drops off tracking before reaching its terminus
+(coverage gap, ghost-timeout) still gets an honest `undetermined_gap`
+event recorded here -- the internal event log stays gap-honest regardless
+of what any consuming digest chooses to surface.
 
-Reliability vs. punctuality (2026-08-01, real-world methodology check):
-comparable transport authorities publish these as two SEPARATE contractual
-metrics, not one -- reliability asks "did the trip happen at all"
-(cancellations count against THIS, not punctuality); punctuality asks "of
-the trips that DID run, how many arrived within the threshold". A
-cancelled trip is therefore its own `cancelled` status here, finalized
-immediately off TU's `schedule_relationship`, never left to fall through
-to `undetermined_gap`'s two-hour timeout (we already know its outcome) and
+Reliability vs. punctuality: comparable transport authorities publish
+these as two SEPARATE contractual metrics, not one -- reliability asks
+"did the trip happen at all" (cancellations count against THIS, not
+punctuality); punctuality asks "of the trips that DID run, how many
+arrived within the threshold". A cancelled trip is therefore its own
+`cancelled` status here, finalized immediately off TU's
+`schedule_relationship`, never left to fall through to
+`undetermined_gap`'s two-hour timeout (we already know its outcome) and
 never scored as on_time/late (it has no real arrival to measure).
 
 Known, deliberately out-of-scope gap: a trip present in the day's static
@@ -53,9 +52,9 @@ from typing import Callable, Literal
 from .eventlog import EventLog
 from .merge import TrainSnapshot
 
-# PTV's public MR4 franchise-contract threshold, independently corroborated
-# (see milestones/05-ai-layer.md) -- reused deliberately so train-tracker's
-# own "on time" means what Melburnians already associate with that word.
+# PTV's public MR4 franchise-contract threshold -- reused deliberately so
+# train-tracker's own "on time" means what Melburnians already associate
+# with that word.
 ON_TIME_THRESHOLD_S = 299  # 4 minutes 59 seconds
 
 # A pending trip untouched by a fresh TU schedule for longer than this is
@@ -178,7 +177,7 @@ class TripCompletionTracker:
                 # already have the answer, no reason to wait two hours to
                 # record it. Matches the reliability/punctuality split every
                 # comparable transport authority's published methodology
-                # uses (see milestones/05-ai-layer.md).
+                # uses.
                 self._finalize(
                     trip_id, pending, cycle_time,
                     status="cancelled", actual_arrival=None, delay_seconds=None,

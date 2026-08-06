@@ -84,10 +84,8 @@ def test_after_last_departure_is_at_terminus():
 
 
 def test_before_first_anchor_with_arrival_present_is_between_not_at():
-    # The list's first entry carries a real arrival prediction, meaning a
-    # predecessor stop existed and has been trimmed off the rolling window
-    # (confirmed against real captures - this is common, not an edge case).
-    # Must NOT be read as "waiting at this stop before departure".
+    # A real arrival on the first entry means a predecessor stop was trimmed
+    # off the rolling window; must not be read as "waiting here before departure".
     stus = [_stu(4, "B", arrival_time="1100", departure_time="1120")]
     state = derive_station_state(_snapshot(stus), STOPS, _at(1050))
     assert state.status == "between"
@@ -97,8 +95,8 @@ def test_before_first_anchor_with_arrival_present_is_between_not_at():
 
 
 def test_after_last_anchor_with_departure_present_is_between_not_at():
-    # Last entry carries a real departure, meaning a successor stop exists
-    # but hasn't entered the rolling window's prediction horizon yet.
+    # A real departure on the last entry means a successor stop hasn't
+    # entered the rolling window's prediction horizon yet.
     stus = [_stu(4, "B", arrival_time="1100", departure_time="1120")]
     state = derive_station_state(_snapshot(stus), STOPS, _at(1150))
     assert state.status == "between"
@@ -123,10 +121,8 @@ def test_geofence_confirms_when_position_matches_expected_stop():
 
 
 def test_geofence_disagrees_but_schedule_status_still_wins():
-    # Schedule says dwelling at B, but the live fix is actually at C's
-    # coordinates (e.g. a stale/carried-forward position). Status stays
-    # schedule-derived; the disagreement is surfaced via geofence_confirmed,
-    # not silently overridden.
+    # Schedule status wins even when the live fix disagrees (e.g. a stale
+    # position); the disagreement is surfaced via geofence_confirmed instead.
     state = derive_station_state(
         _snapshot(THREE_STOPS, latitude=-37.820, longitude=145.000), STOPS, _at(1110)
     )
@@ -145,10 +141,9 @@ def test_between_segment_geofence_confirms_against_either_endpoint():
 
 def test_zero_dwell_stop_is_detected_as_at_not_between():
     # B has an identical arrival/departure (no dwell at all). A zero-length
-    # A->B or B->C segment can never actually be entered by the pairwise
-    # walk (it requires cur.departure <= now < nxt.arrival, which is
-    # impossible when they're equal) - so the only way `now == 1050` can
-    # resolve is landing in B's own (zero-width) dwell window.
+    # segment can never be entered by the pairwise walk (requires
+    # cur.departure <= now < nxt.arrival, impossible when equal), so the only
+    # way `now == 1050` resolves is landing in B's own zero-width window.
     stus = [
         _stu(1, "A", departure_time="1000"),
         _stu(2, "B", arrival_time="1050", departure_time="1050"),

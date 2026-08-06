@@ -52,11 +52,10 @@ def test_redacts_outbound_header_value_leak():
 
 
 def test_redacts_secret_embedded_in_a_logged_url():
-    # 2b incident (2026-07-21, live): the dead-man ping URL carries its
-    # secret as a path segment, not a header. httpx logs full request URLs
-    # at INFO level on every successful cycle -- unlike the API key (a
-    # header value), this leak vector is the URL string itself, and it
-    # actually happened live before this secret was registered here.
+    # The dead-man ping URL carries its secret as a path segment, not a
+    # header. httpx logs full request URLs at INFO level on every
+    # successful cycle -- unlike the API key (a header value), this leak
+    # vector is the URL string itself.
     ping_url = "https://hc-ping.com/00000000-fake-uuid-0000-000000000000"
     logger, handler = _logger_with_filter("test.ping_url", [ping_url])
 
@@ -68,11 +67,9 @@ def test_redacts_secret_embedded_in_a_logged_url():
 
 
 def test_redacts_slack_webhook_url():
-    # M7 P0 (2026-08-02): same bug class as the dead-man ping URL above --
-    # the Slack webhook URL carries its secret as a path segment, and
-    # httpx logs full request URLs at INFO on every briefing/weekly-digest
-    # send. Confirmed live: `docker compose logs` wrote the real webhook
-    # URL on every successful delivery before this was registered.
+    # Same bug class as the dead-man ping URL above -- the Slack webhook
+    # URL carries its secret as a path segment, and httpx logs full
+    # request URLs at INFO on every briefing/weekly-digest send.
     webhook_url = "https://hooks.invalid/services/T00000000/B00000000/fakefakefakefakefakefake"
     logger, handler = _logger_with_filter("test.webhook_url", [webhook_url])
 

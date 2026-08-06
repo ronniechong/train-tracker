@@ -1,5 +1,4 @@
-"""Free-text drift detection for the archive's open-string columns
-(milestone 09's "Free-text drift detection" decision, 2026-08-07).
+"""Free-text drift detection for the archive's open-string columns.
 
 `discrepancy_type`, `reason`, and `status` stay open strings rather than
 enums in the Parquet schema (matches live SQLite -- no CHECK constraints

@@ -4,7 +4,7 @@
 (same one-shot-entrypoint pattern the Dockerfile already documents for
 `traintracker.gateway`'s manual smoke check) — this module builds the
 callable job only, it doesn't schedule itself. Real crontab wiring is a
-separate ops step (same gap 2c's `refresh_and_pin` nightly job left open).
+separate ops step.
 
 `/data` and `/backup` are fixed container-internal mount points (see
 `Dockerfile`'s `VOLUME` declaration and `deploy/docker-compose.yml`) — same
@@ -28,11 +28,11 @@ BACKUP_DIR = Path("/backup")
 
 
 def main() -> int:
-    # M7 P2: routed through the shared redaction filter for consistency
-    # with `poller`/`gtfs` -- this job takes no secrets today, but
-    # `configure_logging` is also what raises httpx's own logger to
-    # WARNING, closing the same leak-vector class as M7 P0's fix even
-    # though nothing here currently triggers it.
+    # Routed through the shared redaction filter for consistency with
+    # `poller`/`gtfs` -- this job takes no secrets today, but
+    # `configure_logging` also raises httpx's own logger to WARNING,
+    # closing the same leak-vector class even though nothing here
+    # currently triggers it.
     configure_logging(level=logging.INFO)
 
     result = run_nightly_maintenance(

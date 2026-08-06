@@ -199,10 +199,9 @@ async def test_get_trip_reports_live_position_source_for_a_live_trip(tmp_path, s
 
 
 async def test_get_trip_returns_ghost_evidence_for_a_fully_vanished_trip(tmp_path, sample_static_zip_bytes):
-    """2026-08-02, ghost-inference annotations: the exact gap that was
-    open before this session -- a trip dropped out of both live feeds
-    entirely used to be indistinguishable from one the poller never saw,
-    returning the same bare "not currently tracked" error either way."""
+    """A trip dropped out of both live feeds entirely used to be
+    indistinguishable from one the poller never saw, returning the same
+    bare "not currently tracked" error either way."""
     ctx = _ctx(tmp_path, sample_static_zip_bytes)
     # `get_trip`'s evidence uses the real wall clock (`_ghost_evidence`),
     # same convention `get_active_alerts` already uses -- so cycle times

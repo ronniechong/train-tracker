@@ -1,19 +1,15 @@
-"""Weekly performance digest (05-ai-layer, scoped 2026-08-01, see
-milestones/05-ai-layer.md's "Weekly performance digest" section for the
-locked spec).
+"""Weekly performance digest.
 
 Mirrors `ai/briefing.py`'s split between pure computation and LLM
 narration -- `aggregate_weekly_stats` below is plain Python, no LLM call,
-fully unit-testable; `compose_weekly_digest` (added alongside the trigger
-wiring) hands these pre-computed numbers to Haiku for narration only. The
-whole reason this is safe to trust as a real on-time % rather than
-something an LLM could quietly get wrong.
+fully unit-testable; `compose_weekly_digest` hands these pre-computed
+numbers to Haiku for narration only. The whole reason this is safe to
+trust as a real on-time % rather than something an LLM could quietly get
+wrong.
 
-`undetermined_gap` trips are excluded entirely here -- a decision already
-locked at the tracking-layer's own scoping pass (2026-08-01, "Denominator/
-surfacing call" in the milestone doc): the internal event log stays
-gap-honest, but no consuming digest surfaces an "N undetermined" count.
-Not re-litigated here, just applied.
+`undetermined_gap` trips are excluded entirely here: the internal event
+log stays gap-honest, but no consuming digest surfaces an "N undetermined"
+count.
 """
 
 from __future__ import annotations
@@ -26,10 +22,9 @@ from ..gtfs.routes import Route
 from ..history.store import CompletionEventsWindow
 from .llm_client import LLMClient
 
-# Locked 2026-08-01 (structure-planning pass, AskUserQuestion): only lines
-# with at least this many trips that actually ran (on_time + late --
-# same denominator as on_time_pct itself) appear in the per-line ranking.
-# Chosen over a looser 5-trip floor deliberately -- accepts that a
+# Only lines with at least this many trips that actually ran (on_time +
+# late -- same denominator as on_time_pct itself) appear in the per-line
+# ranking. Chosen over a looser floor deliberately -- accepts that a
 # genuinely low-frequency line may be silently absent some weeks rather
 # than show a misleading 100%/0% off a tiny sample.
 DEFAULT_MIN_SAMPLE_SIZE = 20

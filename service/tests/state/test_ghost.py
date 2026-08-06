@@ -60,9 +60,8 @@ def test_reappearance_emits_ghost_event_with_both_endpoints():
     assert event.last_seen_position == (-37.80, 144.90)
     assert event.reappear_position == (-37.90, 145.00)
     assert event.reappeared_at == reappear_ts
-    # ghost_started_at is stamped at the tick that first observed the
-    # threshold crossed (t=100), not the true instant it crossed (t=90) -
-    # an approximation of ~1 poll interval, acceptable at real cadence.
+    # ghost_started_at is stamped at the tick that observes the threshold
+    # crossed, not the true crossing instant - approximate by ~1 poll interval.
     assert event.ghost_duration_s == 30.0
     assert event.loop_contained is False
     assert event.backoff_overlapped is False
@@ -106,8 +105,7 @@ def test_backoff_freezes_the_coasting_clock():
     tracker = TrainLifecycleTracker(log)
 
     tracker.tick({"trip-1": _snap(-37.8, 144.9, _at(0))}, _at(0))
-    # A long stretch of backoff-skipped ticks that would, if counted,
-    # easily exceed the ghost threshold - must NOT ghost the train.
+    # Backoff-skipped ticks must not count toward the ghost threshold.
     tracker.tick({}, _at(20), backoff_active=True)
     tracker.tick({}, _at(COASTING_TIMEOUT_S + 100), backoff_active=True)
     assert tracker.status_of("trip-1") == "coasting"
@@ -142,8 +140,8 @@ def test_trip_seen_only_in_tu_from_the_start_is_ghost_not_coasting():
         latitude=None, longitude=None, bearing=None, position_updated_at=None,
     )
     tracker.tick({"trip-2": schedule_only}, _at(0))
-    # "coasting" implies a real last-known fix to keep showing, which we
-    # never had - must go straight to ghost, not invent a coast phase.
+    # No real last-known fix ever existed, so this must go straight to
+    # ghost rather than inventing a coast phase.
     assert tracker.status_of("trip-2") == "ghost"
 
 
@@ -177,16 +175,14 @@ def test_evicts_ghost_after_max_ghost_age_since_last_touched():
     tracker.tick({}, _at(COASTING_TIMEOUT_S + 10))
     assert tracker.status_of("trip-1") == "ghost"
 
-    # last_touched_at is frozen at t=0 (last genuine feed mention) --
-    # the empty-snapshot tick above must NOT refresh it, or nothing would
-    # ever age out. MAX_GHOST_AGE_S past t=0, not past the ghost-
-    # transition tick, is what should trigger eviction.
+    # last_touched_at must stay frozen at the last genuine feed mention;
+    # empty-snapshot ticks must not refresh it, or eviction would never trigger.
     tracker.tick({}, _at(MAX_GHOST_AGE_S + 1))
     assert tracker.status_of("trip-1") is None
     assert tracker.all_tracked() == ()
 
     # Eviction of a still-ghosted trip must close its episode, same as
-    # flush() does, so the event log/metrics don't get a dangling one.
+    # flush() does, so the event log doesn't keep a dangling one.
     assert len(log.events) == 1
     event = log.events[0]
     assert event.trip_id == "trip-1"
@@ -195,10 +191,9 @@ def test_evicts_ghost_after_max_ghost_age_since_last_touched():
 
 
 def test_evicts_tu_only_ghost_with_no_last_seen_at():
-    """The exact hole this fix closes: a trip seen only in Trip Updates
-    never gets a `last_seen_at` (that field is VP-confirmation-only), so
-    time-based filtering keyed on it alone can never age this out --
-    `last_touched_at` (set from any feed) must be what eviction uses."""
+    """A trip seen only in Trip Updates never gets a `last_seen_at` (that
+    field is VP-confirmation-only), so eviction must key on `last_touched_at`
+    (set from any feed) instead."""
     log = InMemoryEventLog()
     tracker = TrainLifecycleTracker(log)
 
@@ -223,8 +218,8 @@ def test_all_tracked_excludes_evicted_trips_but_keeps_recent_ones():
     tracker.tick({}, _at(COASTING_TIMEOUT_S + 10))
     assert tracker.status_of("old") == "ghost"
 
-    # "new" appears in the same tick that pushes "old" past MAX_GHOST_AGE_S
-    # -- only "old" (untouched since t=0) should be evicted.
+    # "new" appears in the same tick that pushes "old" past MAX_GHOST_AGE_S;
+    # only "old" (untouched since it was last seen) should be evicted.
     later = _at(MAX_GHOST_AGE_S + 1)
     tracker.tick({"new": _snap(-37.9, 145.0, later)}, later)
 

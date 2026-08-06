@@ -1,8 +1,8 @@
-"""SQLite-backed monthly budget cap for AI-layer LLM calls (M5 kickoff
-decision, 2026-07-31): checked before every call, incremented after --
-matches this project's existing SQLite-for-local-state pattern (see
-history/store.py) rather than polling Anthropic's usage API, which would
-add external latency to a check that has to happen on every call.
+"""SQLite-backed monthly budget cap for AI-layer LLM calls: checked before
+every call, incremented after -- matches this project's existing
+SQLite-for-local-state pattern (see history/store.py) rather than polling
+Anthropic's usage API, which would add external latency to a check that
+has to happen on every call.
 
 One row per calendar month (UTC), not day-partitioned like history/
 store.py -- the cap window here is a month, not a service day, so there's
@@ -24,10 +24,9 @@ from .llm_client import (
     estimate_cost_usd,
 )
 
-# First-cut value, not tuned against real usage -- revisit once 05e/05f
-# produce real traffic, matching this project's "first-cut constants,
-# revisit at soak gate" convention (e.g. GEOFENCE_RADIUS_M,
-# COASTING_TIMEOUT_S in CLAUDE.md's settled-decisions table).
+# First-cut value, not tuned against real usage -- revisit once real
+# traffic accumulates, matching this project's "first-cut constants,
+# revisit at soak gate" convention.
 DEFAULT_MONTHLY_BUDGET_USD = 20.0
 
 _CREATE_TABLE_SQL = """
@@ -56,7 +55,7 @@ class BudgetTracker:
         # Autocommit, same reasoning as history/store.py: write volume is
         # one row-update per LLM call (never per poll cycle), so
         # per-statement commit overhead is a non-issue, and a crash right
-        # after a `record()` never loses an uncommitted spend update.
+        # after `record()` never loses an uncommitted spend update.
         self._conn = sqlite3.connect(db_path, isolation_level=None)
         self._conn.execute(_CREATE_TABLE_SQL)
 
@@ -72,8 +71,7 @@ class BudgetTracker:
         can't know a not-yet-made call's own cost, so the cap is enforced
         as "don't start a new call once already at or over budget," not
         "never exceed it by even one call's worth" -- acceptable given
-        Haiku's real per-call cost is tiny relative to the cap (~$0.003-
-        0.004/briefing per the M5 kickoff estimate)."""
+        Haiku's real per-call cost is tiny relative to the cap."""
         now = now or datetime.now(timezone.utc)
         if self.spent_usd(now) >= self._monthly_cap_usd:
             raise BudgetExceededError(

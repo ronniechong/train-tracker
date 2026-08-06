@@ -1,18 +1,16 @@
 """Composes one disruption briefing via `run_agent()` (ai/agent.py) --
-the actual LLM call, only ever invoked on-demand (2026-08-01: automatic
-per-cycle triggering removed, see `api/app.py`'s `POST /briefing/trigger`
-route) after `ai/briefing_filter.py`'s cheap local check confirms there's
-something worth spending a call on. This module has no opinion about
-delivery (poller/slack.py) or about when to run -- same separation
-`ai/tools.py`/`ai/agent.py` already keep between "what a tool does" and
-"how the loop drives it."
+the actual LLM call, only ever invoked on-demand (via `api/app.py`'s
+`POST /briefing/trigger` route) after `ai/briefing_filter.py`'s cheap
+local check confirms there's something worth spending a call on. This
+module has no opinion about delivery (poller/slack.py) or about when to
+run -- same separation `ai/tools.py`/`ai/agent.py` already keep between
+"what a tool does" and "how the loop drives it."
 
-Untrusted-input discipline (CLAUDE.md invariant 7, this milestone's own
-scope note): Service Alert text reaches the model only as tool_result
-content from `get_active_alerts`, i.e. data the model reads, never a
-system/user instruction it could be steered by -- `run_agent()` has no
-mechanism for a tool result to alter its own system prompt or the tool
-registry available to later turns.
+Untrusted-input discipline: Service Alert text reaches the model only as
+tool_result content from `get_active_alerts`, i.e. data the model reads,
+never a system/user instruction it could be steered by -- `run_agent()`
+has no mechanism for a tool result to alter its own system prompt or the
+tool registry available to later turns.
 """
 
 from __future__ import annotations

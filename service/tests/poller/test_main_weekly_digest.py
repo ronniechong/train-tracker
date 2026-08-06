@@ -192,8 +192,7 @@ async def test_llm_failure_prevents_marking_fired_so_next_cycle_retries(tmp_path
 async def test_store_write_failure_after_slack_post_does_not_mark_fired(tmp_path, monkeypatch):
     # The crash-safety ordering itself: if the DB write fails AFTER the
     # Slack post already went out, the boundary must stay unmarked so the
-    # next cycle retries (accepting the residual double-post risk this is
-    # explicitly documented to accept, milestones/05-ai-layer.md).
+    # next cycle retries -- this accepts a residual double-post risk.
     monkeypatch.setenv(WEBHOOK_URL_ENV, "https://hooks.invalid/weekly-digest")
     history = HistoryStore(tmp_path / "history")
     _seed_a_weeks_completions(history)

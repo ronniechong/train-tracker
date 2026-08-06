@@ -36,14 +36,13 @@ def test_recent_closed_partition_is_synced_but_not_yet_retained(tmp_path):
 
 
 def test_simulated_fast_forward_past_retention_syncs_then_deletes_in_one_pass(tmp_path):
-    """The AC's 'simulated/fast-forwarded date test': real 60-day elapsed
-    time can't be observed within a session, so this ages a partition by
-    constructing it with an old service_date and passing a far-future `now`
-    directly, rather than waiting. Sync runs before retention within a
-    single call, so a never-before-synced but already->60-day-old partition
-    is expected to be backed up and pruned from history_dir in this same
-    pass -- and, since retention prunes backup_dir on the same rule, it
-    disappears from there too."""
+    """Real 60-day elapsed time can't be observed within a test, so this
+    ages a partition by constructing it with an old service_date and
+    passing a far-future `now` directly, rather than waiting. Sync runs
+    before retention within a single call, so a never-before-synced but
+    already->60-day-old partition is expected to be backed up and pruned
+    from history_dir in this same pass -- and, since retention prunes
+    backup_dir on the same rule, it disappears from there too."""
     history_dir = tmp_path / "history"
     backup_dir = tmp_path / "backup"
     _write_partition(history_dir, _at(2026, 1, 1), "t1")

@@ -1,8 +1,8 @@
-"""SSE connection caps (M3 finding #4 + #9) and REST rate limiting: both
-sized to protect the whole shared deployment host -- this container isn't
-the only thing running there -- not just this project's own availability.
-First-cut values, not tuned against real traffic; revisit once this is
-actually deployed and used.
+"""SSE connection caps and REST rate limiting: both sized to protect the
+whole shared deployment host -- this container isn't the only thing
+running there -- not just this project's own availability. First-cut
+values, not tuned against real traffic; revisit once this is actually
+deployed and used.
 """
 
 from __future__ import annotations
@@ -96,14 +96,13 @@ class RateLimiter:
     ConnectionTracker does: no shared store needed, exactly one process
     ever runs.
 
-    `_per_ip` is pruned of entries idle past 2x the window on every
-    call, capped to run at most once per window (`_last_sweep`) so a busy
-    process doesn't pay an O(n) scan on every single request -- fixes the
-    unbounded-growth gap noted here previously (one entry per unique IP
-    ever seen, for the life of the process; same shape as the ghost
-    tracker's own gap). A window-old entry is, by definition,
-    already back to a fresh count on its next hit, so dropping it loses no
-    real rate-limit state.
+    `_per_ip` is pruned of entries idle past 2x the window on every call,
+    capped to run at most once per window (`_last_sweep`) so a busy
+    process doesn't pay an O(n) scan on every single request -- avoids
+    unbounded growth (one entry per unique IP ever seen, for the life of
+    the process; same shape as the ghost tracker's own gap). A
+    window-old entry is, by definition, already back to a fresh count on
+    its next hit, so dropping it loses no real rate-limit state.
     """
 
     def __init__(

@@ -1,17 +1,17 @@
 # "The stack": cd deploy && docker compose up -d
 #
-# Egress design (2a, confirmed 2026-07-20): `poller` is on the `internal`
-# network ONLY. Compose marks that network `internal: true`, so Docker never
-# gives it a default route to the outside world at all — this isn't a
-# firewall rule that could be misconfigured, the network itself has no NAT.
-# `poller` can reach `egress-proxy` (also on `internal`) and nothing else.
-# `egress-proxy` additionally sits on `egress` (a normal bridge network with
-# a route out) and further restricts *which* outside host it will forward
-# to, via tinyproxy.filter — two independent layers, not one.
+# Egress design: `poller` is on the `internal` network ONLY. Compose marks
+# that network `internal: true`, so Docker never gives it a default route to
+# the outside world — the network itself has no NAT, not just a firewall
+# rule that could be misconfigured. `poller` can reach `egress-proxy` (also
+# on `internal`) and nothing else. `egress-proxy` additionally sits on
+# `egress` (a normal bridge network with a route out) and further restricts
+# *which* outside host it will forward to, via tinyproxy.filter — two
+# independent layers, not one.
 services:
   egress-proxy:
-    # M7 P2: pinned by digest (image only ships a `latest` tag) so an
-    # upstream push can't silently change what's running.
+    # Pinned by digest (image only ships a `latest` tag) so an upstream
+    # push can't silently change what's running.
     image: docker.io/vimagick/tinyproxy:latest@sha256:72b441b95ee1e641af948f68f09492f9f795ead72b73954414e339168c98ad8c
     restart: unless-stopped
     read_only: true
@@ -26,10 +26,6 @@ services:
     build:
       context: ../service
       dockerfile: Dockerfile
-    # 2b landed the real poll loop (service-hours cadence + circuit
-    # breaker with its own interval/backoff), so an unattended restart no
-    # longer means "hammer the live API with no throttling" the way 2a's
-    # one-shot smoke check did.
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -38,54 +34,41 @@ services:
       VIC_TRANSPORT_API_KEY: ${VIC_TRANSPORT_API_KEY:?VIC_TRANSPORT_API_KEY must be set in deploy/.env}
       # NOTE: wired through, but will currently fail from inside the
       # container — tinyproxy.filter allowlists ONLY the upstream gateway
-      # host (security invariant #5). The dead-man ping's target host isn't
-      # allowlisted yet; add it once the real TT_DEADMAN_PING_URL is known.
-      # ping() fails soft (logs a warning, never raises), so this doesn't
-      # crash the poller in the meantime.
+      # host. The dead-man ping's target host isn't allowlisted yet; add it
+      # once the real TT_DEADMAN_PING_URL is known. ping() fails soft (logs
+      # a warning, never raises), so this doesn't crash the poller.
       TT_DEADMAN_PING_URL: ${TT_DEADMAN_PING_URL:-}
       HTTP_PROXY: http://egress-proxy:8888
       HTTPS_PROXY: http://egress-proxy:8888
-      # M7 P2: loopback exempted so in-container health checks (and any
-      # future in-process tooling) can reach localhost without punching a
-      # new egress-allowlist hole -- found P0 deploy session 2026-08-02,
-      # a same-container `/healthz` call was getting proxied and
-      # 403-Filtered by tinyproxy (correct behavior, just the wrong path).
+      # Loopback exempted so in-container health checks (and any future
+      # in-process tooling) can reach localhost without punching a new
+      # egress-allowlist hole.
       NO_PROXY: "localhost,127.0.0.1"
-      # M3: `.env` only feeds compose-file `${...}` substitution, never a
-      # container's process environment on its own -- this app.py reads it
-      # via `os.environ`, so it has to be listed here explicitly too. Found
-      # live (2026-07-30): every request was hitting the CORS "Disallowed
-      # CORS origin" 400 path despite `.env` being set correctly, because
-      # this line was missing since the FastAPI app first landed.
+      # `.env` only feeds compose-file `${...}` substitution, never a
+      # container's process environment on its own — app.py reads this via
+      # `os.environ`, so it has to be listed here explicitly too.
       TT_CORS_ORIGINS: ${TT_CORS_ORIGINS:-}
-      # 05e: same class of gap as TT_CORS_ORIGINS above -- all optional,
-      # by design (ai/llm_client.py's AnthropicLLMClient and
-      # ai/tracing.py's LangfuseTracedLLMClient both construct cleanly
-      # with these unset, verified live; they only fail at actual call
-      # time, and that failure is caught and logged, never left to crash
-      # the poller). egress-proxy's tinyproxy.filter widened for these
-      # hosts and live-verified deployed.
+      # Same class of gap as TT_CORS_ORIGINS above — all optional by design
+      # (ai/llm_client.py and ai/tracing.py construct cleanly with these
+      # unset; they only fail at actual call time, and that failure is
+      # caught and logged, never left to crash the poller).
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
       LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
-      # 05e: briefings reuse TT_ALERT_WEBHOOK_URL (poller/slack.py) rather
-      # than a dedicated webhook -- decided 2026-07-31, reversing that
-      # kickoff's tentative separate-webhook call once weighed against two
-      # config values that would only ever need to stay in sync. Grafana
-      # (2f) also posts to this same webhook directly, from its own
-      # container, not via this env var -- this line is what lets the
-      # POLLER's process reach it too, previously only Grafana needed it.
+      # Briefings reuse TT_ALERT_WEBHOOK_URL (poller/slack.py) rather than a
+      # dedicated webhook. Grafana also posts to this same webhook directly,
+      # from its own container, not via this env var — this line is what
+      # lets the poller's process reach it too.
       TT_ALERT_WEBHOOK_URL: ${TT_ALERT_WEBHOOK_URL:-}
-      # M7 P1: app-level bearer token for POST /briefing/trigger, on top
-      # of the existing tailnet-only network isolation -- unset means the
-      # route falls back to network-isolation-only (pre-M7 behavior), so
-      # this must be set before relying on the extra layer being live.
+      # App-level bearer token for POST /briefing/trigger, on top of the
+      # existing tailnet-only network isolation — unset means the route
+      # falls back to network-isolation-only, so this must be set before
+      # relying on the extra layer being live.
       TT_BRIEFING_TOKEN: ${TT_BRIEFING_TOKEN:-}
-      # M7 P1 follow-up: one-off toggle to directly confirm what Caddy's
-      # trusted_proxies config resolves as X-Forwarded-For per real
-      # request. Unset (default) = no-op; set to "1" temporarily, verify,
-      # then unset again -- not meant to stay on permanently.
+      # One-off toggle to directly confirm what Caddy's trusted_proxies
+      # config resolves as X-Forwarded-For per real request. Unset
+      # (default) = no-op; set to "1" temporarily, verify, then unset again.
       TT_DEBUG_CLIENT_IP: ${TT_DEBUG_CLIENT_IP:-}
       # Flagsmith server-side flag checks (feature-toggle system, decouples
       # feature work from milestone gating). Unset = every flags.is_enabled()
@@ -93,7 +76,7 @@ services:
       FLAGSMITH_SERVER_ENV_KEY: ${FLAGSMITH_SERVER_ENV_KEY:-}
     volumes:
       - ${TT_DATA_DIR:-./data}:/data
-      # 2e: nightly maintenance (`python -m traintracker.history`, run via
+      # Nightly maintenance (`python -m traintracker.history`, run via
       # `docker compose run --rm --entrypoint "python -m traintracker.history"
       # poller`) reads/writes closed history partitions here. A second bind
       # mount, not a subdirectory of /data, so the backup copy is a genuinely
@@ -104,38 +87,32 @@ services:
     networks:
       - internal
       # Joins the host's already-existing general monitoring stack's
-      # network so ITS Prometheus can scrape `poller:9109` by service name --
+      # network so ITS Prometheus can scrape `poller:9109` by service name —
       # no second Prometheus/Grafana/cAdvisor/node_exporter run by this repo
       # (see the `monitoring` network definition below). Purely additive:
       # `poller` keeps its existing `internal` egress-restricted network
       # exactly as before, this only adds a second, separate network for
-      # INBOUND scraping -- doesn't touch invariant #5.
+      # inbound scraping.
       - monitoring
-      # M3: a second, separate network carrying the FastAPI/SSE app's
-      # inbound traffic only, shared with nothing but `caddy`. Distinct
-      # from `internal` (which stays purely for the poller's own outbound
-      # calls via `egress-proxy`) -- this container now has two independent
-      # network purposes, not one network doing double duty.
+      # A second, separate network carrying the FastAPI/SSE app's inbound
+      # traffic only, shared with nothing but `caddy`. Distinct from
+      # `internal` (which stays purely for the poller's own outbound calls
+      # via `egress-proxy`) — this container has two independent network
+      # purposes, not one network doing double duty.
       - ingress
 
-  # M9 (2026-08-07): the Hugging Face archive pipeline. A dedicated
-  # service, NOT a `docker compose run --entrypoint ... poller` override
-  # like `history`'s nightly job uses -- `poller` needs /data writable for
-  # its own writes, but the archiver must never write to data of record
-  # (milestone's read-only-consumer principle), so it needs its own
+  # The Hugging Face archive pipeline. A dedicated service, NOT a
+  # `docker compose run --entrypoint ... poller` override like `history`'s
+  # nightly job uses — `poller` needs /data writable for its own writes, but
+  # the archiver must never write to data of record, so it needs its own
   # volume declarations with `:ro` where `poller`'s can't have them. Same
-  # image/build context as `poller` though -- one codebase, no second
-  # image to build/maintain, matching `history`'s own precedent of reusing
-  # the image even where the entrypoint differs.
+  # image/build context as `poller` though — one codebase, no second image
+  # to build/maintain.
   #
-  # No `restart:` policy -- this is a one-shot job, not a long-running
-  # daemon. Invoked by host cron (`docker compose run --rm archiver`) in
-  # the SAME nightly slot as the existing backup/retention job (milestone
-  # decision, 2026-08-07), not an independent schedule -- shrinks the
-  # window where a day's data exists in only one failure domain (this
-  # host) before Hugging Face becomes a genuine offsite copy. Host cron
-  # wiring itself is a separate ops step, same gap `history`'s own nightly
-  # job left open (see `ops/homeserver-cron.md`).
+  # No `restart:` policy — this is a one-shot job, not a long-running
+  # daemon. Invoked by host cron (`docker compose run --rm archiver`) in the
+  # same nightly slot as the existing backup/retention job, not an
+  # independent schedule. Host cron wiring itself is a separate ops step.
   archiver:
     build:
       context: ../service
@@ -144,63 +121,58 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-      # Disposable Parquet staging (milestone decision, 2026-08-07):
-      # every staged file is re-derivable from the SQLite partition at
-      # any time, so it deliberately does NOT survive a container
-      # restart or an unplanned host reboot (this homeserver is not a
-      # dedicated hosting box). An interrupted run just leaves that day
-      # "not yet fully archived" -- the next scheduled run's catch-up
-      # diff (upload.py's `archived_days` vs local closed days) picks up
-      # exactly where it left off, per table, with no special recovery
-      # needed.
+      # Disposable Parquet staging: every staged file is re-derivable from
+      # the SQLite partition at any time, so it deliberately does NOT
+      # survive a container restart or an unplanned host reboot. An
+      # interrupted run just leaves that day "not yet fully archived" — the
+      # next scheduled run's catch-up diff (upload.py's `archived_days` vs
+      # local closed days) picks up exactly where it left off, per table,
+      # with no special recovery needed.
       - /staging
     environment:
       HF_TOKEN: ${HF_TOKEN:?HF_TOKEN must be set in deploy/.env}
       HF_DATASET_REPO: ${HF_DATASET_REPO:?HF_DATASET_REPO must be set in deploy/.env}
       # Same shared egress-proxy every other SaaS integration in this
-      # project uses (Anthropic, Langfuse, Slack, Flagsmith) -- option A
-      # from the milestone's egress decision, not a second dedicated
-      # proxy. tinyproxy.filter allowlists huggingface.co AND
-      # cas-server.xethub.hf.co (Xet storage backend, verified live via a
-      # logging proxy 2026-08-07 -- a single-hostname filter would have
-      # silently broken real uploads).
+      # project uses (Anthropic, Langfuse, Slack, Flagsmith), not a second
+      # dedicated proxy. tinyproxy.filter allowlists huggingface.co AND
+      # cas-server.xethub.hf.co (Xet storage backend) — a single-hostname
+      # filter would have silently broken real uploads.
       HTTP_PROXY: http://egress-proxy:8888
       HTTPS_PROXY: http://egress-proxy:8888
       NO_PROXY: "localhost,127.0.0.1"
     volumes:
-      # Read-only: the archiver never writes to data of record (invariant
-      # from the milestone's "read-only consumer of immutable artifacts"
-      # architecture principle) -- unlike `poller`'s own /data mount above,
-      # which must stay writable for its own writes.
+      # Read-only: the archiver never writes to data of record, unlike
+      # `poller`'s own /data mount above, which must stay writable for its
+      # own writes.
       - ${TT_DATA_DIR:-./data}:/data:ro
       - ${TT_BACKUP_DIR:-./backup}:/backup:ro
-      # The one piece of local state this container needs to persist
-      # across runs: the gap/failure report only (report.py), pruned to
-      # ~6 months. Deliberately separate from /data (read-only) and
-      # /staging (ephemeral) -- neither could hold it.
+      # The one piece of local state this container needs to persist across
+      # runs: the gap/failure report only (report.py), pruned to ~6 months.
+      # Deliberately separate from /data (read-only) and /staging
+      # (ephemeral) — neither could hold it.
       - ${TT_ARCHIVE_STATE_DIR:-./archive-state}:/archive-state
     depends_on:
       - egress-proxy
     networks:
       - internal
 
-  # M3: sole reverse-proxy ingress into the FastAPI/SSE app (invariant 4).
-  # Joins `ingress` to reach `poller` and `public` for its own outbound
-  # route -- the latter exists only because the `tailscale` sidecar below
-  # shares this container's network namespace and needs it, not because
-  # Caddy itself calls out anywhere.
+  # Sole reverse-proxy ingress into the FastAPI/SSE app. Joins `ingress` to
+  # reach `poller` and `public` for its own outbound route — the latter
+  # exists only because the `tailscale` sidecar below shares this
+  # container's network namespace and needs it, not because Caddy itself
+  # calls out anywhere.
   caddy:
-    # M7 P2: pinned by digest on top of the version tag.
+    # Pinned by digest on top of the version tag.
     image: caddy:2.9-alpine@sha256:b4e3952384eb9524a887633ce65c752dd7c71314d2c2acf98cd5c715aaa534f0
     restart: unless-stopped
     read_only: true
-    # Non-root (invariant 5) -- same UID convention as `poller`. Unlike
-    # `tailscale`, Caddy needs no special capability: it only listens on
-    # the unprivileged `:8080` here, TLS termination happens upstream of
-    # this container entirely. `caddy_data`/`caddy_config` must be
-    # chowned to this UID once before first use under this user (see
-    # ops/runbook.md) -- the official image runs as root by default, so
-    # both volumes were created root-owned before this changed.
+    # Non-root, same UID convention as `poller`. Unlike `tailscale`, Caddy
+    # needs no special capability: it only listens on the unprivileged
+    # `:8080` here, TLS termination happens upstream of this container
+    # entirely. `caddy_data`/`caddy_config` must be chowned to this UID once
+    # before first use under this user — the official image runs as root
+    # by default, so both volumes were created root-owned before this
+    # changed.
     user: "1000:1000"
     tmpfs:
       - /tmp
@@ -214,15 +186,14 @@ services:
     depends_on:
       - poller
 
-  # M3: terminates the public reverse-tunnel connection into Caddy. Shares
+  # Terminates the public reverse-tunnel connection into Caddy. Shares
   # Caddy's network namespace (`network_mode`) instead of joining a network
   # of its own, so it reaches Caddy over localhost and never gains any
   # network membership beyond exactly what Caddy already has.
   tailscale:
-    # M7 P2: pinned by digest (image only ships a `latest` tag) so an
-    # upstream push can't silently change what's running -- this one runs
-    # root + NET_ADMIN/NET_RAW on the host, the highest-risk image in the
-    # stack per the M7 spec.
+    # Pinned by digest (image only ships a `latest` tag) so an upstream push
+    # can't silently change what's running — this one runs root +
+    # NET_ADMIN/NET_RAW on the host, the highest-risk image in the stack.
     image: tailscale/tailscale:latest@sha256:cdf5612ded5be1344f1a704b8c5e53496db97376bb533e5e15f141e48bf60cc0
     restart: unless-stopped
     network_mode: service:caddy
@@ -247,35 +218,35 @@ networks:
     internal: true
   egress:
     driver: bridge
-  # M3: internal-only (no NAT out) -- `poller` only ever accepts inbound
-  # from `caddy` here, never initiates anything on it.
+  # Internal-only (no NAT out) — `poller` only ever accepts inbound from
+  # `caddy` here, never initiates anything on it.
   ingress:
     internal: true
-  # M3: the only network with a real outbound route among the ones this
-  # milestone adds. Exists for the `tailscale` sidecar's own traffic
-  # (reaching the coordination service), inherited via `network_mode` on
-  # the `caddy` service it shares a namespace with.
+  # The only network with a real outbound route among the ones this repo
+  # adds. Exists for the `tailscale` sidecar's own traffic (reaching the
+  # coordination service), inherited via `network_mode` on the `caddy`
+  # service it shares a namespace with.
   public:
     driver: bridge
-  # Not managed by this repo -- an already-running stack on the host owns
+  # Not managed by this repo — an already-running stack on the host owns
   # this network's actual definition (Grafana/Prometheus/Loki/cAdvisor/
   # node_exporter/Mongo, in a separate `docker compose` project). Referenced
   # here only so `poller` can join it; `external: true` means Compose must
   # find it already created, never tries to create or own it itself. If the
   # other stack's compose project directory or name ever changes, this
   # network name (Compose's default naming: `<project-dir-name>_default`)
-  # would need updating to match -- host-specific enough that the exact
+  # would need updating to match — host-specific enough that the exact
   # value is confirmed against the live host, not assumed.
   #
-  # M7 P2 (2026-08-03): explicitly accepted as a trusted network, not
-  # closed by splitting /metrics onto a dedicated exporter. `poller`'s
-  # FastAPI port is technically reachable from anything else joined to
-  # `monitoring`, bypassing Caddy -- but everything on this network is
-  # this same host's own single-operator monitoring stack (no untrusted
-  # tenants, no other party's containers), so the residual exposure is
-  # host-compromise-equivalent, not a real additional attack surface.
-  # `/metrics` itself carries no secrets. Revisit only if this host ever
-  # runs containers for an untrusted party.
+  # Explicitly accepted as a trusted network, not closed by splitting
+  # /metrics onto a dedicated exporter. `poller`'s FastAPI port is
+  # technically reachable from anything else joined to `monitoring`,
+  # bypassing Caddy — but everything on this network is this same host's
+  # own single-operator monitoring stack (no untrusted tenants, no other
+  # party's containers), so the residual exposure is host-compromise-
+  # equivalent, not a real additional attack surface. `/metrics` itself
+  # carries no secrets. Revisit only if this host ever runs containers for
+  # an untrusted party.
   monitoring:
     external: true
     name: monitoring_default

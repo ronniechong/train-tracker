@@ -1,6 +1,4 @@
-"""Delay observation logging for the delay/ETA-prediction feature
-(05-ai-layer, scoped 2026-08-01 -- see milestones/05-ai-layer.md's
-"Delay/ETA prediction" section for the locked pipeline design).
+"""Delay observation logging for the delay/ETA-prediction feature.
 
 This is step one of that feature, not the model: `HistoryStore` today
 only ever persists trip *completion* outcomes (a single delay value at
@@ -29,9 +27,9 @@ from .alerts import Alert, alerts_matching
 from .eventlog import EventLog
 from .merge import TrainSnapshot
 
-# Proposed default (milestones/05-ai-layer.md): 10s-cycle logging would be
-# enormous (~200 concurrent trips x 6/min x 15h service >= 1M+ rows/day).
-# Revisit once real concurrent-trip counts are measured against this.
+# 10s-cycle logging would be enormous (~200 concurrent trips x 6/min x
+# 15h service >= 1M+ rows/day). Revisit once real concurrent-trip counts
+# are measured against this.
 OBSERVATION_INTERVAL_S = 120
 
 # How long a trip_id is remembered purely to pace its own observation

@@ -50,9 +50,7 @@ def test_record_then_list_round_trips_all_fields(tmp_path):
 
 
 def test_digest_with_no_line_stats_round_trips_empty_tuple(tmp_path):
-    # A week where every line fell below the minimum-sample-size floor --
-    # or simply zero real lines, in a degenerate test scenario. Must not
-    # crash on an empty line_stats tuple in either direction.
+    # Must not crash on an empty line_stats tuple in either direction.
     store = WeeklyDigestStore(tmp_path / "weekly.db")
     store.record(_record(line_stats=()))
 
@@ -90,8 +88,8 @@ def test_digests_persist_across_store_instances(tmp_path):
 
 
 def test_slack_delivered_false_round_trips_correctly(tmp_path):
-    # Not just "truthy" -- False must not silently become True through the
-    # int coercion (SQLite has no native bool type).
+    # False must not silently become True through int coercion
+    # (SQLite has no native bool type).
     store = WeeklyDigestStore(tmp_path / "weekly.db")
     store.record(_record(slack_delivered=False))
 

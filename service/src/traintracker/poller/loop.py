@@ -1,16 +1,14 @@
-"""Main poll loop: ties the 2a gateway client, protobuf decode, service-hours
-cadence, circuit breaker, 2d's state store, and the external dead-man
-ping together — the one thing that actually exercises 2a's client against
-live traffic for the first time (2b's stated goal).
+"""Main poll loop: ties the gateway client, protobuf decode, service-hours
+cadence, circuit breaker, state store, and the external dead-man ping
+together.
 
 Header-timestamp dedupe does NOT mean "treat an unchanged feed as empty
 this cycle." `StateStore.ingest()` -> `TrainLifecycleTracker.tick()` needs
 to run every cycle regardless, using real wall-clock `cycle_time`, so
 coasting timers keep advancing between genuine upstream refreshes (VP's
-true cadence is ~29-30s even though we now poll every ~10s per this
-milestone's acceptance criteria) — an earlier draft skipped `ingest()`
-entirely on an unchanged header and made every trip look VP-less on 2 of
-every 3 cycles, which would have broken coasting/ghosting. "Dedupe" here
+true cadence is ~29-30s even though we poll every ~10s) — skipping
+`ingest()` entirely on an unchanged header makes every trip look VP-less
+on 2 of every 3 cycles, which breaks coasting/ghosting. "Dedupe" here
 means: cache and reuse the last-decoded content for an unchanged feed
 rather than re-deriving anything from a byte-identical payload.
 """
@@ -76,8 +74,8 @@ class PollerLoop:
 
     def last_changed_at(self, feed: Feed) -> datetime | None:
         """Last time this feed's header timestamp actually advanced --
-        2f's staleness alert (CLAUDE.md: alert on header age, never entity
-        count) is built on top of this, not built here."""
+        the staleness alert (alert on header age, never entity count) is
+        built on top of this, not built here."""
         return self._cache.last_changed_at.get(feed)
 
     def stop(self) -> None:

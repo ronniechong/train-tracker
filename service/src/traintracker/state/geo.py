@@ -1,10 +1,10 @@
 """Small geometry helpers shared by station-state derivation and the ghost
 state machine. `CITY_LOOP_BBOX` mirrors the constant `spike/analyze.py` and
-`spike/loop_gap_estimate.py` use - duplicated rather than imported because
-`spike/` is a standalone M1 artifact with its own environment, not part of
-this package. The 2d pre-analysis (`spike/FINDINGS.md` addendum,
-2026-07-21) found loop-containment is ~0% of ghost-eligible gaps, so this
-is a monitoring signal for the ghost event log, not an expected common case.
+`spike/loop_gap_estimate.py` use -- duplicated rather than imported because
+`spike/` is a standalone artifact with its own environment, not part of
+this package. Loop-containment was found to be ~0% of ghost-eligible gaps,
+so this is a monitoring signal for the ghost event log, not an expected
+common case.
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 """Station-state derivation: where is this train right now, "at" a stop or
 "between" two - per CLAUDE.md's settled decision, since Vehicle Positions
-never populates `stop_id`/`current_status` (M1: 0% for both).
+never populates `stop_id`/`current_status` (measured: 0% for both).
 
 TU is the primary signal here, not geofence-first: `stop_time_update`
 entries carry the real schedule (predicted arrival/departure per stop, in

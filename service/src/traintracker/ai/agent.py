@@ -1,10 +1,10 @@
-"""Manual Anthropic tool-calling loop (M5 kickoff decision: SDK directly,
-not a framework or the beta Tool Runner -- 3 read-only local tools with no
-memory/chaining don't need that machinery, see milestones/05-ai-layer.md).
+"""Manual Anthropic tool-calling loop, chosen over a framework or the beta
+Tool Runner -- a few read-only local tools with no memory/chaining don't
+need that machinery.
 
-Generic over whatever tool registry a caller (05e's briefings, 05f's NL
-query) supplies -- this module has no opinion about what the tools DO,
-only about driving the request/tool_use/tool_result cycle to completion.
+Generic over whatever tool registry a caller supplies -- this module has
+no opinion about what the tools DO, only about driving the
+request/tool_use/tool_result cycle to completion.
 """
 
 from __future__ import annotations
@@ -58,15 +58,15 @@ async def run_agent(
     max_iterations: int = 5,
 ) -> AgentResult:
     """Drives one user turn to completion: call the model, execute any
-    tool_use blocks locally (invariant #1 -- every tool reads only local
-    state passed in via `tool_context`, never a fresh upstream request),
-    feed results back, repeat until `end_turn` or `max_iterations`.
+    tool_use blocks locally (every tool reads only local state passed in
+    via `tool_context`, never a fresh upstream request), feed results
+    back, repeat until `end_turn` or `max_iterations`.
 
     A tool function raising is NOT caught here -- expected failure modes
     (unknown line, untracked trip) are `{"error": ...}` return values the
-    model can read and react to; an actual exception means a real bug,
-    and letting it propagate is more honest than silently absorbing it
-    into a turn that looks like it succeeded."""
+    model can read and react to; an actual exception means a real bug and
+    should propagate rather than be absorbed into a turn that looks like
+    it succeeded."""
     messages: list[dict[str, Any]] = [{"role": "user", "content": user_message}]
     tool_calls = 0
 

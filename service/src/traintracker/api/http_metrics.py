@@ -1,5 +1,4 @@
-"""Per-route HTTP observability middleware (M3, reopened 2026-08-01 --
-see milestones/03-api-sse-exposure-security.md's "Added post-close" entry).
+"""Per-route HTTP observability middleware.
 
 Gap this closes: the only per-route Prometheus signal before this was
 `traintracker_rate_limited_requests_total` (429s only, by endpoint + which

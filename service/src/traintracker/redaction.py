@@ -1,11 +1,11 @@
 """Process-wide log redaction.
 
-Two confirmed leak vectors for the upstream API key (spike/probes.md):
-inbound — the gateway's 401 body echoes an unauthorized key verbatim in
-`WWW-Authenticate`; outbound — nothing today logs the `KeyId` request
-header, but nothing should ever be trusted to remember that by convention
-alone. Rather than audit every call site, every log record's rendered
-message is scrubbed for known secret values before it reaches a handler.
+Two known leak vectors for the upstream API key: inbound — the gateway's
+401 body echoes an unauthorized key verbatim in `WWW-Authenticate`;
+outbound — nothing today logs the `KeyId` request header, but nothing
+should ever be trusted to remember that by convention alone. Rather than
+audit every call site, every log record's rendered message is scrubbed
+for known secret values before it reaches a handler.
 
 Filters attached to a *Logger* only run for records logged directly through
 that logger, not for records propagating up from children (e.g. the
@@ -52,12 +52,12 @@ def configure_logging(*secrets: str, level: int = logging.INFO) -> SecretRedacti
     root.setLevel(level)
     root.handlers = [handler]
 
-    # Belt-and-braces (M7 P0, 2026-08-02): the filter above only redacts
-    # secret *values* that were actually registered above -- a future
-    # secret-bearing URL that a caller forgets to pass in would still leak.
-    # httpx logs full request URLs at INFO on every call; raising its own
-    # logger threshold means that line never gets emitted at all,
-    # independent of whether this call's secrets list is complete.
+    # Belt-and-braces: the filter above only redacts secret *values* that
+    # were actually registered above -- a future secret-bearing URL that a
+    # caller forgets to pass in would still leak. httpx logs full request
+    # URLs at INFO on every call; raising its own logger threshold means
+    # that line never gets emitted at all, independent of whether this
+    # call's secrets list is complete.
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
     return redaction_filter

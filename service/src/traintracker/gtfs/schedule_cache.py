@@ -35,16 +35,15 @@ class NoPinnedSnapshotError(Exception):
 
 @dataclass(frozen=True)
 class TripTerminus:
-    """A trip's scheduled final stop -- the 05-ai-layer trip-completion
-    tracker's anchor for "did this trip arrive on time", per the official
-    Victorian definition (arrival AT THE TERMINUS, not mid-journey delay).
+    """A trip's scheduled final stop -- the trip-completion tracker's anchor
+    for "did this trip arrive on time", per the official Victorian
+    definition (arrival AT THE TERMINUS, not mid-journey delay).
 
-    `stop_sequence` added 2026-08-01 for the delay/ETA-prediction
-    observation logger's `stops_remaining` feature (terminus's
-    stop_sequence minus the current stop's) -- purely additive,
-    `state/completion.py`'s own separate `TripTerminus` (duck-typed
-    against this one via `.stop_id`/`.scheduled_arrival` only, see
-    `poller/__main__.py`'s wiring) is unaffected by the new field."""
+    `stop_sequence` supports the delay/ETA-prediction observation logger's
+    `stops_remaining` feature (terminus's stop_sequence minus the current
+    stop's) -- purely additive, `state/completion.py`'s own separate
+    `TripTerminus` (duck-typed against this one via `.stop_id`/
+    `.scheduled_arrival` only) is unaffected by the field."""
 
     stop_id: str
     scheduled_arrival: datetime  # absolute UTC
@@ -65,8 +64,8 @@ class _ParsedSchedule:
     termini_by_trip: dict[str, StopTimeRecord]
     # stop_id -> every route_id with a trip calling at that stop. Service
     # Alerts for a single cancelled trip carry the trip's whole stop list
-    # but no route_id at all (verified live 2026-08-04) -- this is what
-    # `routes_serving_all_stops` intersects against to infer the line.
+    # but no route_id at all -- this is what `routes_serving_all_stops`
+    # intersects against to infer the line.
     stop_routes: dict[str, frozenset[str]]
 
 
@@ -76,9 +75,9 @@ class PinnedScheduleCache:
         self._pin_manifest = pin_manifest
         # Keyed by snapshot digest, not service_date -- content is
         # immutable per digest (the portal only republishes ~weekly, and
-        # 2c's fetch job reuses the same digest across unchanged days), so
-        # entries never need invalidating. 60-day history retention bounds
-        # how many distinct digests can ever accumulate here.
+        # the fetch job reuses the same digest across unchanged days), so
+        # entries never need invalidating. History retention bounds how
+        # many distinct digests can ever accumulate here.
         self._by_digest: dict[str, _ParsedSchedule] = {}
 
     def _load(self, digest: str) -> _ParsedSchedule:
@@ -103,10 +102,10 @@ class PinnedScheduleCache:
             stop_routes.setdefault(record.stop_id, set()).add(route_id)
             # stop_times.txt keys on the platform-level child stop_id, but
             # Service Alerts' informed_entity carries the PARENT STATION id
-            # instead (e.g. `vic:rail:UFD`, verified live 2026-08-04) --
-            # index the route under the parent too, same platform->station
-            # grouping gtfs/schedule.py already relies on, or a
-            # cancellation alert would never resolve to anything.
+            # instead (e.g. `vic:rail:UFD`) -- index the route under the
+            # parent too, same platform->station grouping gtfs/schedule.py
+            # already relies on, or a cancellation alert would never
+            # resolve to anything.
             parent = stops.get(record.stop_id)
             if parent is not None and parent.parent_station:
                 stop_routes.setdefault(parent.parent_station, set()).add(route_id)
@@ -123,9 +122,8 @@ class PinnedScheduleCache:
 
     def _load_for(self, now: datetime) -> _ParsedSchedule:
         """Resolves "today"'s pin and loads its parsed snapshot -- the
-        pin-resolution step `next_departures_for` and `routes_for` both
-        need, factored out once routes.py gave this class a second
-        caller for it."""
+        shared pin-resolution step `next_departures_for` and `routes_for`
+        both need."""
         service_date = service_date_for_instant(now)
         pin = self._pin_manifest.get(service_date)
         if pin is None:
@@ -143,12 +141,11 @@ class PinnedScheduleCache:
 
         Returns `None`, not an error, when: no snapshot is pinned for that
         service_date yet, the trip_id has no static stop_times row at all
-        (a real-time-only ADDED trip, per CLAUDE.md's trip_id-join
-        convention -- has no static schedule to compare against by
-        construction), or its terminus row carries neither an arrival nor
-        departure time (malformed row; state/completion.py treats an
-        unresolvable terminus as "can't track this trip's completion",
-        not a crash)."""
+        (a real-time-only ADDED trip -- has no static schedule to compare
+        against by construction), or its terminus row carries neither an
+        arrival nor departure time (malformed row; state/completion.py
+        treats an unresolvable terminus as "can't track this trip's
+        completion", not a crash)."""
         pin = self._pin_manifest.get(service_date)
         if pin is None:
             return None
@@ -171,29 +168,25 @@ class PinnedScheduleCache:
         status, get_active_alerts) use this to resolve a line NAME a user
         or the LLM typed ("Belgrave") into the route_id(s) the realtime
         feeds actually key on. Raises `NoPinnedSnapshotError` under the
-        same condition `next_departures_for` does."""
+        same condition as `next_departures_for`."""
         return self._load_for(now).routes
 
     def routes_most_likely_for_stops(self, now: datetime, stop_ids: list[str]) -> list[Route]:
         """Best-effort line inference from a Service Alert's raw stop list,
         used when the feed carries no route_id at all (the single-trip
-        cancellation case, verified live 2026-08-04: `informed_entity` is
-        the trip's full stop sequence, route_id null throughout).
+        cancellation case: `informed_entity` is the trip's full stop
+        sequence, route_id null throughout).
 
-        Requiring EVERY stop to agree (a strict intersection) turned out
-        too fragile against real data: a real live Pakenham cancellation's
-        26-stop list included 3 Metro Tunnel stations (Arden/Parkville/
-        State Library) whose static schedule shows Sunbury-line service
-        only, even though the other 23 stops unambiguously belong to the
-        Pakenham line -- one stale/incomplete platform mapping blanked out
-        an otherwise-obvious match. Instead this counts, per stop, which
-        line(s) call there (collapsing a route and its `-R` bus-
-        replacement twin into one vote via `long_name`, so they don't
-        split what's really a single line's count) and returns the winner
-        only when it's an outright majority of the stops AND strictly
-        ahead of the runner-up. Genuinely shared corridors (e.g. Pakenham/
-        Cranbourne's shared Caulfield-group stations) still return `[]`
-        rather than guess when no line clears that bar."""
+        Requiring EVERY stop to agree (a strict intersection) is too
+        fragile against real data, since shared corridors and stale/
+        incomplete platform mappings can blank out an otherwise-obvious
+        match. Instead this counts, per stop, which line(s) call there
+        (collapsing a route and its `-R` bus-replacement twin into one
+        vote via `long_name`, so they don't split what's really a single
+        line's count) and returns the winner only when it's an outright
+        majority of the stops AND strictly ahead of the runner-up.
+        Genuinely shared corridors still return `[]` rather than guess
+        when no line clears that bar."""
         parsed = self._load_for(now)
         ids = [s for s in stop_ids if s]
         if not ids:
@@ -231,7 +224,7 @@ class PinnedScheduleCache:
         is pinned yet for today (caller should treat as a distinct
         service-not-ready condition, not a client error).
 
-        `live_snapshots` (05a pass 3, optional) is the caller's
+        `live_snapshots` (optional) is the caller's
         `StateStore.latest_snapshots` -- when given, ADDED (real-time-only,
         no static row) trips calling at this station are folded in and the
         combined list re-sorted by time. Omitting it (the default) keeps

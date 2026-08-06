@@ -3,7 +3,7 @@ archived, self-heal missing/corrupt partitions from backup where possible,
 compact + drift-check + stage + upload each one, and report anything that
 couldn't be recovered.
 
-Self-healing (milestone 09, 2026-08-07): the only recovery source is the
+Self-healing: the only recovery source is the
 local nightly backup copy -- no upstream archive exists for this data, so
 "rebuild from source" always means "restore from backup," never a true
 upstream rewind. If backup is also missing/corrupt, the day is logged via
@@ -33,7 +33,7 @@ logger = logging.getLogger("traintracker.archive.run")
 
 # 23-day buffer before the 60-day retention window could delete a day that
 # was never successfully archived -- decoupled from retention's own cron,
-# not a shared constant with it (milestone's "Decoupling contract").
+# not a shared constant with it.
 SAFETY_NET_DAYS = RETENTION_DAYS - 7
 
 

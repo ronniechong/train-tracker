@@ -1,23 +1,15 @@
-# M3: sole ingress into the `poller` service's FastAPI/SSE app. Listens on
+# Sole ingress into the `poller` service's FastAPI/SSE app. Listens on
 # plain HTTP on an internal-only network — TLS termination happens on the
 # reverse-ingress layer in front of this container, not here.
 {
 	auto_https off
 	admin off
 
-	# M7 P1: the `tailscale` sidecar shares this container's network
-	# namespace (compose's `network_mode: service:caddy`), so every real
-	# Funnel request arrives over loopback -- tailscaled's local funnel
-	# target sets `X-Forwarded-For` to the actual internet client before
-	# that hop, the same way any reverse proxy would. Trusting 127.0.0.1
-	# here means Caddy uses that already-correct value as the basis for
-	# the X-Forwarded-For it forwards to `poller`, instead of blindly
-	# re-appending whatever a client claims. Nothing but the sidecar can
-	# reach Caddy on loopback, so this is a genuine trust boundary, not a
-	# cosmetic one -- unlike the old code comment in `api/app.py`, which
-	# claimed the same protection for `poller` itself without accounting
-	# for `poller`'s separate `monitoring` network membership (see M7 P2:
-	# that residual gap is tracked, not closed by this change).
+	# The `tailscale` sidecar shares this container's network namespace
+	# (compose's `network_mode: service:caddy`), so every real Funnel
+	# request arrives over loopback with X-Forwarded-For already set
+	# correctly by tailscaled. Trusting 127.0.0.1 here is safe because
+	# nothing but the sidecar can reach Caddy on loopback.
 	servers {
 		trusted_proxies static 127.0.0.1
 	}
@@ -26,15 +18,11 @@
 :8080 {
 	encode gzip
 
-	# Security headers (M3 finding #8/invariant 3), applied to every
-	# response including the ones nothing else touches (404s, the catch-
-	# all error handler). This is a GET-only JSON/SSE API, never HTML or a
-	# script/resource host, so `default-src 'none'` is the correct CSP,
-	# not just a cautious default. `Cache-Control: no-store` closes a real
-	# gap: `/api/state` sends no caching directive of its own, so without
-	# this a browser or intermediate cache could serve stale train
-	# positions. `-Server` strips the version-fingerprinting freebie
-	# (previously leaked both `Caddy` and `uvicorn` in one response).
+	# Security headers applied to every response, including 404s and the
+	# catch-all error handler. This is a GET-only JSON/SSE API, so
+	# `default-src 'none'` is the correct CSP. `Cache-Control: no-store`
+	# ensures `/api/state` is never cached stale. `-Server` strips
+	# version-fingerprinting from the response.
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
@@ -46,10 +34,9 @@
 		-Server
 	}
 
-	# 2026-08-01: this path only ever gets served on :8081 below (tailnet-
-	# only, never funnelled) — blocked here at the ingress rather than
-	# trusted to poller:8000 alone, so the public, funnelled port genuinely
-	# cannot reach it even if the app-level route exists underneath.
+	# This path is only ever served on :8081 below (tailnet-only, never
+	# funnelled) — blocked here at the ingress so the public port cannot
+	# reach it even if the app-level route exists underneath.
 	@briefing_trigger path /briefing/trigger
 	handle @briefing_trigger {
 		respond 404
@@ -70,12 +57,10 @@
 }
 
 # On-demand briefing trigger (POST /briefing/trigger) — tailnet-only via
-# `tailscale serve` (deploy/tailscale-entrypoint.sh), NEVER funnelled to
-# the public internet. This route spends real LLM budget and posts to
-# Slack, a genuine first exception to :8080's strictly GET-only/read-only
-# surface (security invariant 3) — network-level isolation over an
-# app-level bearer token. Nothing else is served on this port; tailnet-only
-# doesn't mean "trust everything", keep the surface as narrow as the
+# `tailscale serve` (deploy/tailscale-entrypoint.sh), never funnelled to the
+# public internet. This route spends real LLM budget and posts to Slack, so
+# it relies on network-level isolation over an app-level bearer token.
+# Nothing else is served on this port; keep the surface as narrow as the
 # public one.
 :8081 {
 	encode gzip

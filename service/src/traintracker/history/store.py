@@ -1,20 +1,19 @@
-"""SQLite-backed persistence for 2d's three `EventLog` outputs
-(`DiscrepancyEvent`, `GhostEvent`, `PollGapEvent`) plus 05-ai-layer's
-`TripCompletionEvent` and `DelayObservationEvent` — the concrete
-implementation `state/eventlog.py` forward-references as "2e ... owns a
-SQLite-backed implementation of this same Protocol."
+"""SQLite-backed persistence for the `EventLog` outputs (`DiscrepancyEvent`,
+`GhostEvent`, `PollGapEvent`, `TripCompletionEvent`, `DelayObservationEvent`)
+— the concrete implementation `state/eventlog.py` forward-references as
+owning a SQLite-backed implementation of this same Protocol.
 
 One SQLite file per service_date, not per event type: `discrepancy_events`,
 `ghost_events`, `poll_gap_events`, `trip_completion_events`, and
 `delay_observation_events` all live in the same file, alongside a `meta`
-row recording which static-snapshot digest (2c's `PinManifest`) was pinned
-to that service_date at the time the partition was opened — this is the
-"paired with that day's pinned static snapshot" requirement from milestone
-2e. `delay_observation_events` (2026-08-01) deliberately keeps the SAME
-60-day rolling retention as everything else here, unlike the weekly
-digest's separate `WeeklyDigestStore` -- this data's value decays as soon
-as a fresher model has been retrained on more recent conditions, so the
-existing cap is the right fit, not an exception to it.
+row recording which static-snapshot digest (`PinManifest`) was pinned to
+that service_date at the time the partition was opened, pairing each day's
+events with that day's pinned static snapshot. `delay_observation_events`
+deliberately keeps the SAME 60-day rolling retention as everything else
+here, unlike the weekly digest's separate `WeeklyDigestStore` -- this
+data's value decays as soon as a fresher model has been retrained on more
+recent conditions, so the existing cap is the right fit, not an exception
+to it.
 
 Routing a `.record(event)` call to the correct day's file is `rotate(now)`'s
 job, called once per poll cycle by the caller (`poller/__main__.py`) — this
@@ -272,11 +271,10 @@ def _row_to_completion_event(row: tuple) -> TripCompletionEvent:
 @dataclass(frozen=True)
 class CompletionEventsWindow:
     """The result of reading `trip_completion_events` across multiple
-    day-partitions at once (05-ai-layer's weekly digest -- the first
-    feature needing this; see milestones/05-ai-layer.md). `days_covered`
-    vs `days_missing` is the honesty distinction the digest's cold-start
-    and gap-day handling depends on: a partition file existing (however
-    few events it holds) means genuine coverage; a missing file means an
+    day-partitions at once (used by the weekly digest). `days_covered` vs
+    `days_missing` is the honesty distinction the digest's cold-start and
+    gap-day handling depends on: a partition file existing (however few
+    events it holds) means genuine coverage; a missing file means an
     unknown -- the poller wasn't running that service_date at all, not
     "zero trips ran"."""
 
@@ -378,11 +376,10 @@ class HistoryStore:
         and closed again immediately after.
 
         Safe against the live writer by construction for this call's only
-        real caller (the weekly digest, firing Monday 8am over the
-        previous Mon-Sun): every requested partition is from a fully
-        elapsed service_date, already rotated past by the time this runs,
-        so there is never a partition in the requested window still open
-        for writes."""
+        real caller (the weekly digest): every requested partition is from
+        a fully elapsed service_date, already rotated past by the time
+        this runs, so there is never a partition in the requested window
+        still open for writes."""
         events: list[TripCompletionEvent] = []
         covered: list[date] = []
         missing: list[date] = []

@@ -1,9 +1,8 @@
-"""In-process asyncio event hub (CLAUDE.md's settled eventing decision) -
-producer side only until M3, which adds the SSE consumer below.
+"""In-process asyncio event hub.
 
 Kept behind a small `Protocol` so a future multi-process setup (Redis
-pub/sub) can swap in without touching producers - see CLAUDE.md's eventing
-decision: "Revisit if: Multi-process consumers appear."
+pub/sub) can swap in without touching producers -- revisit if multi-process
+consumers appear.
 """
 
 from __future__ import annotations
@@ -22,9 +21,9 @@ class EventHub(Protocol):
 
 
 class InProcessEventHub:
-    """M3: subscribers can now request a bounded queue (`maxsize`, default
-    0 = unbounded, preserving pre-M3 behaviour). `publish` is a pure
-    "wake up and recompute" signal to SSE consumers -- the event's actual
+    """Subscribers can request a bounded queue (`maxsize`, default
+    0 = unbounded). `publish` is a pure "wake up and recompute" signal to
+    SSE consumers -- the event's actual
     value is never inspected by anything downstream, so a full queue means
     a slow/stalled consumer has a stale-but-harmless backlog, not lost
     data: dropping one tick for that consumer (and only that one) is

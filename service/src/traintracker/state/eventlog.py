@@ -1,10 +1,10 @@
 """Append-only event log interface, shared by `DiscrepancyEvent` (merge.py)
 and `GhostEvent` (ghost.py).
 
-2d's job is the schema + a working in-memory collector, not persistence -
-2e ("history writer persists this store's output") owns a SQLite-backed
-implementation of this same `Protocol` later. Nothing upstream of an
-`EventLog` should need to change when that lands.
+This module defines the schema and a working in-memory collector, not
+persistence -- the history writer owns a SQLite-backed implementation of
+this same `Protocol`. Nothing upstream of an `EventLog` should need to
+change when that lands.
 """
 
 from __future__ import annotations

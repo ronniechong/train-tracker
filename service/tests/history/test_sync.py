@@ -62,9 +62,9 @@ def test_sync_is_idempotent_and_skips_already_synced_files(tmp_path):
 
 
 def test_restore_from_backup_reads_back_the_same_rows(tmp_path):
-    """The literal 'restore test' milestone 2e's AC asks for: back up a
-    closed partition, simulate losing/deleting the original, and confirm the
-    backup copy alone is a fully readable, correct SQLite file."""
+    """Back up a closed partition, simulate losing/deleting the original,
+    and confirm the backup copy alone is a fully readable, correct SQLite
+    file."""
     history_dir = tmp_path / "history"
     backup_dir = tmp_path / "backup"
     _write_partition(history_dir, _at(2026, 7, 20), "the-real-trip")

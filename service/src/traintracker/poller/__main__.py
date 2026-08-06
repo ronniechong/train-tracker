@@ -1,21 +1,20 @@
 """The real poll loop: `python -m traintracker.poller`.
 
 Runs forever (until SIGINT/SIGTERM) at a service-hours-aware, breaker-backed
-cadence. 2a's `python -m traintracker.gateway` one-shot smoke check remains
+cadence. `python -m traintracker.gateway`'s one-shot smoke check remains
 available separately for manual auth diagnostics.
 
-Async since M3 (2026-07-30): this loop now shares a process and an asyncio
-event loop with the FastAPI/SSE server (CLAUDE.md's M3 process-boundary
-decision — same process, so 2d's in-process `EventHub` can be read directly
-without any IPC). `GatewayClient`/`healthcheck.ping` converted to
-`httpx.AsyncClient` alongside this; `CircuitBreaker`/`HistoryStore` have no
-actual I/O latency worth yielding on (pure computation / small local SQLite
-writes) and stay synchronous, called directly from this async loop. The
-FastAPI app is run here too, as `uvicorn.Server.serve()` embedded directly
-in this event loop rather than via `uvicorn`'s own CLI/multiprocess runner
--- that's what makes the "single worker, always" constraint (M3 finding #3)
-automatic rather than something that needs enforcing: there is no
-`--workers` flag to misconfigure in this mode, only one process ever exists.
+This loop shares a process and an asyncio event loop with the FastAPI/SSE
+server, so the in-process `EventHub` can be read directly without any IPC.
+`GatewayClient`/`healthcheck.ping` use `httpx.AsyncClient`;
+`CircuitBreaker`/`HistoryStore` have no actual I/O latency worth yielding on
+(pure computation / small local SQLite writes) and stay synchronous, called
+directly from this async loop. The FastAPI app is run here too, as
+`uvicorn.Server.serve()` embedded directly in this event loop rather than
+via `uvicorn`'s own CLI/multiprocess runner -- that's what makes the
+"single worker, always" constraint automatic rather than something that
+needs enforcing: there is no `--workers` flag to misconfigure in this
+mode, only one process ever exists.
 """
 
 from __future__ import annotations
@@ -60,13 +59,13 @@ from .weekly_digest_trigger import WeeklyDigestTrigger
 # bind-mount substitution on the host side, never as an env var in-container.
 DATA_DIR = Path("/data")
 
-# Scraped by Prometheus over the `internal` docker network (2f) -- not
+# Scraped by Prometheus over the `internal` docker network -- not
 # published to the host, so this doesn't change the poller's external
 # exposure at all. Not the OpenTelemetry-default 9464 or node_exporter's
 # 9100, just a value distinct from both to avoid any confusion reading logs.
 METRICS_PORT = 9109
 
-# M3: the FastAPI app. Bound to all interfaces *inside the container* --
+# The FastAPI app. Bound to all interfaces *inside the container* --
 # not the host -- because reachability is enforced by Docker network
 # membership, not by binding to loopback: this container only carries the
 # new `ingress` network (shared solely with the `caddy` service) alongside
@@ -118,12 +117,11 @@ async def _maybe_send_weekly_digest(
     discipline `poller/slack.py`'s `post_message` already follows for
     Slack outages specifically; this wraps the whole generation path.
 
-    Crash-safety ordering (milestones/05-ai-layer.md, locked 2026-08-01):
-    `trigger.mark_fired()` is the LAST thing this function does, only
-    after both the Slack post attempt and the `WeeklyDigestStore` write
-    have completed -- a crash or exception anywhere before that point
-    leaves the boundary unmarked, so the next cycle simply retries rather
-    than silently losing the week.
+    Crash-safety ordering: `trigger.mark_fired()` is the LAST thing this
+    function does, only after both the Slack post attempt and the
+    `WeeklyDigestStore` write have completed -- a crash or exception
+    anywhere before that point leaves the boundary unmarked, so the next
+    cycle simply retries rather than silently losing the week.
     """
     boundary = trigger.should_fire(now)
     if boundary is None:
@@ -207,14 +205,14 @@ async def main() -> int:
         os.environ.get(ANTHROPIC_API_KEY_ENV, ""),
         os.environ.get("LANGFUSE_PUBLIC_KEY", ""),
         os.environ.get("LANGFUSE_SECRET_KEY", ""),
-        # M7 P1: new credential, same env-only + redaction-filter-
-        # registered treatment as every other secret here (invariant #2).
+        # Same env-only + redaction-filter-registered treatment as every
+        # other secret here (invariant #2).
         os.environ.get(BRIEFING_TOKEN_ENV, ""),
         level=logging.INFO,
     )
 
-    # 2e: day-partitioned SQLite persistence for discrepancy/ghost/gap
-    # events, paired with whichever static snapshot digest (2c) is pinned to
+    # Day-partitioned SQLite persistence for discrepancy/ghost/gap
+    # events, paired with whichever static snapshot digest is pinned to
     # each service_date. `history.rotate(now)` (called once per cycle below)
     # is what routes each `.record(event)` call to the right day's file --
     # merge.py/ghost.py/breaker.py stay unaware partitioning exists at all.
@@ -229,9 +227,9 @@ async def main() -> int:
     # a second instance is simpler than threading HistoryStore's through.
     schedule_cache = PinnedScheduleCache(gtfs_dir, PinManifest(gtfs_dir / "pin_manifest.json"))
 
-    # 2f: wrap 2e's persisting EventLogs with counting, same composable
-    # pattern -- each `.record(event)` call now both increments a Prometheus
-    # counter AND persists to SQLite, still with no changes needed to
+    # Wrap the persisting EventLogs with counting, a composable pattern --
+    # each `.record(event)` call now both increments a Prometheus counter
+    # AND persists to SQLite, with no changes needed to
     # merge.py/ghost.py/breaker.py.
     metrics = Metrics()
     start_http_server(METRICS_PORT)
@@ -244,11 +242,9 @@ async def main() -> int:
     # station-schedule feature already constructed above, so this needs no
     # new I/O path of its own.
     completion_tracker = TripCompletionTracker(completion_log, schedule_cache.terminus_for)
-    # 05-ai-layer delay/ETA-prediction, step one (2026-08-01): the
-    # observation logger training data for that feature doesn't exist
-    # anywhere yet -- see milestones/05-ai-layer.md's "Delay/ETA
-    # prediction" section. Same terminus lookup as completion_tracker,
-    # no new I/O path here either.
+    # Delay/ETA-prediction, step one: the observation logger builds
+    # training data for that feature. Same terminus lookup as
+    # completion_tracker, no new I/O path here either.
     delay_observation_tracker = DelayObservationTracker(delay_observation_log, schedule_cache.terminus_for)
     store = StateStore(
         discrepancy_log=discrepancy_log, ghost_log=ghost_log, on_tick=metrics.record_tracked_trips,
@@ -258,7 +254,7 @@ async def main() -> int:
     gateway = GatewayClient()
     loop = PollerLoop(gateway=gateway, store=store, gap_log=gap_log)
 
-    # 05e: budget-then-trace wrapper order matters -- BudgetEnforcedLLMClient
+    # Budget-then-trace wrapper order matters -- BudgetEnforcedLLMClient
     # is the INNER wrapper so its check runs immediately before the real
     # Anthropic call, and LangfuseTracedLLMClient is OUTER so a budget-
     # blocked attempt still lands as an ERROR span (useful observability
@@ -281,28 +277,25 @@ async def main() -> int:
     tool_context = ToolContext(store=store, schedule_cache=schedule_cache)
     notify_client = httpx.AsyncClient()
 
-    # 05-ai-layer weekly performance digest (locked 2026-08-01, see
-    # milestones/05-ai-layer.md): its own SQLite content store (indefinite
+    # Weekly performance digest: its own SQLite content store (indefinite
     # retention, unlike HistoryStore's 60-day cap) and its own trigger
-    # sidecar, both under a new digests/ subdirectory alongside ai/ and
-    # gtfs/.
+    # sidecar, both under a digests/ subdirectory alongside ai/ and gtfs/.
     digests_dir = DATA_DIR / "digests"
     digest_store = WeeklyDigestStore(digests_dir / "weekly.db")
     digest_trigger = WeeklyDigestTrigger(digests_dir / "digest_trigger_state.json")
 
-    # M8 Insights (locked build order, milestones/08-analytics-insights.md):
-    # this is the FIRST thing built for the milestone, ahead of any chart
-    # UI or API route, specifically so daily rollups start accumulating
-    # immediately -- they can't be computed retroactively once a source
-    # partition ages out of the 60-day window. Indefinite retention, its
-    # own trigger sidecar, same shape as the weekly digest's own pairing.
+    # Insights rollups: built ahead of any chart UI or API route,
+    # specifically so daily rollups start accumulating immediately --
+    # they can't be computed retroactively once a source partition ages
+    # out of the 60-day window. Indefinite retention, its own trigger
+    # sidecar, same shape as the weekly digest's own pairing.
     insights_dir = DATA_DIR / "insights"
     insights_store = InsightsStore(insights_dir / "insights.db")
     insights_trigger = InsightsTrigger(insights_dir / "insights_trigger_state.json")
 
-    # M3: producer side of 2d's EventHub interface finally gets a
-    # consumer (the SSE route below) -- one hub instance, shared between
-    # the poll loop (publishes) and the API (subscribes).
+    # Producer side of the EventHub interface, consumed by the SSE route
+    # below -- one hub instance, shared between the poll loop (publishes)
+    # and the API (subscribes).
     hub = InProcessEventHub()
     # Briefings are on-demand only (POST /briefing/trigger, cost control --
     # replacing automatic per-cycle triggering). The AI stack built above is
@@ -337,12 +330,11 @@ async def main() -> int:
             result = await loop.run_cycle(cycle_start)
             metrics.record_cycle(result, loop.breaker)
             metrics.record_feed_ages(ALL_FEEDS, loop.last_changed_at)
-            # M3 finding #5's resolution: one tick per completed cycle,
-            # whatever the current cadence actually is (10s or the
-            # overnight 30-60s) -- SSE consumers see reality, not an
-            # invented fixed cadence. The value itself carries no data
-            # (see state/eventhub.py); every subscriber recomputes state
-            # fresh from `loop`/`store` when it wakes up.
+            # One tick per completed cycle, whatever the current cadence
+            # actually is (10s or the overnight 30-60s) -- SSE consumers
+            # see reality, not an invented fixed cadence. The value itself
+            # carries no data (see state/eventhub.py); every subscriber
+            # recomputes state fresh from `loop`/`store` when it wakes up.
             hub.publish(cycle_start)
 
             # Cheap check every cycle (a JSON-file read behind should_fire);
@@ -355,12 +347,12 @@ async def main() -> int:
                 weekly_digest_client, notify_client, cycle_start,
             )
 
-            # M8 Insights: also cheap when neither the finalize-yesterday nor
-            # refresh-today path is due (a JSON-file read each). Requires a
-            # pinned static snapshot -- unlike the weekly digest's narration-
-            # only degrade-to-raw-route-ids fallback, Insights' whole -R
-            # correction (never merge replacement-bus completions into a
-            # real line, see milestones/08-analytics-insights.md) depends on
+            # Insights rollups: also cheap when neither the finalize-
+            # yesterday nor refresh-today path is due (a JSON-file read
+            # each). Requires a pinned static snapshot -- unlike the
+            # weekly digest's narration-only degrade-to-raw-route-ids
+            # fallback, Insights' -R correction (never merge replacement-
+            # bus completions into a real line) depends on
             # `route_short_name` to tell the two apart. Skipping entirely
             # when nothing is pinned yet is safer than aggregating with a
             # wrong split -- retried every cycle, same as any other

@@ -3,8 +3,8 @@
 
 Retention on `history_dir` requires the file already be present in
 `backup_dir` first (see `retention.py`); `backup_dir` is pruned on the same
-rule independently. Built as a plain callable, same as 2c's `refresh_and_pin`
-precedent — host-level cron wiring is a separate ops step, not built here.
+rule independently. Built as a plain callable — host-level cron wiring is a
+separate ops step, not built here.
 """
 
 from __future__ import annotations

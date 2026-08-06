@@ -1,9 +1,8 @@
-"""Prometheus metrics (milestone 2f) — wiring, not designing: every metric
-here reads from a schema or pure function 2b/2c/2d already built. `EventLog`
-stays the seam: `CountingEventLog` composes with whatever `EventLog` it's
-given (e.g. 2e's `HistoryStore` facades), incrementing a counter then
-delegating — `merge.py`/`ghost.py`/`breaker.py` need no changes at all,
-same pattern 2e already established for persistence.
+"""Prometheus metrics — wiring, not designing: every metric here reads from
+a schema or pure function built elsewhere. `EventLog` stays the seam:
+`CountingEventLog` composes with whatever `EventLog` it's given (e.g.
+`HistoryStore` facades), incrementing a counter then delegating —
+`merge.py`/`ghost.py`/`breaker.py` need no changes at all.
 
 `Metrics` takes an explicit `CollectorRegistry` (defaulting to
 prometheus_client's global `REGISTRY`) rather than only ever using module-
@@ -23,12 +22,9 @@ from .poller.breaker import CircuitBreaker
 from .poller.loop import CycleResult
 from .state.ghost import Status, TrackedTrainView
 
-# Confirmed decision (CLAUDE.md): alert on feed header age, NEVER entity
-# count -- this threshold is the only staleness signal built here. The
-# "0-entity-but-header-advancing" suppression case from 2f's AC is satisfied
-# by construction: this metric is header-timestamp-based from the start, so
-# a legitimate zero-entity overnight cycle (header still advancing) was
-# never at risk of being read as staleness in the first place.
+# Alert on feed header age, NEVER entity count -- this threshold is the
+# only staleness signal built here. A legitimate zero-entity overnight
+# cycle (header still advancing) is never read as staleness.
 STALENESS_THRESHOLD_S = 300
 
 
@@ -73,19 +69,19 @@ class Metrics:
         )
         self.discrepancy_events_total = Counter(
             "traintracker_discrepancy_events_total",
-            "TU/VP discrepancies observed (2d's DiscrepancyEvent)",
+            "TU/VP discrepancies observed",
             registry=registry,
         )
         self.ghost_events_total = Counter(
             "traintracker_ghost_events_total",
-            "Ghost episodes resolved (2d's GhostEvent), by whether both "
-            "endpoints were City Loop-contained",
+            "Ghost episodes resolved, by whether both endpoints were "
+            "City Loop-contained",
             ["loop_contained"],
             registry=registry,
         )
         self.poll_gap_events_total = Counter(
             "traintracker_poll_gap_events_total",
-            "Circuit-breaker backoff episodes (2b's PollGapEvent)",
+            "Circuit-breaker backoff episodes",
             registry=registry,
         )
         self.feed_last_changed_timestamp = Gauge(
@@ -112,51 +108,43 @@ class Metrics:
         self.tracked_trips = Gauge(
             "traintracker_tracked_trips",
             "Trips currently held in TrainLifecycleTracker._trains, by "
-            "status -- added 2026-07-31 alongside the eviction fix for a "
-            "real unbounded-growth bug (TU-only trips never got a "
-            "last_seen_at, so never aged out); watch this stays bounded "
-            "rather than climbing, which is what the bug looked like",
+            "status -- watch this stays bounded rather than climbing "
+            "(TU-only trips that never get a last_seen_at can otherwise "
+            "never age out)",
             ["status"],
             registry=registry,
         )
         self.briefings_sent_total = Counter(
             "traintracker_briefings_sent_total",
-            "On-demand disruption briefings (POST /briefing/trigger, "
-            "2026-08-01) actually composed AND delivered -- automatic "
-            "per-cycle triggering was removed the same day this metric "
-            "lost its 'reason' label (cost control: every briefing is now "
-            "a deliberate request, not a heuristic-driven page)",
+            "On-demand disruption briefings (POST /briefing/trigger) "
+            "actually composed AND delivered -- every briefing is a "
+            "deliberate request, not a heuristic-driven page",
             registry=registry,
         )
         self.trip_completions_total = Counter(
             "traintracker_trip_completions_total",
-            "Trip-completion classifications (05-ai-layer's "
-            "TripCompletionEvent) by status -- on_time/late reuse PTV's "
-            "public 4:59 threshold (punctuality); cancelled is a separate "
-            "reliability outcome, never scored as a punctuality miss; "
-            "undetermined_gap is a trip lost to a coverage gap before "
-            "reaching its terminus, recorded honestly rather than "
-            "silently excluded, per this project's gap-honesty principle "
-            "-- whether a consuming digest surfaces that bucket is a "
-            "separate, later decision",
+            "Trip-completion classifications by status -- on_time/late "
+            "reuse PTV's public 4:59 threshold (punctuality); cancelled "
+            "is a separate reliability outcome, never scored as a "
+            "punctuality miss; undetermined_gap is a trip lost to a "
+            "coverage gap before reaching its terminus, recorded "
+            "honestly rather than silently excluded",
             ["status"],
             registry=registry,
         )
         self.delay_observations_total = Counter(
             "traintracker_delay_observations_total",
-            "Mid-journey delay observations logged (05-ai-layer's "
-            "DelayObservationEvent, 2026-08-01) -- the delay/ETA-"
+            "Mid-journey delay observations logged -- the delay/ETA-"
             "prediction feature's training-data collection step, distinct "
             "from trip_completions_total's once-per-trip terminus outcome",
             registry=registry,
         )
         self.http_requests_total = Counter(
             "traintracker_http_requests_total",
-            "HTTP requests by route template, method, and status code "
-            "(M3, reopened 2026-08-01) -- 'route' is the FastAPI route "
-            "template (e.g. /stations/{station_id}/schedule), not the "
-            "raw path, so per-station hits don't create unbounded label "
-            "cardinality",
+            "HTTP requests by route template, method, and status code -- "
+            "'route' is the FastAPI route template (e.g. "
+            "/stations/{station_id}/schedule), not the raw path, so "
+            "per-station hits don't create unbounded label cardinality",
             ["route", "method", "status"],
             registry=registry,
         )
@@ -184,7 +172,7 @@ class Metrics:
     ) -> tuple[
         CountingEventLog, CountingEventLog, CountingEventLog, CountingEventLog, CountingEventLog,
     ]:
-        """Wrap the given `EventLog`s (e.g. 2e's `HistoryStore` facades) with
+        """Wrap the given `EventLog`s (e.g. `HistoryStore` facades) with
         counting, preserving whatever persistence they already do."""
         return (
             CountingEventLog(discrepancy_log, self.discrepancy_events_total),
@@ -215,7 +203,6 @@ class Metrics:
             counts[trip.status] += 1
         # Set all three labels every call, not just non-zero ones -- an
         # always-zero status should read as a real 0 on the dashboard, not
-        # a missing series (same "or vector(0)" concern as the rate-limit
-        # alert, M3 journal).
+        # a missing series.
         for status, count in counts.items():
             self.tracked_trips.labels(status=status).set(count)

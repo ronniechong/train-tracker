@@ -1,16 +1,16 @@
 """Thin interface around whichever LLM SDK client this project uses --
-M5 kickoff's swappable-provider decision (2026-07-31): Anthropic Haiku
-today, built behind one call-site method wrapping the SDK call so a later
-provider swap (Groq/OpenRouter, if cost ever demands it) is a new adapter
-implementing this same interface, not a rewrite of every caller.
+Anthropic Haiku today, built behind one call-site method wrapping the SDK
+call so a later provider swap (Groq/OpenRouter, if cost ever demands it)
+is a new adapter implementing this same interface, not a rewrite of every
+caller.
 
-Every AI-layer caller (05b's tool-calling loop, 05e's briefings, 05f's NL
-query) routes through `LLMClient.complete()` -- Langfuse tracing and the
-budget cap (`ai/budget.py`) both wrap an `LLMClient` instance, not the raw
-Anthropic SDK client, so neither concern needs to know Anthropic specifics.
+Every AI-layer caller routes through `LLMClient.complete()` -- Langfuse
+tracing and the budget cap (`ai/budget.py`) both wrap an `LLMClient`
+instance, not the raw Anthropic SDK client, so neither concern needs to
+know Anthropic specifics.
 
-Tool-calling implementation is Anthropic SDK directly (kickoff decision:
-LangChain considered and rejected -- 3 read-only local tools with no
+Tool-calling implementation is Anthropic SDK directly (LangChain
+considered and rejected -- a few read-only local tools with no
 memory/chaining don't need `AgentExecutor`'s machinery, and the provider-
 swap benefit is already covered by this interface). `AnthropicLLMClient`
 IS that adapter boundary: everything Anthropic-specific lives here, same
@@ -28,11 +28,10 @@ import anthropic
 ANTHROPIC_API_KEY_ENV = "ANTHROPIC_API_KEY"
 HAIKU_MODEL = "claude-haiku-4-5"
 
-# Haiku 4.5 pricing (claude-api skill, cached 2026-06-24): $1.00 / $5.00
-# per MTok input/output. Used by ai/budget.py to convert a response's
-# token usage into an estimated USD cost -- this module only carries the
-# constants, since a provider swap would replace both the model id and
-# its pricing together.
+# Haiku 4.5 pricing: $1.00 / $5.00 per MTok input/output. Used by
+# ai/budget.py to convert a response's token usage into an estimated USD
+# cost -- this module only carries the constants, since a provider swap
+# would replace both the model id and its pricing together.
 HAIKU_INPUT_USD_PER_MTOK = 1.00
 HAIKU_OUTPUT_USD_PER_MTOK = 5.00
 
