@@ -9,11 +9,14 @@ exists in only one failure domain before Hugging Face becomes a genuine
 offsite copy.
 
 `/data`, `/backup` are the same fixed container-internal mount points
-`traintracker.history` already uses. `/staging` is this job's own scratch
-directory for Parquet files about to be uploaded -- not one of the
-project's existing bind mounts, since staged files are disposable
-(re-derivable from the SQLite partition at any time) rather than data of
-record.
+`traintracker.history` already uses, both READ-ONLY for this container
+(the archiver never writes to data of record). `/staging` is this job's
+own scratch directory for Parquet files about to be uploaded -- disposable,
+re-derivable from the SQLite partition at any time. `/archive-state` is a
+third, small, PERSISTENT+writable mount holding only the gap/failure
+report (`report.py`) -- the one piece of local state this container needs
+that must survive a restart; catch-up itself needs no state file since it
+diffs against Hugging Face's own listing every run.
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ..redaction import configure_logging
+from .report import prune_gap_report
 from .run import run_archive_pass
 
 logger = logging.getLogger("traintracker.archive")
@@ -31,6 +35,7 @@ logger = logging.getLogger("traintracker.archive")
 DATA_DIR = Path("/data")
 BACKUP_DIR = Path("/backup")
 STAGING_DIR = Path("/staging")
+ARCHIVE_STATE_DIR = Path("/archive-state")
 
 HF_TOKEN_ENV = "HF_TOKEN"
 HF_DATASET_REPO_ENV = "HF_DATASET_REPO"
@@ -52,14 +57,17 @@ def main() -> int:
         )
         return 1
 
+    now = datetime.now(timezone.utc)
+    report_path = ARCHIVE_STATE_DIR / "archive_gap_report.jsonl"
+
     result = run_archive_pass(
         history_dir=DATA_DIR / "history",
         backup_dir=BACKUP_DIR,
         staging_dir=STAGING_DIR,
-        report_path=DATA_DIR / "archive_gap_report.jsonl",
+        report_path=report_path,
         repo_id=repo_id,
         token=token,
-        now=datetime.now(timezone.utc),
+        now=now,
     )
 
     logger.info(
@@ -69,6 +77,10 @@ def main() -> int:
     )
     if result.failed:
         logger.warning("unarchived days this pass: %s", [d.isoformat() for d in result.failed])
+
+    pruned = prune_gap_report(report_path, now)
+    if pruned:
+        logger.info("pruned %d gap report entries older than 6 months", pruned)
     return 0
 
 

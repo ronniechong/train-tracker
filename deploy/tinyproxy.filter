@@ -25,3 +25,11 @@
 # the poller. Added ahead of real key generation; verify still correct once
 # a Flagsmith environment actually exists.
 ^edge\.api\.flagsmith\.com$
+# 8. Hugging Face archive pipeline (M9) — huggingface_hub's real upload
+# path hits TWO hosts, not one: the main API, and a separate "xet"
+# storage/CDN backend that actually carries the file bytes. Confirmed by
+# routing a real (test) upload through a logging proxy 2026-08-07 rather
+# than guessed — a single-hostname filter would have silently broken real
+# uploads. Only the archiver service calls these, not the poller.
+^huggingface\.co$
+^cas-server\.xethub\.hf\.co$

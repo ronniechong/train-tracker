@@ -118,6 +118,72 @@ services:
       # network purposes, not one network doing double duty.
       - ingress
 
+  # M9 (2026-08-07): the Hugging Face archive pipeline. A dedicated
+  # service, NOT a `docker compose run --entrypoint ... poller` override
+  # like `history`'s nightly job uses -- `poller` needs /data writable for
+  # its own writes, but the archiver must never write to data of record
+  # (milestone's read-only-consumer principle), so it needs its own
+  # volume declarations with `:ro` where `poller`'s can't have them. Same
+  # image/build context as `poller` though -- one codebase, no second
+  # image to build/maintain, matching `history`'s own precedent of reusing
+  # the image even where the entrypoint differs.
+  #
+  # No `restart:` policy -- this is a one-shot job, not a long-running
+  # daemon. Invoked by host cron (`docker compose run --rm archiver`) in
+  # the SAME nightly slot as the existing backup/retention job (milestone
+  # decision, 2026-08-07), not an independent schedule -- shrinks the
+  # window where a day's data exists in only one failure domain (this
+  # host) before Hugging Face becomes a genuine offsite copy. Host cron
+  # wiring itself is a separate ops step, same gap `history`'s own nightly
+  # job left open (see `ops/homeserver-cron.md`).
+  archiver:
+    build:
+      context: ../service
+      dockerfile: Dockerfile
+    entrypoint: ["python", "-m", "traintracker.archive"]
+    read_only: true
+    tmpfs:
+      - /tmp
+      # Disposable Parquet staging (milestone decision, 2026-08-07):
+      # every staged file is re-derivable from the SQLite partition at
+      # any time, so it deliberately does NOT survive a container
+      # restart or an unplanned host reboot (this homeserver is not a
+      # dedicated hosting box). An interrupted run just leaves that day
+      # "not yet fully archived" -- the next scheduled run's catch-up
+      # diff (upload.py's `archived_days` vs local closed days) picks up
+      # exactly where it left off, per table, with no special recovery
+      # needed.
+      - /staging
+    environment:
+      HF_TOKEN: ${HF_TOKEN:?HF_TOKEN must be set in deploy/.env}
+      HF_DATASET_REPO: ${HF_DATASET_REPO:?HF_DATASET_REPO must be set in deploy/.env}
+      # Same shared egress-proxy every other SaaS integration in this
+      # project uses (Anthropic, Langfuse, Slack, Flagsmith) -- option A
+      # from the milestone's egress decision, not a second dedicated
+      # proxy. tinyproxy.filter allowlists huggingface.co AND
+      # cas-server.xethub.hf.co (Xet storage backend, verified live via a
+      # logging proxy 2026-08-07 -- a single-hostname filter would have
+      # silently broken real uploads).
+      HTTP_PROXY: http://egress-proxy:8888
+      HTTPS_PROXY: http://egress-proxy:8888
+      NO_PROXY: "localhost,127.0.0.1"
+    volumes:
+      # Read-only: the archiver never writes to data of record (invariant
+      # from the milestone's "read-only consumer of immutable artifacts"
+      # architecture principle) -- unlike `poller`'s own /data mount above,
+      # which must stay writable for its own writes.
+      - ${TT_DATA_DIR:-./data}:/data:ro
+      - ${TT_BACKUP_DIR:-./backup}:/backup:ro
+      # The one piece of local state this container needs to persist
+      # across runs: the gap/failure report only (report.py), pruned to
+      # ~6 months. Deliberately separate from /data (read-only) and
+      # /staging (ephemeral) -- neither could hold it.
+      - ${TT_ARCHIVE_STATE_DIR:-./archive-state}:/archive-state
+    depends_on:
+      - egress-proxy
+    networks:
+      - internal
+
   # M3: sole reverse-proxy ingress into the FastAPI/SSE app (invariant 4).
   # Joins `ingress` to reach `poller` and `public` for its own outbound
   # route -- the latter exists only because the `tailscale` sidecar below
