@@ -132,6 +132,11 @@ services:
     environment:
       HF_TOKEN: ${HF_TOKEN:?HF_TOKEN must be set in deploy/.env}
       HF_DATASET_REPO: ${HF_DATASET_REPO:?HF_DATASET_REPO must be set in deploy/.env}
+      # huggingface_hub's Xet upload backend writes a local cache; the
+      # image's default $HOME (/app) sits on the read-only root FS, so
+      # without this it fails every upload with "Read-only file system".
+      # Point it at the /tmp tmpfs mount instead.
+      HOME: /tmp
       # Same shared egress-proxy every other SaaS integration in this
       # project uses (Anthropic, Langfuse, Slack, Flagsmith), not a second
       # dedicated proxy. tinyproxy.filter allowlists huggingface.co AND
