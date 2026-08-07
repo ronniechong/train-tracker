@@ -1,4 +1,18 @@
+---
+pretty_name: train-tracker Historical Archive
+tags:
+  - public-transit
+  - melbourne
+  - time-series
+language: en
+---
+
 # Dataset Card — train-tracker historical archive
+
+**Note on the metadata block above:** deliberately does not include a
+`license` field yet — that stays undecided until this repo's future
+public-flip legal review (Terms of Use check, attribution wording), so
+this card doesn't imply a licence has been settled when it hasn't.
 
 This document explains what's inside this dataset and how to read it
 correctly. It assumes no prior knowledge of Melbourne's train data or of
