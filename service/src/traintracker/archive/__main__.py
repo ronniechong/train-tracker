@@ -12,20 +12,26 @@ failure domain before Hugging Face becomes a genuine offsite copy.
 (the archiver never writes to data of record). `/staging` is this job's
 own scratch directory for Parquet files about to be uploaded -- disposable,
 re-derivable from the SQLite partition at any time. `/archive-state` is a
-third, small, PERSISTENT+writable mount holding only the gap/failure
-report (`report.py`) -- the one piece of local state this container needs
-that must survive a restart; catch-up itself needs no state file since it
-diffs against Hugging Face's own listing every run.
+third, small, PERSISTENT+writable mount holding the gap/failure report
+(`report.py`) and, as of the observability task, a node_exporter textfile-
+collector metrics file (`metrics.py`) under `/archive-state/metrics/` --
+same mount, since both are small persistent state this container needs
+that must survive a restart.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+import httpx
+
+from ..poller.healthcheck import ping
 from ..redaction import configure_logging
+from .metrics import write_textfile_metrics
 from .report import prune_gap_report
 from .run import run_archive_pass
 
@@ -35,9 +41,17 @@ DATA_DIR = Path("/data")
 BACKUP_DIR = Path("/backup")
 STAGING_DIR = Path("/staging")
 ARCHIVE_STATE_DIR = Path("/archive-state")
+METRICS_PATH = ARCHIVE_STATE_DIR / "metrics" / "archiver.prom"
 
 HF_TOKEN_ENV = "HF_TOKEN"
 HF_DATASET_REPO_ENV = "HF_DATASET_REPO"
+
+# Own dedicated healthchecks.io check, deliberately separate from the
+# poller's `TT_DEADMAN_PING_URL` -- this is a nightly batch job, not the
+# realtime poll loop, and conflating the two checks would mean a single
+# missed archiver run and a genuine poller outage look identical on the
+# monitoring side.
+ARCHIVE_DEADMAN_PING_URL_ENV = "TT_ARCHIVE_DEADMAN_PING_URL"
 
 
 def main() -> int:
@@ -69,9 +83,10 @@ def main() -> int:
     )
 
     logger.info(
-        "archive pass: archived=%d recovered_from_backup=%d failed=%d drift_findings=%d",
+        "archive pass: archived=%d recovered_from_backup=%d failed=%d drift_findings=%d "
+        "upload_retry_failures=%d",
         len(result.archived), len(result.recovered_from_backup),
-        len(result.failed), len(result.drift_findings),
+        len(result.failed), len(result.drift_findings), result.upload_retry_failures,
     )
     if result.failed:
         logger.warning("unarchived days this pass: %s", [d.isoformat() for d in result.failed])
@@ -79,7 +94,21 @@ def main() -> int:
     pruned = prune_gap_report(report_path, now)
     if pruned:
         logger.info("pruned %d gap report entries older than 6 months", pruned)
+
+    write_textfile_metrics(METRICS_PATH, result, now)
+
+    # Pings on every completed pass, including ones that left some days
+    # pending -- this check answers "did the archiver container itself run
+    # to completion" (host/cron/image health), a distinct signal from data
+    # backlog, which the days-pending/safety-net Grafana alerts cover.
+    asyncio.run(_ping_deadman())
+
     return 0
+
+
+async def _ping_deadman() -> None:
+    async with httpx.AsyncClient() as client:
+        await ping(client, os.environ.get(ARCHIVE_DEADMAN_PING_URL_ENV))
 
 
 if __name__ == "__main__":

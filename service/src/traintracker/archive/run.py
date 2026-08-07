@@ -26,7 +26,7 @@ from ..history.retention import RETENTION_DAYS, is_partition_closed, partition_s
 from .compact import compact_partition
 from .drift import DriftFinding, detect_drift
 from .report import GapReportEntry, append_gap_report
-from .upload import archived_days, is_day_fully_archived, upload_day
+from .upload import UploadStats, archived_days, is_day_fully_archived, upload_day
 from .write import write_staged_parquet
 
 logger = logging.getLogger("traintracker.archive.run")
@@ -43,6 +43,7 @@ class ArchiveRunResult:
     failed: tuple[date, ...]
     recovered_from_backup: tuple[date, ...]
     drift_findings: tuple[DriftFinding, ...]
+    upload_retry_failures: int
 
 
 def _closed_local_days(history_dir: Path, backup_dir: Path, now: datetime) -> list[date]:
@@ -99,6 +100,7 @@ def run_archive_pass(
     failed: list[date] = []
     recovered: list[date] = []
     drift_findings: list[DriftFinding] = []
+    upload_stats = UploadStats()
 
     for service_date in closed_days:
         if is_day_fully_archived(archived, service_date):
@@ -144,7 +146,7 @@ def run_archive_pass(
         drift_findings.extend(findings)
 
         staged = write_staged_parquet(tables, staging_dir, service_date)
-        upload_day(repo_id, token, staged, service_date)
+        upload_day(repo_id, token, staged, service_date, stats=upload_stats)
         archived_ok.append(service_date)
         logger.info("archived service_date=%s", service_date)
 
@@ -153,4 +155,5 @@ def run_archive_pass(
         failed=tuple(failed),
         recovered_from_backup=tuple(recovered),
         drift_findings=tuple(drift_findings),
+        upload_retry_failures=upload_stats.retry_failures,
     )

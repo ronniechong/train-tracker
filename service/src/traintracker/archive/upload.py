@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import time
 from collections import defaultdict
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
@@ -26,6 +27,17 @@ REPO_TYPE = "dataset"
 
 _UPLOAD_ATTEMPTS = 3
 _UPLOAD_BACKOFF_SECONDS = 5.0
+
+
+@dataclass
+class UploadStats:
+    """Mutable counter threaded through a run: every failed attempt (not
+    just a day's final exhausted failure) counts, so a flaky-but-eventually-
+    successful upload still shows up in `archive_upload_errors_total` --
+    the metric answers "how much retrying happened", not just "how many
+    days are unarchived" (that's `archive_days_pending`, a separate signal)."""
+
+    retry_failures: int = field(default=0)
 
 
 def remote_path(table: str, service_date: date) -> str:
@@ -71,6 +83,7 @@ def _upload_with_retry(
     commit_message: str,
     attempts: int = _UPLOAD_ATTEMPTS,
     backoff_seconds: float = _UPLOAD_BACKOFF_SECONDS,
+    stats: UploadStats | None = None,
 ) -> None:
     last_error: Exception | None = None
     for attempt in range(attempts):
@@ -86,6 +99,8 @@ def _upload_with_retry(
             return
         except Exception as exc:  # noqa: BLE001 -- retried uniformly, re-raised if exhausted
             last_error = exc
+            if stats is not None:
+                stats.retry_failures += 1
             logger.warning(
                 "upload attempt %d/%d failed for %s: %s", attempt + 1, attempts, path_in_repo, exc
             )
@@ -96,7 +111,11 @@ def _upload_with_retry(
 
 
 def upload_day(
-    repo_id: str, token: str, staged_paths: dict[str, Path], service_date: date
+    repo_id: str,
+    token: str,
+    staged_paths: dict[str, Path],
+    service_date: date,
+    stats: UploadStats | None = None,
 ) -> None:
     """Upload every staged table file for one service day. Each table is
     its own `upload_file` commit (see module docstring) -- a partial
@@ -113,4 +132,5 @@ def upload_day(
             repo_id=repo_id,
             token=token,
             commit_message=f"archive {service_date.isoformat()}: {table}",
+            stats=stats,
         )

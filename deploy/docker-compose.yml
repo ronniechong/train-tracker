@@ -132,6 +132,12 @@ services:
     environment:
       HF_TOKEN: ${HF_TOKEN:?HF_TOKEN must be set in deploy/.env}
       HF_DATASET_REPO: ${HF_DATASET_REPO:?HF_DATASET_REPO must be set in deploy/.env}
+      # Own dedicated healthchecks.io check, deliberately separate from
+      # the poller's TT_DEADMAN_PING_URL above — same `hc-ping.com` host
+      # (already allowlisted), different check ID, so a missed nightly
+      # archiver run and a genuine poller outage don't look identical.
+      # Optional like the poller's own — ping() fails soft if unset.
+      TT_ARCHIVE_DEADMAN_PING_URL: ${TT_ARCHIVE_DEADMAN_PING_URL:-}
       # huggingface_hub's Xet upload backend writes a local cache; the
       # image's default $HOME (/app) sits on the read-only root FS, so
       # without this it fails every upload with "Read-only file system".
@@ -151,9 +157,12 @@ services:
       # own writes.
       - ${TT_DATA_DIR:-./data}:/data:ro
       - ${TT_BACKUP_DIR:-./backup}:/backup:ro
-      # The one piece of local state this container needs to persist across
-      # runs: the gap/failure report only (report.py), pruned to ~6 months.
-      # Deliberately separate from /data (read-only) and /staging
+      # The small local state this container needs to persist across runs:
+      # the gap/failure report (report.py, pruned to ~6 months) and a
+      # node_exporter textfile-collector metrics file (metrics.py, under
+      # metrics/) — the shared host's node-exporter is configured
+      # (ops-side, outside this repo) to watch this same host path for
+      # the .prom file. Deliberately separate from /data (read-only) and /staging
       # (ephemeral) — neither could hold it.
       - ${TT_ARCHIVE_STATE_DIR:-./archive-state}:/archive-state
     depends_on:

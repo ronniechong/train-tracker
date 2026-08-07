@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from traintracker.archive.upload import (
+    UploadStats,
     archived_days,
     is_day_fully_archived,
     remote_path,
@@ -99,3 +100,19 @@ def test_upload_day_raises_after_exhausting_retries(mock_hf_api_cls, mock_sleep,
     with pytest.raises(RuntimeError):
         upload_day("whitemanjuu/train-tracker", "fake-token", staged, date(2026, 8, 7))
     assert mock_api.upload_file.call_count == 3
+
+
+@patch("traintracker.archive.upload.time.sleep")
+@patch("traintracker.archive.upload.HfApi")
+def test_upload_day_stats_count_every_failed_attempt(mock_hf_api_cls, mock_sleep, tmp_path):
+    mock_api = MagicMock()
+    mock_api.upload_file.side_effect = [RuntimeError("blip"), None]
+    mock_hf_api_cls.return_value = mock_api
+
+    staged = {"ghost_events": tmp_path / "ghost.parquet"}
+    staged["ghost_events"].write_bytes(b"fake parquet bytes")
+
+    stats = UploadStats()
+    upload_day("whitemanjuu/train-tracker", "fake-token", staged, date(2026, 8, 7), stats=stats)
+
+    assert stats.retry_failures == 1
