@@ -27,9 +27,10 @@ def _make_closed_partition(history_dir, service_date, trip_id="t1"):
     store.close()
 
 
+@patch("traintracker.archive.run.record_empty_day")
 @patch("traintracker.archive.run.upload_day")
 @patch("traintracker.archive.run.archived_days")
-def test_archives_a_new_closed_day(mock_archived_days, mock_upload_day, tmp_path):
+def test_archives_a_new_closed_day(mock_archived_days, mock_upload_day, mock_record_empty_day, tmp_path):
     history_dir, backup_dir, staging_dir = tmp_path / "history", tmp_path / "backup", tmp_path / "staging"
     _make_closed_partition(history_dir, date(2026, 7, 20))
     mock_archived_days.return_value = {}
@@ -43,12 +44,16 @@ def test_archives_a_new_closed_day(mock_archived_days, mock_upload_day, tmp_path
     assert result.archived == (date(2026, 7, 20),)
     assert result.failed == ()
     mock_upload_day.assert_called_once()
+    # only discrepancy_events had a row -- the other four tables are
+    # genuinely empty and get a manifest entry instead of a Parquet file.
+    assert mock_record_empty_day.call_count == 4
 
 
+@patch("traintracker.archive.run.record_empty_day")
 @patch("traintracker.archive.run.upload_day")
 @patch("traintracker.archive.run.archived_days")
 def test_drift_findings_surface_but_do_not_block_archiving(
-    mock_archived_days, mock_upload_day, tmp_path
+    mock_archived_days, mock_upload_day, mock_record_empty_day, tmp_path
 ):
     history_dir, backup_dir, staging_dir = tmp_path / "history", tmp_path / "backup", tmp_path / "staging"
     store = HistoryStore(history_dir)
@@ -96,10 +101,11 @@ def test_already_archived_day_is_skipped(mock_archived_days, mock_upload_day, tm
     mock_upload_day.assert_not_called()
 
 
+@patch("traintracker.archive.run.record_empty_day")
 @patch("traintracker.archive.run.upload_day")
 @patch("traintracker.archive.run.archived_days")
 def test_self_heals_from_backup_when_live_partition_is_missing(
-    mock_archived_days, mock_upload_day, tmp_path
+    mock_archived_days, mock_upload_day, mock_record_empty_day, tmp_path
 ):
     history_dir, backup_dir, staging_dir = tmp_path / "history", tmp_path / "backup", tmp_path / "staging"
     backup_dir.mkdir(parents=True)

@@ -26,7 +26,7 @@ from ..history.retention import RETENTION_DAYS, is_partition_closed, partition_s
 from .compact import compact_partition
 from .drift import DriftFinding, detect_drift
 from .report import GapReportEntry, append_gap_report
-from .upload import UploadStats, archived_days, is_day_fully_archived, upload_day
+from .upload import UploadStats, archived_days, is_day_fully_archived, record_empty_day, upload_day
 from .write import write_staged_parquet
 
 logger = logging.getLogger("traintracker.archive.run")
@@ -145,8 +145,11 @@ def run_archive_pass(
             )
         drift_findings.extend(findings)
 
-        staged = write_staged_parquet(tables, staging_dir, service_date)
-        upload_day(repo_id, token, staged, service_date, stats=upload_stats)
+        staged, empty_tables = write_staged_parquet(tables, staging_dir, service_date)
+        if staged:
+            upload_day(repo_id, token, staged, service_date, stats=upload_stats)
+        for table in empty_tables:
+            record_empty_day(repo_id, token, table, service_date)
         archived_ok.append(service_date)
         logger.info("archived service_date=%s", service_date)
 

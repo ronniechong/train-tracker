@@ -6,10 +6,24 @@ Atomic commit: a single `upload_file` call per table per day -- sufficient
 as long as the static-snapshot storage decision gate stays "inline per
 day". If that gate later resolves to deduplicated storage, a day's archive
 may need a multi-file commit; revisit this module then, not before.
+
+`write.py` skips writing a Parquet file for a table with zero rows for the
+day (a zero-row file is what broke `datasets.load_dataset()` in the
+2026-08-08 incident). That means "does a file exist" can no longer answer
+"was this table archived" on its own -- a genuinely empty table would
+never get a file and `is_day_fully_archived` would say "not yet" forever,
+making every archiver run re-upload the day's other tables in an endless
+loop. `_empty_days_manifest_path`/`record_empty_day`/`archived_days`
+close that gap with one small JSON manifest per table
+(`data/<table>/_empty_days.json`, a sorted list of ISO dates) recording
+"ran, genuinely zero rows" -- distinct from both "has a file" and
+"never ran" (the latter stays covered by the existing staleness/gap
+observability, unrelated to this manifest).
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from collections import defaultdict
@@ -18,6 +32,7 @@ from datetime import date
 from pathlib import Path
 
 from huggingface_hub import HfApi
+from huggingface_hub.errors import EntryNotFoundError
 
 from .schema import TABLE_SCHEMAS
 
@@ -49,10 +64,49 @@ def remote_path(table: str, service_date: date) -> str:
     )
 
 
+def _empty_days_manifest_path(table: str) -> str:
+    return f"data/{table}/_empty_days.json"
+
+
+def _load_empty_days(repo_id: str, token: str, table: str) -> set[date]:
+    api = HfApi()
+    try:
+        local_path = api.hf_hub_download(
+            repo_id=repo_id,
+            repo_type=REPO_TYPE,
+            token=token,
+            filename=_empty_days_manifest_path(table),
+        )
+    except EntryNotFoundError:
+        return set()
+    with open(local_path) as f:
+        raw = json.load(f)
+    return {date.fromisoformat(d) for d in raw}
+
+
+def record_empty_day(repo_id: str, token: str, table: str, service_date: date) -> None:
+    """Mark `table` as genuinely zero-row for `service_date` -- called
+    instead of uploading a Parquet file for it (see module docstring)."""
+    existing = _load_empty_days(repo_id, token, table)
+    existing.add(service_date)
+    payload = json.dumps(sorted(d.isoformat() for d in existing), indent=2)
+    api = HfApi()
+    api.upload_file(
+        path_or_fileobj=payload.encode(),
+        path_in_repo=_empty_days_manifest_path(table),
+        repo_id=repo_id,
+        repo_type=REPO_TYPE,
+        token=token,
+        commit_message=f"archive {service_date.isoformat()}: {table} empty (0 rows)",
+    )
+
+
 def archived_days(repo_id: str, token: str) -> dict[str, set[date]]:
     """table -> set of service_dates already present in the repo, parsed
-    from the repo's own file listing. One HTTP call for the whole repo,
-    not per table/day -- cheap enough to call once per archiver run."""
+    from the repo's own file listing, unioned with each table's empty-days
+    manifest (see module docstring). One file-listing HTTP call for the
+    whole repo, plus one manifest download per table -- cheap enough to
+    call once per archiver run."""
     api = HfApi()
     files = api.list_repo_files(repo_id=repo_id, repo_type=REPO_TYPE, token=token)
     result: dict[str, set[date]] = defaultdict(set)
@@ -66,6 +120,7 @@ def archived_days(repo_id: str, token: str) -> dict[str, set[date]]:
                 result[table].add(date.fromisoformat(stem))
             except ValueError:
                 continue  # not one of our own files; leave it alone
+        result[table] |= _load_empty_days(repo_id, token, table)
     return dict(result)
 
 
