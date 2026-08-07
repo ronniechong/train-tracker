@@ -181,6 +181,105 @@ groups:
               from: 0
               to: 0
 
+      - uid: archiver-pending-backlog
+        title: "Archiver: pending backlog over 2 days"
+        condition: C
+        for: 5m
+        labels:
+          severity: warning
+          project: train-tracker
+        annotations:
+          summary: "More than 2 closed days are unarchived as of the last archiver pass -- see archive_days_pending / the gap report in /archive-state."
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            model:
+              expr: "archive_days_pending"
+              instant: true
+              refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [2]
+              refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+
+      - uid: archiver-safety-net-breach
+        title: "Archiver: 53-day safety-net breach"
+        condition: C
+        for: 5m
+        labels:
+          severity: critical
+          project: train-tracker
+        annotations:
+          summary: "A day has gone unarchived past run.py's SAFETY_NET_DAYS (RETENTION_DAYS-7=53) -- real risk of permanent data loss once 60-day retention deletes the local partition before Hugging Face has a copy. Milestone 09's doc text said 23 days -- that was stale, written before retention moved from 30 to 60 days; this alert uses the real code constant."
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            model:
+              expr: "archive_days_pending_oldest_age_days"
+              instant: true
+              refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [53]
+              refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+
+      - uid: archiver-missed-run
+        title: "Archiver: missed nightly run"
+        condition: C
+        for: 5m
+        labels:
+          severity: warning
+          project: train-tracker
+        annotations:
+          summary: "The archiver hasn't completed a pass in over 27 hours (one 03:30 nightly slot plus slack) -- cron may be broken, the container may be failing to start, or the host may be down."
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            model:
+              expr: "time() - archive_last_run_timestamp_seconds"
+              instant: true
+              refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [97200]
+              refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+
       - uid: disk-headroom
         title: "Disk headroom below 15% free"
         condition: C

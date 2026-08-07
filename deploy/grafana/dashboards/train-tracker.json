@@ -564,6 +564,181 @@
           "refId": "A"
         }
       ]
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Archiver: days pending (backlog)",
+      "description": "Days pending threshold for the pending>2 Slack alert. Fed by node_exporter's textfile collector, not a live scrape -- the archiver is a one-shot nightly job, so this only updates once/night.",
+      "gridPos": {
+        "x": 0,
+        "y": 84,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 2
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "archive_days_pending",
+          "legendFormat": "days pending",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Archiver: oldest pending day age",
+      "description": "Age of the oldest currently-unarchived day. Alert threshold: 53 days (RETENTION_DAYS=60 minus the 7-day buffer in run.py's SAFETY_NET_DAYS) -- milestone 09's doc text says '23-day safety net', which is stale, written before retention was extended from 30 to 60 days; this panel and its alert use the real code constant.",
+      "gridPos": {
+        "x": 12,
+        "y": 84,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 23
+              },
+              {
+                "color": "red",
+                "value": 53
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "archive_days_pending_oldest_age_days",
+          "legendFormat": "oldest pending age",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "Archiver: time since last completed run",
+      "description": "Alert (archiver-missed-run): fires when this exceeds ~27h -- one nightly run (03:30) plus slack for a delayed cron/host restart, before treating it as a genuinely missed run.",
+      "gridPos": {
+        "x": 0,
+        "y": 92,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 97200
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "time() - archive_last_run_timestamp_seconds",
+          "legendFormat": "time since last run",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "Archiver: upload retry failures (last pass)",
+      "description": "Every failed upload attempt in the last pass, including ones that eventually succeeded on retry (see upload.py's UploadStats).",
+      "gridPos": {
+        "x": 12,
+        "y": 92,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "archive_upload_retry_failures_total",
+          "legendFormat": "retry failures",
+          "refId": "A"
+        }
+      ]
     }
   ]
 }
