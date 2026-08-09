@@ -15,6 +15,18 @@
   font-size: var(--font-size-xs);
 }
 
+/* Per-tab disclaimer at the bottom of the Announcements modal body --
+   source/methodology notes, not primary content, so it's styled quieter
+   than the tab content above it. */
+.fineprint {
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-dim);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
 .recenterButton {
   width: 100%;
   padding: 0.45rem 0.6rem;

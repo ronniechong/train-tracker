@@ -53,8 +53,25 @@ function AnnouncementsBody() {
   return (
     <>
       <Tabs tabs={tabs} activeId={activeTab} onChange={setActiveTab} />
-      {activeTab === 'weekly' && <WeeklyDigestPanel />}
-      {activeTab === 'alerts' && <AlertsPanel alerts={alerts} loading={loading} error={error} />}
+      {activeTab === 'weekly' && (
+        <>
+          <WeeklyDigestPanel />
+          <p className={styles.fineprint}>
+            Not sourced from PTV. On-time % is calculated by this project from Victoria's GTFS-Realtime feed,
+            using PTV's own public punctuality definition (arrival within 4:59 of scheduled time at the
+            terminus); cancelled trips count as not on time.
+          </p>
+        </>
+      )}
+      {activeTab === 'alerts' && (
+        <>
+          <AlertsPanel alerts={alerts} loading={loading} error={error} />
+          <p className={styles.fineprint}>
+            Alerts are pulled directly from Victoria's GTFS-Realtime Service Alerts feed, the same source PTV's
+            own apps use — shown here as published, not edited or filtered.
+          </p>
+        </>
+      )}
     </>
   )
 }
