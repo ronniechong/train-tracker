@@ -105,6 +105,39 @@ groups:
               from: 0
               to: 0
 
+      - uid: poller-crash-loop
+        title: "poller crash-loop (restarting faster than sustained-down can detect)"
+        condition: C
+        for: 2m
+        labels:
+          severity: critical
+          project: train-tracker
+        annotations:
+          summary: "The poller process has restarted more than twice in 15 minutes. This catches crash-loops that poller-down misses -- a container that dies and is restarted by Docker within seconds never holds up==0 for poller-down's required 2m window, so a real outage can flap invisibly. Added 2026-08-09 after a live incident (ghost_events schema drift) that crash-looped for ~45min with zero alert firing."
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            model:
+              expr: "changes(process_start_time_seconds{job=\"train-tracker-poller\"}[15m])"
+              instant: true
+              refId: A
+            relativeTimeRange:
+              from: 900
+              to: 0
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [2]
+              refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+
       - uid: rate-limit-abuse
         title: "High rate of rejected requests (possible DDoS/abuse)"
         condition: C
