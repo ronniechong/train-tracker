@@ -142,10 +142,17 @@ def _entity_matches(
 def _newest_first_key(alert: Alert) -> tuple[bool, datetime]:
     """GTFS-RT alerts carry no "published"/"created" timestamp -- an
     alert's `active_period.start` (when it began being relevant) is the
-    closest real signal for "how recently did this show up." An alert can
-    have several periods (e.g. recurring weekend trackwork); the latest
-    start across them is what a reader would call this alert's most recent
-    activation.
+    closest real signal for "how recently did this show up."
+
+    Uses the EARLIEST start across an alert's periods, deliberately matching
+    `AlertsPanel.tsx`'s own `since()` helper (the "since <time>" label shown
+    next to each alert) rather than the latest -- an initial version of this
+    used the latest period start, which looked visibly unsorted once real
+    recurring multi-period alerts hit the UI: the on-screen "since" times
+    didn't move in the same direction as the list order, because the two
+    were reading different fields off the same alert. Keeping both readings
+    of "how recent" pinned to the same field is the fix, not picking a
+    "more correct" definition of recency in the abstract.
 
     Alerts with no known start at all -- either no `active_period` (the
     GTFS-RT spec's "always active" case, `is_active`'s own docstring notes
@@ -157,7 +164,7 @@ def _newest_first_key(alert: Alert) -> tuple[bool, datetime]:
     starts = [p.start for p in alert.active_periods if p.start is not None]
     if not starts:
         return (False, datetime.min.replace(tzinfo=timezone.utc))
-    return (True, max(starts))
+    return (True, min(starts))
 
 
 def alerts_matching(

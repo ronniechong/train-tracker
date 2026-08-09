@@ -25,14 +25,12 @@ describe('WeeklyDigestPanel', () => {
   it('renders loading state', () => {
     mockUseWeeklyDigests.mockReturnValue({ digests: [], loading: true, error: false })
     render(<WeeklyDigestPanel />)
-    expect(screen.getByText('Weekly performance')).toBeInTheDocument()
     expect(screen.getByText('Loading weekly digest…')).toBeInTheDocument()
   })
 
   it('renders empty state', () => {
     mockUseWeeklyDigests.mockReturnValue({ digests: [], loading: false, error: false })
     render(<WeeklyDigestPanel />)
-    expect(screen.getByText('Weekly performance')).toBeInTheDocument()
     expect(screen.getByText(/No weekly digest yet/)).toBeInTheDocument()
   })
 
@@ -56,7 +54,6 @@ describe('WeeklyDigestPanel', () => {
       error: false,
     })
     render(<WeeklyDigestPanel />)
-    expect(screen.getByText('Weekly performance')).toBeInTheDocument()
     expect(screen.getByText('28 Jul – 3 Aug 2026')).toBeInTheDocument()
   })
 

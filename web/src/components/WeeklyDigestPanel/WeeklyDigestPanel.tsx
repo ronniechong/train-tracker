@@ -85,7 +85,10 @@ export function WeeklyDigestPanel() {
   const [latest, ...past] = digests
 
   return (
-    <Section title="Weekly performance">
+    // No title -- the Announcements modal's "Weekly performance" tab label
+    // (Sidebar.tsx) already says this; a second heading inside the tab
+    // body would just repeat it (2026-08-09).
+    <Section>
       {loading && <Placeholder>Loading weekly digest…</Placeholder>}
       {!loading && !latest && (
         <Placeholder>No weekly digest yet — the first one posts Monday 8am</Placeholder>

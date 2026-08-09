@@ -1,7 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Sidebar } from './Sidebar'
+import { useAlerts } from '../../hooks/useAlerts'
 import type { LiveState } from '../../hooks/useLiveFeed'
+
+const mockUseAlerts = vi.mocked(useAlerts)
 
 // Mock hooks
 vi.mock('../../hooks/useAttribution', () => ({
@@ -9,6 +13,10 @@ vi.mock('../../hooks/useAttribution', () => ({
     attribution: { source: 'PTV', license: 'CC BY 4.0', license_url: '', note: '' },
     loading: false,
   })),
+}))
+
+vi.mock('../../hooks/useAlerts', () => ({
+  useAlerts: vi.fn(() => ({ alerts: [], loading: false, error: false })),
 }))
 
 // Mock child components
@@ -119,5 +127,48 @@ describe('Sidebar', () => {
     const { container } = render(<Sidebar {...defaultProps} open={false} />)
     const sidebar = container.firstChild as HTMLElement
     expect(sidebar.className).not.toContain('open')
+  })
+
+  it('opens the Announcements modal on Weekly performance by default', async () => {
+    const user = userEvent.setup()
+    render(<Sidebar {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: 'Announcements' }))
+
+    expect(screen.getByTestId('modal')).toBeInTheDocument()
+    expect(screen.getByTestId('weekly-digest-panel')).toBeInTheDocument()
+    expect(screen.queryByTestId('alerts-panel')).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Weekly performance' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('switches to Service alerts when that tab is clicked', async () => {
+    const user = userEvent.setup()
+    render(<Sidebar {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: 'Announcements' }))
+    await user.click(screen.getByRole('tab', { name: 'Service alerts' }))
+
+    expect(screen.getByTestId('alerts-panel')).toBeInTheDocument()
+    expect(screen.queryByTestId('weekly-digest-panel')).not.toBeInTheDocument()
+  })
+
+  it('shows the alert count in the tab label as soon as the modal opens', async () => {
+    mockUseAlerts.mockReturnValue({
+      alerts: [
+        { id: '1', effect: 'NO_SERVICE', header_text: 'Alert 1', cause: null, description_text: null, url: null, active_periods: [], informed_entities: [] },
+        { id: '2', effect: 'DETOUR', header_text: 'Alert 2', cause: null, description_text: null, url: null, active_periods: [], informed_entities: [] },
+      ],
+      loading: false,
+      error: false,
+    })
+    const user = userEvent.setup()
+    render(<Sidebar {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: 'Announcements' }))
+
+    // Count shows up on the tab label without needing to switch to it --
+    // AlertsPanel itself is still on the (default) Weekly performance tab.
+    expect(screen.getByRole('tab', { name: 'Service alerts (2)' })).toBeInTheDocument()
+    expect(screen.queryByTestId('alerts-panel')).not.toBeInTheDocument()
   })
 })

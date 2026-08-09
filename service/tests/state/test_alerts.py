@@ -168,9 +168,13 @@ def test_alerts_matching_orders_newest_active_period_first():
     assert [a.id for a in matched] == ["newest", "middle", "oldest"]
 
 
-def test_alerts_matching_uses_latest_period_start_for_recurring_alerts():
+def test_alerts_matching_uses_earliest_period_start_for_recurring_alerts():
     # A recurring alert (e.g. weekend trackwork) with several active
-    # periods ranks by its most recent activation, not its first one.
+    # periods ranks by its FIRST activation, not its latest -- deliberately
+    # matching AlertsPanel.tsx's `since()` label (also earliest-start), so
+    # the on-screen order and the on-screen "since" times agree. Using the
+    # latest period here would rank "recurring" ahead of "single-recent"
+    # even though "recurring" actually started earlier.
     now = datetime.fromtimestamp(1784500000, tz=timezone.utc)
     feed = _sa_feed(
         [
@@ -191,7 +195,7 @@ def test_alerts_matching_uses_latest_period_start_for_recurring_alerts():
 
     matched = alerts_matching(alerts, now)
 
-    assert [a.id for a in matched] == ["recurring", "single-recent"]
+    assert [a.id for a in matched] == ["single-recent", "recurring"]
 
 
 def test_alerts_matching_sorts_alerts_with_no_known_start_last():

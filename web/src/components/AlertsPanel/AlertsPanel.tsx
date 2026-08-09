@@ -1,6 +1,6 @@
-import { Section } from '../Section'
-import { useAlerts } from '../../hooks/useAlerts'
+import { Section, Placeholder } from '../Section'
 import { formatDateTime } from '../../lib/formatTime'
+import type { AlertsState } from '../../hooks/useAlerts'
 import type { Alert } from '../../api-types'
 import styles from './AlertsPanel.module.css'
 
@@ -42,38 +42,57 @@ function since(alert: Alert): string | null {
  * compact (header text + effect only, no per-line filtering yet) since
  * this is the first frontend surface for Service Alerts content at all
  * (05a pass 3): the feed was previously polled but never parsed anywhere
- * in this codebase. Renders nothing when there are no active alerts,
- * matching StatusPanel's "only show a warning row when there's something
- * to warn about" convention -- an empty "No alerts" card would be sidebar
- * clutter for the common case. */
-export function AlertsPanel() {
-  const { alerts, loading, error } = useAlerts()
-
-  if (loading || error || alerts.length === 0) return null
+ * in this codebase.
+ *
+ * Takes `alerts`/`loading`/`error` as props rather than calling `useAlerts`
+ * itself (2026-08-09) -- the Announcements modal's tab label needs the
+ * alert count before this panel is even mounted (it's only mounted for
+ * the active tab), so the hook is called once at the modal level
+ * (Sidebar.tsx) and shared, rather than each duplicating the fetch or the
+ * count living somewhere the tab label can't see.
+ *
+ * Shows an explicit "no active alerts" state (as opposed to rendering
+ * nothing) now that this lives in its own Announcements-modal tab -- unlike
+ * the original stacked-below-the-digest layout, where going quiet here
+ * just meant less content in an otherwise non-empty modal, an isolated tab
+ * going fully blank on zero alerts is indistinguishable from broken. Still
+ * renders nothing on `error` (matches WeeklyDigestPanel's quiet-failure
+ * convention for a non-critical panel), and a real loading state for the
+ * same "not broken, just not ready" reason.
+ *
+ * No title on the Section -- the tab label (built in Sidebar.tsx, count
+ * included) already says "Service alerts (N)"; a second heading inside
+ * the tab body would just repeat it. */
+export function AlertsPanel({ alerts, loading, error }: AlertsState) {
+  if (error) return null
 
   return (
-    <Section title={`Service alerts (${alerts.length})`}>
-      <ul className={styles.list}>
-        {alerts.map((alert) => {
-          const lines = lineNames(alert)
-          const startedAt = since(alert)
-          return (
-            <li key={alert.id} className={styles.row}>
-              <span className={styles.effect}>
-                {(alert.effect && EFFECT_LABEL[alert.effect]) ?? 'Disruption'}
-              </span>
-              <span className={styles.headerText}>{alert.header_text ?? 'Service alert'}</span>
-              {(lines.length > 0 || startedAt) && (
-                <span className={styles.meta}>
-                  {lines.length > 0 && lines.join(', ')}
-                  {lines.length > 0 && startedAt && ' — '}
-                  {startedAt && `since ${formatDateTime(startedAt)}`}
+    <Section className={styles.section}>
+      {loading && <Placeholder>Loading alerts…</Placeholder>}
+      {!loading && alerts.length === 0 && <Placeholder>No active service alerts</Placeholder>}
+      {!loading && alerts.length > 0 && (
+        <ul className={styles.list}>
+          {alerts.map((alert) => {
+            const lines = lineNames(alert)
+            const startedAt = since(alert)
+            return (
+              <li key={alert.id} className={styles.row}>
+                <span className={styles.effect}>
+                  {(alert.effect && EFFECT_LABEL[alert.effect]) ?? 'Disruption'}
                 </span>
-              )}
-            </li>
-          )
-        })}
-      </ul>
+                <span className={styles.headerText}>{alert.header_text ?? 'Service alert'}</span>
+                {(lines.length > 0 || startedAt) && (
+                  <span className={styles.meta}>
+                    {lines.length > 0 && lines.join(', ')}
+                    {lines.length > 0 && startedAt && ' — '}
+                    {startedAt && `since ${formatDateTime(startedAt)}`}
+                  </span>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </Section>
   )
 }
