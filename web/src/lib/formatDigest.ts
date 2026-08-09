@@ -3,7 +3,7 @@
 // plain dates/numbers rather than instants -- same Intl-singleton pattern
 // (native, zero-cost, correct for whoever's viewing) as formatTime.ts.
 const dateFormatter = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' })
-const percentFormatter = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 })
+const percentFormatter = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 })
 
 // week_start/week_end are plain "YYYY-MM-DD" dates (no time component) --
 // parsing as UTC and formatting with a UTC-anchored Intl call avoids the
@@ -16,8 +16,10 @@ export function formatWeekRange(weekStart: string, weekEnd: string): string {
 }
 
 // `pct` is already 0-100 (see api-types.ts's WeeklyDigest docstring) --
-// this only handles locale-aware rounding/formatting, not the /100 a
-// `style: 'percent'` Intl formatter would otherwise apply.
+// this only handles locale-aware formatting, not the /100 a `style:
+// 'percent'` Intl formatter would otherwise apply. maximumFractionDigits:1
+// keeps a trailing decimal when the source value has one (e.g. 94.7)
+// instead of rounding it away to a whole number.
 export function formatPercent(pct: number): string {
   return `${percentFormatter.format(pct)}%`
 }

@@ -1,1 +1,1 @@
-export { Legend, } from './Legend'
+export { Legend, LEGEND_ORDER } from './Legend'

@@ -75,6 +75,7 @@
 .body > section {
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
 }
 
 /* Mobile: same breakpoint as the sidebar drawer (Sidebar.module.css). Even

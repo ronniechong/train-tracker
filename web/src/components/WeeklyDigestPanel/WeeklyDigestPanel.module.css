@@ -1,7 +1,28 @@
-.latest {
+.weekList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.weekBlock {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  padding: var(--space-3) 0;
+}
+
+.weekBlock:first-child {
+  padding-top: 0;
+}
+
+.weekBlock:last-child {
+  padding-bottom: 0;
+}
+
+.weekBlock + .weekBlock {
+  border-top: 1px solid var(--color-border);
 }
 
 .headline {
@@ -12,8 +33,9 @@
 }
 
 .range {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-dim);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
 }
 
 .pct {
@@ -41,22 +63,25 @@
   line-height: 1.4;
 }
 
-.lineList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.lineGrid {
+  display: flex;
+  gap: 0.15rem var(--space-3);
+}
+
+.lineColumn {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  max-height: 180px;
-  overflow-y: auto;
+  flex: 1;
+  min-width: 0;
 }
 
-.lineRow {
+.lineCell {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   font-size: var(--font-size-xs);
+  min-width: 0;
 }
 
 .lineSwatch {
@@ -79,20 +104,51 @@
   font-variant-numeric: tabular-nums;
 }
 
-.pastList {
-  list-style: none;
-  margin: var(--space-3) 0 0;
-  padding: var(--space-2) 0 0;
-  border-top: 1px solid var(--color-border);
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.pastRow {
+.pastToggle {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
-  font-size: var(--font-size-xs);
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  border-radius: var(--radius-md);
+}
+
+.pastToggle:hover:not(:disabled) .range,
+.pastToggle:hover:not(:disabled) .chevron {
+  color: var(--color-accent);
+}
+
+.pastToggle:disabled {
+  cursor: default;
+}
+
+.pastToggleLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.chevron {
+  display: inline-block;
+  font-size: 0.9rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  transition: transform 0.15s ease;
+}
+
+.chevron[data-expanded='true'] {
+  transform: rotate(90deg);
+}
+
+.pastBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }

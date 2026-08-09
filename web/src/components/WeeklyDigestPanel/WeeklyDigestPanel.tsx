@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Section, Placeholder } from '../Section'
 import { useWeeklyDigests } from '../../hooks/useWeeklyDigests'
 import { routesById } from '../../geometry'
+import { LEGEND_ORDER } from '../Legend'
 import { formatWeekRange, formatPercent, parseNarrative } from '../../lib/formatDigest'
 import type { WeeklyDigest, WeeklyLineStat } from '../../api-types'
 import styles from './WeeklyDigestPanel.module.css'
@@ -14,28 +16,59 @@ function hasData(digest: WeeklyDigest): boolean {
   return digest.on_time_count + digest.late_count > 0
 }
 
-function LineRow({ stat }: { stat: WeeklyLineStat }) {
+function LineCell({ stat }: { stat: WeeklyLineStat }) {
   const route = routesById.get(stat.route_id)
   return (
-    <li className={styles.lineRow}>
+    <div className={styles.lineCell}>
       <span className={styles.lineSwatch} style={{ background: route?.color ?? 'var(--color-text-dim)' }} />
       <span className={styles.lineName}>{route?.name ?? stat.route_id}</span>
       <span className={styles.linePct}>{formatPercent(stat.on_time_pct)}</span>
-    </li>
+    </div>
   )
 }
 
-function LatestDigest({ digest }: { digest: WeeklyDigest }) {
+// Same ordering as the sidebar Legend (LEGEND_ORDER, grouped by PTV color
+// family, not alphabetical) so a line sits in the same relative position
+// in both places. Unlisted routes fall back to alphabetical at the end,
+// mirroring Legend.tsx's sortedForLegend.
+function sortLineStats(stats: WeeklyLineStat[]): WeeklyLineStat[] {
+  return [...stats].sort((a, b) => {
+    const nameA = routesById.get(a.route_id)?.name ?? a.route_id
+    const nameB = routesById.get(b.route_id)?.name ?? b.route_id
+    const indexA = LEGEND_ORDER.indexOf(nameA)
+    const indexB = LEGEND_ORDER.indexOf(nameB)
+    if (indexA === -1 && indexB === -1) return nameA.localeCompare(nameB)
+    if (indexA === -1) return 1
+    if (indexB === -1) return -1
+    return indexA - indexB
+  })
+}
+
+// Two-column grid read top-to-bottom (left column first, then right) --
+// CSS grid's default row-major flow would instead read left-to-right,
+// splitting adjacent same-color-family lines across the two columns. Since
+// stats are pre-sorted, splitting the array in half and rendering it as
+// two independent columns keeps each column internally in order.
+function LineGrid({ stats }: { stats: WeeklyLineStat[] }) {
+  const sorted = sortLineStats(stats)
+  const splitAt = Math.ceil(sorted.length / 2)
+  const columns = [sorted.slice(0, splitAt), sorted.slice(splitAt)]
   return (
-    <div className={styles.latest}>
-      <div className={styles.headline}>
-        <span className={styles.range}>{formatWeekRange(digest.week_start, digest.week_end)}</span>
-        {hasData(digest) ? (
-          <span className={styles.pct}>{formatPercent(digest.on_time_pct)} on time</span>
-        ) : (
-          <span className={styles.pctUnavailable}>No data available</span>
-        )}
-      </div>
+    <div className={styles.lineGrid}>
+      {columns.map((column, index) => (
+        <div className={styles.lineColumn} key={index}>
+          {column.map((stat) => (
+            <LineCell key={stat.route_id} stat={stat} />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function DigestBody({ digest }: { digest: WeeklyDigest }) {
+  return (
+    <>
       {digest.days_covered < 7 && (
         <p className={styles.partialNote}>{digest.days_covered} of 7 days available this week</p>
       )}
@@ -44,25 +77,58 @@ function LatestDigest({ digest }: { digest: WeeklyDigest }) {
           span.bold ? <strong key={index}>{span.text}</strong> : <span key={index}>{span.text}</span>,
         )}
       </p>
-      {digest.line_stats.length > 0 && (
-        <ul className={styles.lineList}>
-          {digest.line_stats.map((stat) => (
-            <LineRow key={stat.route_id} stat={stat} />
-          ))}
-        </ul>
-      )}
-    </div>
+      {digest.line_stats.length > 0 && <LineGrid stats={digest.line_stats} />}
+    </>
+  )
+}
+
+function LatestDigest({ digest }: { digest: WeeklyDigest }) {
+  return (
+    <li className={styles.weekBlock}>
+      <div className={styles.headline}>
+        <span className={styles.range}>{formatWeekRange(digest.week_start, digest.week_end)}</span>
+        {hasData(digest) ? (
+          <span className={styles.pct}>{formatPercent(digest.on_time_pct)} on time</span>
+        ) : (
+          <span className={styles.pctUnavailable}>No data available</span>
+        )}
+      </div>
+      <DigestBody digest={digest} />
+    </li>
   )
 }
 
 function PastDigestRow({ digest }: { digest: WeeklyDigest }) {
+  const [expanded, setExpanded] = useState(false)
+  const canExpand = hasData(digest)
+
   return (
-    <li className={styles.pastRow}>
-      <span className={styles.range}>{formatWeekRange(digest.week_start, digest.week_end)}</span>
-      {hasData(digest) ? (
-        <span className={styles.pct}>{formatPercent(digest.on_time_pct)}</span>
-      ) : (
-        <span className={styles.pctUnavailable}>No data</span>
+    <li className={styles.weekBlock}>
+      <button
+        type="button"
+        className={styles.pastToggle}
+        onClick={() => canExpand && setExpanded((prev) => !prev)}
+        aria-expanded={expanded}
+        disabled={!canExpand}
+      >
+        <span className={styles.pastToggleLeft}>
+          {canExpand && (
+            <span className={styles.chevron} data-expanded={expanded} aria-hidden="true">
+              ▸
+            </span>
+          )}
+          <span className={styles.range}>{formatWeekRange(digest.week_start, digest.week_end)}</span>
+        </span>
+        {hasData(digest) ? (
+          <span className={styles.pct}>{formatPercent(digest.on_time_pct)}</span>
+        ) : (
+          <span className={styles.pctUnavailable}>No data</span>
+        )}
+      </button>
+      {expanded && (
+        <div className={styles.pastBody}>
+          <DigestBody digest={digest} />
+        </div>
       )}
     </li>
   )
@@ -93,9 +159,9 @@ export function WeeklyDigestPanel() {
       {!loading && !latest && (
         <Placeholder>No weekly digest yet — the first one posts Monday 8am</Placeholder>
       )}
-      {latest && <LatestDigest digest={latest} />}
-      {past.length > 0 && (
-        <ul className={styles.pastList}>
+      {latest && (
+        <ul className={styles.weekList}>
+          <LatestDigest digest={latest} />
           {past.map((digest) => (
             <PastDigestRow key={digest.week_start} digest={digest} />
           ))}
