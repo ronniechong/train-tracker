@@ -104,6 +104,7 @@ def _ghost_row(event: GhostEvent) -> tuple:
         _bool_to_int(event.loop_contained),
         event.ghost_duration_s,
         _bool_to_int(event.backoff_overlapped),
+        event.reason,
     )
 
 
@@ -167,15 +168,16 @@ GHOST_TABLE = _TableSpec(
             reappear_lon REAL,
             loop_contained INTEGER NOT NULL,
             ghost_duration_s REAL,
-            backoff_overlapped INTEGER NOT NULL
+            backoff_overlapped INTEGER NOT NULL,
+            reason TEXT NOT NULL
         )
     """,
     insert_sql="""
         INSERT INTO ghost_events
             (recorded_at, trip_id, last_seen_at, last_seen_lat, last_seen_lon,
              reappeared_at, reappear_lat, reappear_lon, loop_contained,
-             ghost_duration_s, backoff_overlapped)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ghost_duration_s, backoff_overlapped, reason)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """,
     to_row=_ghost_row,
 )

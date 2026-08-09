@@ -1,3 +1,4 @@
+import sqlite3
 from datetime import date, datetime, timezone
 
 import pytest
@@ -31,6 +32,7 @@ def test_ordinary_day_round_trips_all_five_tables(tmp_path):
             trip_id="t1", last_seen_at=_at(2026, 7, 20), last_seen_position=(-37.8, 144.9),
             reappeared_at=_at(2026, 7, 20, 10, 5), reappear_position=(-37.8, 145.0),
             loop_contained=False, ghost_duration_s=300.0, backoff_overlapped=False,
+            reason="reappeared",
         )
     )
     store.completion_log.record(
@@ -125,6 +127,80 @@ def test_dst_transition_day_compacts_without_ambiguity(tmp_path):
     row = tables["discrepancy_events"].to_pylist()[0]
     assert row["service_date"] == date(2026, 10, 4)
     assert row["observed_at"] == _at(2026, 10, 4)
+
+
+def test_ghost_event_reason_column_round_trips(tmp_path):
+    store = HistoryStore(tmp_path)
+    store.rotate(_at(2026, 8, 9))
+    store.ghost_log.record(
+        GhostEvent(
+            trip_id="t1", last_seen_at=_at(2026, 8, 9), last_seen_position=(-37.8, 144.9),
+            reappeared_at=None, reappear_position=None, loop_contained=False,
+            ghost_duration_s=45.0, backoff_overlapped=False, reason="completed",
+        )
+    )
+    store.close()
+
+    tables = compact_partition(store.partition_path(date(2026, 8, 9)))
+
+    row = tables["ghost_events"].to_pylist()[0]
+    assert row["reason"] == "completed"
+    assert row["schema_version"] == SCHEMA_VERSION == 2
+
+
+def test_pre_v2_partition_missing_reason_column_compacts_with_null_not_dropped(tmp_path):
+    """A partition written by pre-M11 code has an 11-column `ghost_events`
+    table with no `reason` column at all. `archive/run.py` retries a closed
+    day's compaction across runs until upload succeeds, so this file can
+    genuinely be compacted for the first time by code that has already
+    moved past the schema change. Selecting the full column list
+    unconditionally would raise `OperationalError: no such column` and,
+    without `compact.py`'s per-column availability check, silently drop
+    the table's real rows entirely rather than just null the one new
+    column -- confirm that regression is closed."""
+    store = HistoryStore(tmp_path)
+    store.rotate(_at(2026, 8, 1))
+    store.close()
+
+    # Recreate the table exactly as pre-M11 code did (no `reason` column),
+    # bypassing HistoryStore's own (already-updated) schema.
+    partition_path = store.partition_path(date(2026, 8, 1))
+    conn = sqlite3.connect(partition_path)
+    conn.execute("DROP TABLE ghost_events")
+    conn.execute("""
+        CREATE TABLE ghost_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recorded_at TEXT NOT NULL,
+            trip_id TEXT NOT NULL,
+            last_seen_at TEXT,
+            last_seen_lat REAL,
+            last_seen_lon REAL,
+            reappeared_at TEXT,
+            reappear_lat REAL,
+            reappear_lon REAL,
+            loop_contained INTEGER NOT NULL,
+            ghost_duration_s REAL,
+            backoff_overlapped INTEGER NOT NULL
+        )
+    """)
+    conn.execute(
+        "INSERT INTO ghost_events "
+        "(recorded_at, trip_id, last_seen_at, last_seen_lat, last_seen_lon, "
+        " reappeared_at, reappear_lat, reappear_lon, loop_contained, "
+        " ghost_duration_s, backoff_overlapped) "
+        "VALUES ('2026-08-01T10:00:00+00:00', 'old-trip', NULL, NULL, NULL, "
+        "        NULL, NULL, NULL, 0, NULL, 0)"
+    )
+    conn.commit()
+    conn.close()
+
+    tables = compact_partition(partition_path)
+
+    assert tables["ghost_events"].num_rows == 1
+    row = tables["ghost_events"].to_pylist()[0]
+    assert row["trip_id"] == "old-trip"
+    assert row["reason"] is None
+    assert row["schema_version"] == SCHEMA_VERSION
 
 
 def test_missing_table_in_an_old_partition_is_treated_as_empty(tmp_path):

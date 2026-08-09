@@ -39,7 +39,7 @@ _SOURCE_COLUMNS: dict[str, tuple[str, ...]] = {
     "ghost_events": (
         "recorded_at", "trip_id", "last_seen_at", "last_seen_lat",
         "last_seen_lon", "reappeared_at", "reappear_lat", "reappear_lon",
-        "loop_contained", "ghost_duration_s", "backoff_overlapped",
+        "loop_contained", "ghost_duration_s", "backoff_overlapped", "reason",
     ),
     "poll_gap_events": (
         "recorded_at", "started_at", "ended_at", "reason",
@@ -100,14 +100,35 @@ def _parse_row(table: str, columns: tuple[str, ...], raw_row: tuple) -> dict:
 
 
 def _read_table(conn: sqlite3.Connection, table: str) -> list[dict]:
+    """Reads only the columns that actually exist in THIS partition's copy
+    of `table`, filling any of `_SOURCE_COLUMNS[table]` that are missing
+    with `None` -- a schema-evolution safeguard, not just a missing-table
+    one. `archive/run.py` retries a closed day's compaction across runs
+    until upload succeeds (the self-healing loop the 2026-08-08 empty-
+    parquet incident fix relies on), so a partition written before a schema
+    change (e.g. `ghost_events.reason`, added in v2) can still be compacted
+    for the first time AFTER the code that reads it has moved on. Selecting
+    the full `_SOURCE_COLUMNS` list unconditionally would raise
+    `OperationalError: no such column` for that one column and, before this
+    fix, silently drop the ENTIRE table's data for that day via the
+    catch-all except below -- not just null out the one new column."""
     columns = _SOURCE_COLUMNS[table]
-    try:
-        cursor = conn.execute(f"SELECT {', '.join(columns)} FROM {table}")  # noqa: S608
-    except sqlite3.OperationalError:
-        # Partition predates this table (same honest "no data here" signal
-        # as `store.py.read_completion_events` treats a missing table as).
+    existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}  # noqa: S608
+    if not existing:
+        # Partition predates this table entirely (same honest "no data
+        # here" signal as `store.py.read_completion_events` treats a
+        # missing table as).
         return []
-    return [_parse_row(table, columns, raw_row) for raw_row in cursor.fetchall()]
+    available = tuple(c for c in columns if c in existing)
+    missing = tuple(c for c in columns if c not in existing)
+    cursor = conn.execute(f"SELECT {', '.join(available)} FROM {table}")  # noqa: S608
+    rows = []
+    for raw_row in cursor.fetchall():
+        row = _parse_row(table, available, raw_row)
+        for column in missing:
+            row[column] = None
+        rows.append(row)
+    return rows
 
 
 def _read_gap_windows(conn: sqlite3.Connection) -> list[GapWindow]:

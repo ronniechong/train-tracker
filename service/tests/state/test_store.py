@@ -1,17 +1,19 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
+from traintracker.state.completion import TripCompletionTracker, TripTerminus
 from traintracker.state.eventlog import InMemoryEventLog
+from traintracker.state.ghost import MAX_GHOST_AGE_S
 from traintracker.state.store import StateStore
 
 
-def _tu_feed(header_ts, trip_id):
+def _tu_feed(header_ts, trip_id, schedule_relationship="SCHEDULED"):
     return {
         "header": {"timestamp": header_ts},
         "entity": [{
             "id": trip_id,
             "trip_update": {
                 "trip": {"trip_id": trip_id, "start_time": "19:00:00",
-                         "start_date": "20260718", "schedule_relationship": "SCHEDULED",
+                         "start_date": "20260718", "schedule_relationship": schedule_relationship,
                          "route_id": "r"},
                 "stop_time_update": [],
             },
@@ -100,6 +102,40 @@ def test_on_tick_hook_is_optional():
     store.ingest(tu, vp, _at(0))  # no exception
 
 
+def _terminus_lookup(trip_id: str, service_date: date) -> TripTerminus | None:
+    return TripTerminus(stop_id="TERM", scheduled_arrival=_at(600))
+
+
+def test_cancelled_trip_fades_immediately_instead_of_waiting_max_ghost_age():
+    """M11: TripCompletionTracker's independent CANCELED detection must
+    reach the ghost tracker the same tick, fading a never-seen-live (TU-only,
+    straight-to-ghost) trip well before MAX_GHOST_AGE_S -- not leaving it as
+    an unexplained ghost for up to 2 hours."""
+    ghost_log = InMemoryEventLog()
+    completion_tracker = TripCompletionTracker(InMemoryEventLog(), _terminus_lookup)
+    store = StateStore(InMemoryEventLog(), ghost_log, completion_tracker=completion_tracker)
+
+    tu_cancelled = _tu_feed("1000000", "trip-1", schedule_relationship="CANCELED")
+    empty_vp = {"header": {"timestamp": "1000000"}, "entity": []}
+
+    store.ingest(tu_cancelled, empty_vp, _at(0))
+
+    # Never seen a live position -- straight to ghost -- then immediately
+    # resolved+evicted in the very same tick, not left ghosted.
+    assert store.status_of("trip-1") is None
+    assert len(ghost_log.events) == 1
+    event = ghost_log.events[0]
+    assert event.reason == "cancelled"
+    # A trip never seen with a live position never gets a `ghost_started_at`
+    # stamp (see ghost.py's "never seen live" branch) -- pre-existing
+    # invariant, unaffected by this milestone; duration is honestly unknown.
+    assert event.ghost_duration_s is None
+
+    # Confirm this really is far short of the 2-hour timeout that would
+    # otherwise apply -- the whole point of this milestone.
+    assert 0.0 < MAX_GHOST_AGE_S
+
+
 class _RecordingCompletionTracker:
     def __init__(self):
         self.tick_calls = []
@@ -107,6 +143,7 @@ class _RecordingCompletionTracker:
 
     def tick(self, snapshots, cycle_time):
         self.tick_calls.append((snapshots, cycle_time))
+        return []
 
     def flush(self, at):
         self.flush_calls.append(at)

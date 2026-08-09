@@ -30,7 +30,7 @@ def _ghost(loop_contained: bool):
     return GhostEvent(
         trip_id="t1", last_seen_at=None, last_seen_position=None,
         reappeared_at=None, reappear_position=None, loop_contained=loop_contained,
-        ghost_duration_s=None, backoff_overlapped=False,
+        ghost_duration_s=None, backoff_overlapped=False, reason="timed_out",
     )
 
 

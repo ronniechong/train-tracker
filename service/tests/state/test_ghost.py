@@ -225,3 +225,142 @@ def test_all_tracked_excludes_evicted_trips_but_keeps_recent_ones():
 
     trip_ids = {t.trip_id for t in tracker.all_tracked()}
     assert trip_ids == {"new"}
+
+
+def test_reappearance_reason_is_reappeared():
+    log = InMemoryEventLog()
+    tracker = TrainLifecycleTracker(log)
+
+    tracker.tick({"trip-1": _snap(-37.8, 144.9, _at(0))}, _at(0))
+    tracker.tick({}, _at(COASTING_TIMEOUT_S + 10))
+    reappear_ts = _at(COASTING_TIMEOUT_S + 20)
+    tracker.tick({"trip-1": _snap(-37.9, 145.0, reappear_ts)}, reappear_ts)
+
+    assert log.events[0].reason == "reappeared"
+
+
+def test_timed_out_eviction_reason_is_timed_out():
+    log = InMemoryEventLog()
+    tracker = TrainLifecycleTracker(log)
+
+    tracker.tick({"trip-1": _snap(-37.8, 144.9, _at(0))}, _at(0))
+    tracker.tick({}, _at(COASTING_TIMEOUT_S + 10))
+    tracker.tick({}, _at(MAX_GHOST_AGE_S + 1))
+
+    assert log.events[0].reason == "timed_out"
+
+
+def test_flush_reason_is_flushed():
+    log = InMemoryEventLog()
+    tracker = TrainLifecycleTracker(log)
+
+    tracker.tick({"trip-1": _snap(-37.8, 144.9, _at(0))}, _at(0))
+    tracker.tick({}, _at(COASTING_TIMEOUT_S + 10))
+    tracker.flush(at=_at(COASTING_TIMEOUT_S + 500))
+
+    assert log.events[0].reason == "flushed"
+
+
+def test_mark_resolved_on_already_ghosted_trip_evicts_immediately():
+    log = InMemoryEventLog()
+    tracker = TrainLifecycleTracker(log)
+
+    tracker.tick({"trip-1": _snap(-37.8, 144.9, _at(0))}, _at(0))
+    tracker.tick({}, _at(COASTING_TIMEOUT_S + 10))
+    assert tracker.status_of("trip-1") == "ghost"
+
+    # Confirmed completed well before MAX_GHOST_AGE_S would otherwise fire.
+    resolved_at = _at(COASTING_TIMEOUT_S + 20)
+    tracker.mark_resolved("trip-1", "completed", resolved_at)
+
+    assert tracker.status_of("trip-1") is None
+    assert len(log.events) == 1
+    event = log.events[0]
+    assert event.reason == "completed"
+    assert event.reappeared_at is None
+    assert event.reappear_position is None
+    assert event.ghost_duration_s == 10.0
+
+
+def test_mark_resolved_cancelled_on_already_ghosted_trip():
+    log = InMemoryEventLog()
+    tracker = TrainLifecycleTracker(log)
+
+    tracker.tick({"trip-1": _snap(-37.8, 144.9, _at(0))}, _at(0))
+    tracker.tick({}, _at(COASTING_TIMEOUT_S + 10))
+
+    tracker.mark_resolved("trip-1", "cancelled", _at(COASTING_TIMEOUT_S + 15))
+
+    assert tracker.status_of("trip-1") is None
+    assert log.events[0].reason == "cancelled"
+
+
+def test_mark_resolved_while_still_coasting_applies_at_ghost_transition():
+    """A trip confirmed completed/cancelled while it's still coasting (not
+    yet ghosted) must not be touched immediately -- it's still visibly
+    live/coasting on the map. The resolution is remembered and applied the
+    moment it would otherwise transition into ghost, well before
+    MAX_GHOST_AGE_S, instead of showing as an unexplained ghost first."""
+    log = InMemoryEventLog()
+    tracker = TrainLifecycleTracker(log)
+
+    tracker.tick({"trip-1": _snap(-37.8, 144.9, _at(0))}, _at(0))
+    tracker.tick({}, _at(30))
+    assert tracker.status_of("trip-1") == "coasting"
+
+    tracker.mark_resolved("trip-1", "completed", _at(35))
+    # Still coasting immediately after -- not evicted out from under a
+    # currently-visible train.
+    assert tracker.status_of("trip-1") == "coasting"
+    assert log.events == []
+
+    # Crossing what would have been the ghost threshold now evicts with the
+    # remembered reason instead of ever showing "ghost".
+    tracker.tick({}, _at(COASTING_TIMEOUT_S + 10))
+    assert tracker.status_of("trip-1") is None
+    assert len(log.events) == 1
+    assert log.events[0].reason == "completed"
+
+
+def test_mark_resolved_while_never_seen_live_applies_immediately_to_ghost():
+    """A TU-only trip goes straight to ghost with no coasting phase (see
+    test_trip_seen_only_in_tu_from_the_start_is_ghost_not_coasting) -- a
+    resolution recorded before its first tick must apply there too."""
+    log = InMemoryEventLog()
+    tracker = TrainLifecycleTracker(log)
+
+    tracker.mark_resolved("trip-2", "cancelled", _at(0))
+    assert tracker.status_of("trip-2") is None  # not tracked yet, nothing to do
+    assert log.events == []
+
+    schedule_only = TrainSnapshot(
+        trip_id="trip-2", route_id="r", start_time="19:00:00", start_date="20260718",
+        schedule_relationship="SCHEDULED", stop_time_updates=(), schedule_updated_at=_at(0),
+        latitude=None, longitude=None, bearing=None, position_updated_at=None,
+    )
+    tracker.tick({"trip-2": schedule_only}, _at(1))
+
+    assert tracker.status_of("trip-2") is None
+    assert len(log.events) == 1
+    assert log.events[0].reason == "cancelled"
+
+
+def test_mark_resolved_does_not_affect_trip_that_stays_live():
+    """A resolution recorded while a trip is live/coasting must not fire at
+    all if the trip keeps reporting a live position -- it should never
+    ghost, so the remembered resolution should never be consulted."""
+    log = InMemoryEventLog()
+    tracker = TrainLifecycleTracker(log)
+
+    tracker.tick({"trip-1": _snap(-37.8, 144.9, _at(0))}, _at(0))
+    tracker.mark_resolved("trip-1", "completed", _at(5))
+
+    tracker.tick({"trip-1": _snap(-37.8, 144.91, _at(10))}, _at(10))
+    assert tracker.status_of("trip-1") == "live"
+    assert log.events == []
+
+    # And a later, unrelated ghost episode for the same trip_id must not be
+    # misclassified by the stale resolution -- reappearing live clears it.
+    tracker.tick({}, _at(10 + COASTING_TIMEOUT_S + 10))
+    assert tracker.status_of("trip-1") == "ghost"
+    assert log.events == []

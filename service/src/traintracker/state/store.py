@@ -89,7 +89,18 @@ class StateStore:
 
         self._lifecycle.tick(snapshots, cycle_time, backoff_active=backoff_active)
         if self._completion_tracker is not None:
-            self._completion_tracker.tick(snapshots, cycle_time)
+            finalized = self._completion_tracker.tick(snapshots, cycle_time)
+            # Feed each fresh completion/cancellation into the ghost tracker
+            # so a resolved trip fades on its real reason instead of
+            # waiting out `ghost.py`'s MAX_GHOST_AGE_S timeout.
+            # `undetermined_gap` is deliberately not forwarded -- it means
+            # completion.py itself lost the trip to a coverage gap, not a
+            # known outcome, so ghost.py's own timeout should still govern.
+            for event in finalized:
+                if event.status == "cancelled":
+                    self._lifecycle.mark_resolved(event.trip_id, "cancelled", cycle_time)
+                elif event.status in ("on_time", "late"):
+                    self._lifecycle.mark_resolved(event.trip_id, "completed", cycle_time)
         if self._delay_observation_tracker is not None:
             self._delay_observation_tracker.tick(snapshots, cycle_time, self.latest_alerts)
         self.latest_snapshots = snapshots

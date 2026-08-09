@@ -132,7 +132,12 @@ class TripCompletionTracker:
         snapshots: dict[str, TrainSnapshot],
         cycle_time: datetime,
         undetermined_timeout: timedelta = timedelta(seconds=UNDETERMINED_TIMEOUT_S),
-    ) -> None:
+    ) -> list[TripCompletionEvent]:
+        """Returns every trip finalized THIS cycle (already recorded to the
+        event log too) -- lets a caller (`store.py`) react to a fresh
+        completion/cancellation immediately, e.g. to fade a ghosted trip
+        without waiting for `ghost.py`'s own timeout."""
+        finalized_this_tick: list[TripCompletionEvent] = []
         for trip_id, snapshot in snapshots.items():
             if not snapshot.has_schedule or snapshot.start_date is None:
                 # No fresh TU data this cycle -- nothing new to observe
@@ -178,10 +183,10 @@ class TripCompletionTracker:
                 # record it. Matches the reliability/punctuality split every
                 # comparable transport authority's published methodology
                 # uses.
-                self._finalize(
+                finalized_this_tick.append(self._finalize(
                     trip_id, pending, cycle_time,
                     status="cancelled", actual_arrival=None, delay_seconds=None,
-                )
+                ))
                 continue
 
             terminus_stu = next(
@@ -207,26 +212,28 @@ class TripCompletionTracker:
                     if terminus_stu.arrival_delay is not None
                     else int((actual_arrival - pending.scheduled_arrival).total_seconds())
                 )
-                self._finalize(
+                finalized_this_tick.append(self._finalize(
                     trip_id, pending, cycle_time,
                     status="on_time" if delay <= ON_TIME_THRESHOLD_S else "late",
                     actual_arrival=actual_arrival, delay_seconds=delay,
-                )
+                ))
 
-        self._evict_stale(cycle_time, undetermined_timeout)
+        finalized_this_tick.extend(self._evict_stale(cycle_time, undetermined_timeout))
+        return finalized_this_tick
 
-    def _evict_stale(self, cycle_time: datetime, timeout: timedelta) -> None:
+    def _evict_stale(self, cycle_time: datetime, timeout: timedelta) -> list[TripCompletionEvent]:
         stale_ids = [
             trip_id
             for trip_id, pending in self._pending.items()
             if (cycle_time - pending.last_touched_at) >= timeout
         ]
+        finalized: list[TripCompletionEvent] = []
         for trip_id in stale_ids:
             pending = self._pending[trip_id]
-            self._finalize(
+            finalized.append(self._finalize(
                 trip_id, pending, cycle_time,
                 status="undetermined_gap", actual_arrival=None, delay_seconds=None,
-            )
+            ))
 
         retention = timedelta(seconds=FINALIZED_RETENTION_S)
         expired = [
@@ -235,6 +242,8 @@ class TripCompletionTracker:
         ]
         for trip_id in expired:
             del self._finalized[trip_id]
+
+        return finalized
 
     def flush(self, at: datetime) -> None:
         """Force-close every still-pending trip as `undetermined_gap` (e.g.
@@ -253,8 +262,8 @@ class TripCompletionTracker:
         status: Status,
         actual_arrival: datetime | None,
         delay_seconds: int | None,
-    ) -> None:
-        self._event_log.record(TripCompletionEvent(
+    ) -> TripCompletionEvent:
+        event = TripCompletionEvent(
             trip_id=trip_id,
             route_id=pending.route_id,
             service_date=pending.service_date.isoformat(),
@@ -262,6 +271,8 @@ class TripCompletionTracker:
             actual_terminus_arrival=actual_arrival,
             delay_seconds=delay_seconds,
             status=status,
-        ))
+        )
+        self._event_log.record(event)
         del self._pending[trip_id]
         self._finalized[trip_id] = finalized_at
+        return event

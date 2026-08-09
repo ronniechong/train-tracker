@@ -117,7 +117,7 @@ def test_ghost_event_round_trips_including_none_positions(tmp_path):
         GhostEvent(
             trip_id="t1", last_seen_at=None, last_seen_position=None,
             reappeared_at=None, reappear_position=None, loop_contained=False,
-            ghost_duration_s=None, backoff_overlapped=False,
+            ghost_duration_s=None, backoff_overlapped=False, reason="timed_out",
         )
     )
     conn = sqlite3.connect(store.partition_path(date(2026, 7, 20)))

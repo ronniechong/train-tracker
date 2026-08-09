@@ -104,6 +104,17 @@ reappeared, including where it was last seen and where it turned up again.
 It does **not** contain any invented positions from during the gap itself
 — only real observed endpoints.
 
+Every episode also has a `reason` column explaining why it ended: the
+train reappeared normally, the episode hit this project's own maximum
+tracking window with no explanation, the recording process shut down
+mid-episode, or — the two most informative cases — the trip was
+independently confirmed to have **finished its scheduled run** or been
+**cancelled** by the government feed, in which case the episode is closed
+out as soon as that's known rather than left showing as an unexplained gap.
+`reason` was added in `schema_version` 2 (rows from before that carry
+`schema_version` 1 and a null `reason` — see "Schema changes over time"
+below).
+
 ### 4. `discrepancy_events` — when the two government feeds disagreed
 
 Because train-tracker combines two separately-updating feeds (Vehicle
@@ -225,6 +236,37 @@ has to remember separately.
   project's own data-collection process — never any information about who
   was on board. There has never been a way for this system to collect
   that information in the first place.
+
+## Schema changes over time
+
+Every row carries a `schema_version` integer. Columns are only ever added,
+never removed or renamed — but a column added partway through means
+earlier days' files genuinely don't have it. **Loading every day's files
+together with a library that assumes one fixed schema across all of them
+can fail or silently drop data** — verified directly against this
+project's own files:
+
+- `datasets.load_dataset("parquet", data_files=[...])` raises a hard
+  `CastError` if the files don't all share identical columns.
+- `pyarrow.dataset.dataset(...)` does **not** error — it silently infers
+  the schema from whichever file it reads first, and any column absent
+  from that file is dropped from the whole result, even for rows from
+  files that do have it. This is the more dangerous failure mode because
+  nothing signals that data went missing.
+
+**The correct way to load the full history:** compute the union schema
+across all files first (`pyarrow.unify_schemas`), then pass it explicitly
+— `pyarrow.dataset.dataset(..., schema=unified)`, or
+`datasets.load_dataset(..., features=Features.from_arrow_schema(unified))`
+— so older rows get the new column filled with null instead of the column
+disappearing or the load failing outright.
+
+Current schema versions:
+
+| `schema_version` | Change |
+|---|---|
+| 1 | Initial archival schema (five tables, as described above) |
+| 2 | Added `ghost_events.reason` |
 
 ## How often this dataset updates
 

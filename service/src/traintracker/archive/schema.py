@@ -23,7 +23,12 @@ from __future__ import annotations
 
 import pyarrow as pa
 
-SCHEMA_VERSION = 1
+# v2 (2026-08-09): added `ghost_events.reason` -- distinguishes why a ghost
+# episode ended (reappeared/timed_out/flushed/completed/cancelled) instead
+# of purely elapsed time. Rows archived before this ship date have
+# `schema_version=1` and no `reason` (backfilling historical rows is out of
+# scope, see milestone 11 -- gap-honesty over fabricated certainty).
+SCHEMA_VERSION = 2
 
 _UTC_TS = pa.timestamp("us", tz="UTC")
 
@@ -65,6 +70,12 @@ GHOST_SCHEMA = _table_schema(
     pa.field("loop_contained", pa.bool_(), nullable=True),
     pa.field("ghost_duration_s", pa.float64(), nullable=True),
     pa.field("backoff_overlapped", pa.bool_(), nullable=True),
+    # Nullable: gap-marker rows null it same as every other real-data
+    # column, and rows compacted from a pre-v2 partition (no `reason`
+    # column in that day's SQLite table) also carry it as null rather than
+    # a fabricated value -- see `compact.py`'s per-column availability
+    # check for how that's detected.
+    pa.field("reason", pa.string(), nullable=True),
 )
 
 POLL_GAP_SCHEMA = _table_schema(

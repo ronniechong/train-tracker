@@ -14,6 +14,18 @@ advances - the state machine literally cannot age a live train into
 after the fact. `GhostEvent.backoff_overlapped` records whether backoff
 touched the gap at all, for observability, but is not what prevents the
 false ghosting - the frozen clock is.
+
+Ghost episodes carry a `reason` (`GhostEvent.reason`): "reappeared" (the
+ordinary case), "timed_out" (hit `MAX_GHOST_AGE_S` with no explanation),
+"flushed" (process/replay ended mid-episode), or "completed"/"cancelled"
+(an independently-confirmed outcome from `completion.py`'s
+`TripCompletionTracker`, delivered via `mark_resolved()`). Deliberately
+NOT this module's job to detect completion/cancellation itself -- it only
+reacts to what `mark_resolved()` is told, same producer/consumer split
+`completion.py`'s own docstring describes. A resolved trip that is
+currently ghosted is faded immediately; one that is still live/coasting is
+remembered (`_resolved`) so that if/when it later would age into "ghost",
+it fades with the real reason instead of waiting out `MAX_GHOST_AGE_S`.
 """
 
 from __future__ import annotations
@@ -41,7 +53,16 @@ COASTING_TIMEOUT_S = 90.0
 # specifically.
 MAX_GHOST_AGE_S = 2 * 60 * 60
 
+# How long a resolution (completed/cancelled) is remembered for a trip that
+# hasn't yet dropped out of live/coasting -- mirrors completion.py's
+# FINALIZED_RETENTION_S reasoning: bounds memory for the rare case a
+# resolved trip's position keeps appearing (or the resolution turns out to
+# be premature/wrong) far longer than a real ghost episode ever would.
+RESOLUTION_RETENTION_S = 6 * 60 * 60
+
 Status = Literal["live", "coasting", "ghost"]
+Reason = Literal["reappeared", "timed_out", "flushed", "completed", "cancelled"]
+Resolution = Literal["completed", "cancelled"]
 
 
 @dataclass(frozen=True)
@@ -54,6 +75,7 @@ class GhostEvent:
     loop_contained: bool  # both endpoints inside CITY_LOOP_BBOX; False if reappear_position unknown
     ghost_duration_s: float | None
     backoff_overlapped: bool  # whether any tick during the gap was backoff-skipped
+    reason: Reason
 
 
 @dataclass
@@ -113,6 +135,11 @@ class TrainLifecycleTracker:
         self._coasting_timeout = coasting_timeout
         self._trains: dict[str, _TrackedTrain] = {}
         self._last_tick_at: datetime | None = None
+        # trip_id -> (resolution, when recorded) for trips confirmed
+        # completed/cancelled by `mark_resolved()` while still live/coasting
+        # -- consulted at the moment a trip would otherwise transition into
+        # "ghost", not applied retroactively to a trip already showing live.
+        self._resolved: dict[str, tuple[Resolution, datetime]] = {}
 
     def tick(
         self,
@@ -143,7 +170,12 @@ class TrainLifecycleTracker:
 
             if position is not None:
                 if tracked.status == "ghost":
-                    self._emit_reappearance(trip_id, tracked, cycle_time, position)
+                    self._emit_reappearance(trip_id, tracked, cycle_time, position, reason="reappeared")
+                # A resolution recorded while this trip was ghosted/coasting
+                # doesn't apply to whatever run reappears under the same
+                # trip_id -- clear it rather than risk misclassifying a
+                # later, unrelated ghost episode.
+                self._resolved.pop(trip_id, None)
                 tracked.status = "live"
                 tracked.last_seen_at = cycle_time
                 tracked.last_position = position
@@ -158,6 +190,13 @@ class TrainLifecycleTracker:
                 # "coasting" implies a real last-known fix to keep showing,
                 # which we don't have here. Go straight to "ghost" (render
                 # the scheduled position) rather than invent one.
+                resolved = self._resolved.pop(trip_id, None)
+                if resolved is not None:
+                    self._emit_reappearance(
+                        trip_id, tracked, cycle_time, reappear_position=None, reason=resolved[0],
+                    )
+                    del self._trains[trip_id]
+                    continue
                 tracked.status = "ghost"
                 continue
 
@@ -170,6 +209,13 @@ class TrainLifecycleTracker:
 
             was_ghost = tracked.status == "ghost"
             if tracked.coasting_elapsed >= self._coasting_timeout:
+                resolved = self._resolved.pop(trip_id, None)
+                if resolved is not None:
+                    self._emit_reappearance(
+                        trip_id, tracked, cycle_time, reappear_position=None, reason=resolved[0],
+                    )
+                    del self._trains[trip_id]
+                    continue
                 tracked.status = "ghost"
                 if not was_ghost:
                     tracked.ghost_started_at = cycle_time
@@ -182,7 +228,8 @@ class TrainLifecycleTracker:
         """Drop any trip untouched by either feed for longer than
         `MAX_GHOST_AGE_S`. Closes a still-open ghost episode first (same
         call `flush()` makes) so eviction never silently drops an episode
-        from the event log/metrics."""
+        from the event log/metrics. Also prunes long-unapplied `_resolved`
+        entries (bounded memory, see `RESOLUTION_RETENTION_S`)."""
         stale_ids = [
             trip_id
             for trip_id, tracked in self._trains.items()
@@ -192,8 +239,17 @@ class TrainLifecycleTracker:
         for trip_id in stale_ids:
             tracked = self._trains[trip_id]
             if tracked.status == "ghost":
-                self._emit_reappearance(trip_id, tracked, cycle_time, reappear_position=None)
+                self._emit_reappearance(trip_id, tracked, cycle_time, reappear_position=None, reason="timed_out")
             del self._trains[trip_id]
+            self._resolved.pop(trip_id, None)
+
+        expired_resolutions = [
+            trip_id
+            for trip_id, (_, recorded_at) in self._resolved.items()
+            if (cycle_time - recorded_at).total_seconds() >= RESOLUTION_RETENTION_S
+        ]
+        for trip_id in expired_resolutions:
+            del self._resolved[trip_id]
 
     def status_of(self, trip_id: str) -> Status | None:
         tracked = self._trains.get(trip_id)
@@ -235,7 +291,28 @@ class TrainLifecycleTracker:
         replay run) so they aren't silently dropped from the event log."""
         for trip_id, tracked in self._trains.items():
             if tracked.status == "ghost":
-                self._emit_reappearance(trip_id, tracked, at, reappear_position=None)
+                self._emit_reappearance(trip_id, tracked, at, reappear_position=None, reason="flushed")
+
+    def mark_resolved(self, trip_id: str, resolution: Resolution, at: datetime) -> None:
+        """Called by the orchestrator (`store.py`) when `completion.py`'s
+        `TripCompletionTracker` independently confirms a trip's outcome.
+
+        If the trip is currently ghosted, fade it immediately with the real
+        reason instead of waiting out `MAX_GHOST_AGE_S` -- a completed or
+        cancelled trip's disappearance is explained, not a mystery gap.
+        A trip that hasn't ghosted yet (still live/coasting, or not tracked
+        at all) is not touched here and now -- doing so would remove a
+        train still visibly live on the map, which is out of scope (this
+        milestone only shortens ghost episodes, it doesn't change when a
+        trip stops being tracked while still visible). The resolution is
+        remembered instead, and applied at the moment this trip would
+        otherwise transition into "ghost"."""
+        tracked = self._trains.get(trip_id)
+        if tracked is not None and tracked.status == "ghost":
+            self._emit_reappearance(trip_id, tracked, at, reappear_position=None, reason=resolution)
+            del self._trains[trip_id]
+            return
+        self._resolved[trip_id] = (resolution, at)
 
     def _emit_reappearance(
         self,
@@ -243,6 +320,7 @@ class TrainLifecycleTracker:
         tracked: _TrackedTrain,
         at: datetime,
         reappear_position: tuple[float, float] | None,
+        reason: Reason,
     ) -> None:
         loop_contained = (
             reappear_position is not None
@@ -264,4 +342,5 @@ class TrainLifecycleTracker:
             loop_contained=loop_contained,
             ghost_duration_s=ghost_duration,
             backoff_overlapped=tracked.backoff_overlapped,
+            reason=reason,
         ))
