@@ -139,6 +139,27 @@ def _entity_matches(
     return True
 
 
+def _newest_first_key(alert: Alert) -> tuple[bool, datetime]:
+    """GTFS-RT alerts carry no "published"/"created" timestamp -- an
+    alert's `active_period.start` (when it began being relevant) is the
+    closest real signal for "how recently did this show up." An alert can
+    have several periods (e.g. recurring weekend trackwork); the latest
+    start across them is what a reader would call this alert's most recent
+    activation.
+
+    Alerts with no known start at all -- either no `active_period` (the
+    GTFS-RT spec's "always active" case, `is_active`'s own docstring notes
+    this feed has never actually been observed to send it) or periods that
+    are open-started (`start=None`, "always was active") -- sort last, not
+    first: there is no real "newest" signal to rank them by, and treating
+    an unknown start as if it were "just now" would misrepresent them as
+    the most recent items on screen when they may be the oldest."""
+    starts = [p.start for p in alert.active_periods if p.start is not None]
+    if not starts:
+        return (False, datetime.min.replace(tzinfo=timezone.utc))
+    return (True, max(starts))
+
+
 def alerts_matching(
     alerts: dict[str, Alert],
     now: datetime,
@@ -148,9 +169,10 @@ def alerts_matching(
     direction_id: int | None = None,
 ) -> list[Alert]:
     """Active alerts whose informed_entity set is compatible with the given
-    filters. A filter left as `None` matches anything on that axis; an
-    alert with no informed_entity at all is treated as network-wide and
-    always matches. Calling with no filters returns every active alert.
+    filters, newest-first (see `_newest_first_key`). A filter left as
+    `None` matches anything on that axis; an alert with no informed_entity
+    at all is treated as network-wide and always matches. Calling with no
+    filters returns every active alert.
 
     This is a coarse route/stop/direction join, not trip-level confirmation
     -- see module docstring. Callers (the `get_active_alerts` tool, the
@@ -168,4 +190,5 @@ def alerts_matching(
             for e in alert.informed_entities
         ):
             matched.append(alert)
+    matched.sort(key=_newest_first_key, reverse=True)
     return matched

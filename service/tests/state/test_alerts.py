@@ -144,3 +144,72 @@ def test_alerts_matching_network_wide_alert_matches_any_filter():
     alerts = parse_alerts(feed)
 
     assert [a.id for a in alerts_matching(alerts, now, route_id="ANYTHING")] == ["alert-1"]
+
+
+def test_alerts_matching_orders_newest_active_period_first():
+    now = datetime.fromtimestamp(1784500000, tz=timezone.utc)
+    feed = _sa_feed(
+        [
+            _alert_entity(
+                entity_id="oldest", active_period=[{"start": "1784100000", "end": "1784600000"}],
+            ),
+            _alert_entity(
+                entity_id="newest", active_period=[{"start": "1784400000", "end": "1784600000"}],
+            ),
+            _alert_entity(
+                entity_id="middle", active_period=[{"start": "1784200000", "end": "1784600000"}],
+            ),
+        ]
+    )
+    alerts = parse_alerts(feed)
+
+    matched = alerts_matching(alerts, now)
+
+    assert [a.id for a in matched] == ["newest", "middle", "oldest"]
+
+
+def test_alerts_matching_uses_latest_period_start_for_recurring_alerts():
+    # A recurring alert (e.g. weekend trackwork) with several active
+    # periods ranks by its most recent activation, not its first one.
+    now = datetime.fromtimestamp(1784500000, tz=timezone.utc)
+    feed = _sa_feed(
+        [
+            _alert_entity(
+                entity_id="single-recent",
+                active_period=[{"start": "1784300000", "end": "1784600000"}],
+            ),
+            _alert_entity(
+                entity_id="recurring",
+                active_period=[
+                    {"start": "1784000000", "end": "1784050000"},
+                    {"start": "1784450000", "end": "1784600000"},
+                ],
+            ),
+        ]
+    )
+    alerts = parse_alerts(feed)
+
+    matched = alerts_matching(alerts, now)
+
+    assert [a.id for a in matched] == ["recurring", "single-recent"]
+
+
+def test_alerts_matching_sorts_alerts_with_no_known_start_last():
+    # No active_period at all ("always active" per GTFS-RT spec) carries no
+    # recency signal -- it must not be treated as "just now" and jump to
+    # the top ahead of alerts that DO have a real, known start.
+    now = datetime.fromtimestamp(1784500000, tz=timezone.utc)
+    feed = _sa_feed(
+        [
+            _alert_entity(entity_id="no-known-start", active_period=[]),
+            _alert_entity(
+                entity_id="has-a-start",
+                active_period=[{"start": "1784100000", "end": "1784600000"}],
+            ),
+        ]
+    )
+    alerts = parse_alerts(feed)
+
+    matched = alerts_matching(alerts, now)
+
+    assert [a.id for a in matched] == ["has-a-start", "no-known-start"]
