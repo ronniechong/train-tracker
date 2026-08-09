@@ -4,13 +4,17 @@
 #
 # 1. Confirm the `${TT_ALERT_WEBHOOK_URL}` env-var-expansion syntax and
 #    overall schema against whatever Grafana version is actually running.
-# 2. The `policies:` block below sets the ROOT/default notification policy
-#    for the whole org — on a shared instance that already monitors other
-#    things, blindly applying this could silently overwrite an existing
-#    policy tree. If the existing instance already has other alerts, this
-#    needs to become a nested route matching only train-tracker's alert
-#    labels (e.g. a label like `project: train-tracker` on the alert
-#    rules), not a root-level replacement.
+# 2. Verified live (2026-08-09): this instance genuinely hosts several
+#    other projects' dashboards, so a root-level/default notification
+#    policy would have risked swallowing their routing too. The live
+#    config is NOT the naive root-replacement this file originally
+#    sketched — every train-tracker alert rule carries a `project:
+#    train-tracker` label, the live root/default receiver is a no-op
+#    ("empty"), and a single nested route matches `project=train-tracker`
+#    to `train-tracker-slack` (see `policies:` below, corrected to match).
+#    If re-provisioning this from scratch on another shared instance,
+#    apply it the same way: nested + labeled, never as the org's root
+#    policy.
 apiVersion: 1
 
 contactPoints:
@@ -23,9 +27,17 @@ contactPoints:
           url: ${TT_ALERT_WEBHOOK_URL}
         disableResolveMessage: false
 
-# See point 2 above — do not apply this policies: block to a shared
-# instance without first checking its existing notification policy tree.
+# Root/default receiver is a no-op ("empty") -- alerts without a matching
+# label go nowhere, rather than defaulting into train-tracker's channel.
+# Only alert rules labeled `project: train-tracker` (all of this project's
+# rules are) route to Slack, via the nested match below -- see point 2
+# above. Do not collapse this back into a root-level `receiver:` on a
+# shared instance.
 policies:
   - orgId: 1
-    receiver: train-tracker-slack
-    group_by: ["alertname"]
+    receiver: empty
+    group_by: ["grafana_folder", "alertname"]
+    routes:
+      - object_matchers:
+          - ["project", "=", "train-tracker"]
+        receiver: train-tracker-slack
