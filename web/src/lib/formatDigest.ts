@@ -36,7 +36,12 @@ export interface NarrativeSpan {
 }
 
 export function parseNarrative(narrative: string): NarrativeSpan[] {
-  const parts = narrative.split(/\*\*(.+?)\*\*/g)
+  // The system prompt (service/ai/weekly_digest.py) now forbids Markdown
+  // headings, but older stored digests can still open with a stray
+  // "# " ATX heading marker -- strip it so it doesn't render as a
+  // literal "#" character instead of being treated as a heading.
+  const withoutHeadingMarker = narrative.replace(/^#{1,6}\s+/, '')
+  const parts = withoutHeadingMarker.split(/\*\*(.+?)\*\*/g)
   // String.split with a capturing group alternates [unmatched, captured,
   // unmatched, captured, ...] -- odd indices are always the bolded text.
   // Compute `bold` from each part's original index BEFORE filtering out
