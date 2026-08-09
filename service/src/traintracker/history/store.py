@@ -76,6 +76,11 @@ class _TableSpec:
     create_sql: str
     insert_sql: str
     to_row: Callable[[object], tuple]
+    # (column_name, full "ADD COLUMN" fragment) for columns added to
+    # `create_sql` after partitions already existed on disk -- CREATE TABLE
+    # IF NOT EXISTS is a no-op against those older files, so each one is
+    # backfilled via ALTER TABLE the next time it's reopened.
+    migrations: tuple[tuple[str, str], ...] = ()
 
 
 def _discrepancy_row(event: DiscrepancyEvent) -> tuple:
@@ -180,6 +185,9 @@ GHOST_TABLE = _TableSpec(
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """,
     to_row=_ghost_row,
+    migrations=(
+        ("reason", "reason TEXT NOT NULL DEFAULT 'unknown'"),
+    ),
 )
 
 POLL_GAP_TABLE = _TableSpec(
@@ -351,6 +359,7 @@ class HistoryStore:
         conn.execute(_META_CREATE_SQL)
         for spec in _ALL_TABLES:
             conn.execute(spec.create_sql)
+            self._apply_migrations(conn, spec)
 
         digest = None
         if self._pin_manifest is not None:
@@ -362,6 +371,14 @@ class HistoryStore:
             (service_date.isoformat(), digest, datetime.now(timezone.utc).isoformat()),
         )
         return conn
+
+    def _apply_migrations(self, conn: sqlite3.Connection, spec: _TableSpec) -> None:
+        if not spec.migrations:
+            return
+        existing = {row[1] for row in conn.execute(f"PRAGMA table_info({spec.name})")}
+        for column, add_column_sql in spec.migrations:
+            if column not in existing:
+                conn.execute(f"ALTER TABLE {spec.name} ADD COLUMN {add_column_sql}")
 
     def _insert(self, spec: _TableSpec, row: tuple) -> None:
         if self._conn is None:

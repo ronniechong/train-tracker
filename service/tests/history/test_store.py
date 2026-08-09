@@ -93,6 +93,50 @@ def test_partition_has_no_digest_when_nothing_is_pinned_yet(tmp_path):
     assert digest is None
 
 
+def test_reopening_a_partition_predating_the_reason_column_backfills_it(tmp_path):
+    # Simulates a partition file written by an older build, before
+    # `ghost_events.reason` existed -- CREATE TABLE IF NOT EXISTS alone
+    # would leave it stuck on the old schema forever.
+    history_dir = tmp_path
+    history_dir.mkdir(exist_ok=True)
+    path = history_dir / "2026-07-20.db"
+    conn = sqlite3.connect(path)
+    conn.execute(
+        """
+        CREATE TABLE ghost_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recorded_at TEXT NOT NULL,
+            trip_id TEXT NOT NULL,
+            last_seen_at TEXT,
+            last_seen_lat REAL,
+            last_seen_lon REAL,
+            reappeared_at TEXT,
+            reappear_lat REAL,
+            reappear_lon REAL,
+            loop_contained INTEGER NOT NULL,
+            ghost_duration_s REAL,
+            backoff_overlapped INTEGER NOT NULL
+        )
+        """
+    )
+    conn.close()
+
+    store = HistoryStore(history_dir)
+    store.rotate(_at(2026, 7, 20))
+    store.ghost_log.record(
+        GhostEvent(
+            trip_id="t1", last_seen_at=None, last_seen_position=None,
+            reappeared_at=None, reappear_position=None, loop_contained=False,
+            ghost_duration_s=None, backoff_overlapped=False, reason="reappeared",
+        )
+    )
+
+    conn = sqlite3.connect(path)
+    row = conn.execute("SELECT trip_id, reason FROM ghost_events").fetchone()
+    conn.close()
+    assert row == ("t1", "reappeared")
+
+
 def test_discrepancy_event_round_trips(tmp_path):
     store = HistoryStore(tmp_path)
     store.rotate(_at(2026, 7, 20))
