@@ -4,7 +4,9 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://gc.zgo.at; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self' data:; connect-src 'self' https://tiles.openfreemap.org %VITE_API_BASE_URL% https://traintracker.goatcounter.com; worker-src 'self' blob:; base-uri 'self'; frame-ancestors 'none';" />
+    <!-- frame-ancestors omitted: browsers ignore it in a meta-tag CSP (only
+    an HTTP header enforces it), and GitHub Pages gives no header control. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://gc.zgo.at; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self' data:; connect-src 'self' https://tiles.openfreemap.org %VITE_API_BASE_URL% https://traintracker.goatcounter.com https://edge.api.flagsmith.com; worker-src 'self' blob:; base-uri 'self';" />
     <meta name="referrer" content="no-referrer" />
     <title>Melbourne Train Tracker — live map</title>
     <script data-goatcounter="https://traintracker.goatcounter.com/count"
