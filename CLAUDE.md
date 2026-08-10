@@ -103,3 +103,10 @@ gaps are recorded, staleness is displayed, inferences are labelled as inferences
    the key?
 4. Additional project context may be provided via `CLAUDE.local.md`
    (gitignored). If present, read it first and follow its instructions.
+5. Respect PII and sensitive information in everything written to this repo —
+   code, comments, commit messages, docs. Same standard as the scrub gate
+   above, not a separate lower bar.
+6. Keep code comments minimal. Only comment a genuinely non-obvious
+   constraint or gotcha a reader couldn't otherwise infer. Do not comment
+   every decision, add a timestamp/date to a comment, or narrate why a line
+   of code exists when the code itself already makes that clear.
