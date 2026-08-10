@@ -21,7 +21,7 @@ from .schedule import (
     next_departures,
     platforms_for_station,
 )
-from .snapshot import StaticSnapshot
+from .snapshot import StaticSnapshot, TripRecord
 from .stop_times import StopTimeRecord, stop_times_from_zip_bytes
 from .stops import Stop, stops_from_zip_bytes
 
@@ -67,6 +67,10 @@ class _ParsedSchedule:
     # but no route_id at all -- this is what `routes_serving_all_stops`
     # intersects against to infer the line.
     stop_routes: dict[str, frozenset[str]]
+    # trip_id -> its static TripRecord (headsign, direction_id) -- the
+    # per-train tooltip join (M12), same trip_id-keyed lookup shape as
+    # termini_by_trip above.
+    trips_by_id: dict[str, TripRecord]
 
 
 class PinnedScheduleCache:
@@ -116,6 +120,7 @@ class PinnedScheduleCache:
             routes=routes_from_zip_bytes(data),
             termini_by_trip=termini_by_trip,
             stop_routes={sid: frozenset(rids) for sid, rids in stop_routes.items()},
+            trips_by_id={t.trip_id: t for t in snapshot.trips},
         )
         self._by_digest[digest] = parsed
         return parsed
@@ -161,6 +166,16 @@ class PinnedScheduleCache:
             scheduled_arrival=gtfs_time_to_utc(service_date, time_str),
             stop_sequence=terminus.stop_sequence,
         )
+
+    def trip_for(self, trip_id: str, service_date: date) -> TripRecord | None:
+        """The trip's static headsign/direction_id, resolved against
+        whichever snapshot is pinned to `service_date` -- same
+        None-not-error convention as `terminus_for` (no pin yet, or a
+        real-time-only ADDED trip with no static row at all)."""
+        pin = self._pin_manifest.get(service_date)
+        if pin is None:
+            return None
+        return self._load(pin.digest).trips_by_id.get(trip_id)
 
     def routes_for(self, now: datetime) -> dict[str, Route]:
         """route_id -> Route (short/long name) for whichever static

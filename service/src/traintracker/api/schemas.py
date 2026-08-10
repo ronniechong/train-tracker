@@ -29,6 +29,12 @@ class Train(BaseModel):
     bearing: float | None
     position_updated_at: datetime | None
     schedule_updated_at: datetime | None
+    # Static-schedule join (M12), resolved from the trip's own service_date
+    # -- None whenever no snapshot is pinned yet, or the trip is a
+    # real-time-only ADDED trip with no static trips.txt row at all.
+    start_time: str | None
+    trip_headsign: str | None
+    direction_id: int | None
     # Distinct from position_updated_at: set for every train regardless of
     # whether it's still present in the live feeds, so a fully-vanished
     # ghost (route_id/position_updated_at all null -- see api/app.py) still

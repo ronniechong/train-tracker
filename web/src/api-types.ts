@@ -19,6 +19,9 @@ export interface Train {
   position_updated_at: string | null
   schedule_updated_at: string | null
   last_seen_at: string | null
+  start_time: string | null
+  trip_headsign: string | null
+  direction_id: number | null
 }
 
 export interface StateResponse {

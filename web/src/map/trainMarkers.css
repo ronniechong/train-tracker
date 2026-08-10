@@ -59,6 +59,14 @@ div.train-marker {
   cursor: pointer;
 }
 
+/* Enlarges the effective tap/hover target to ~44px (mobile touch-target
+   guideline) without changing the 12px visual dot -- negative inset lets
+   it overflow the root's own box, which is fine since nothing clips it. */
+.train-marker-hitbox {
+  position: absolute;
+  inset: -16px;
+}
+
 .train-dot {
   position: absolute;
   inset: 0;
@@ -69,6 +77,18 @@ div.train-marker {
 
 .train-dot--ghost {
   border-style: dashed;
+}
+
+/* Distinct ring, not just a color swap -- a tracked train needs to read as
+   "tracked" at a glance even against a same-colored line's other trains,
+   and even for colorblind users who might not distinguish the reserved
+   purple from a line color at small marker size. */
+.train-marker--tracked .train-dot {
+  box-shadow: 0 0 0 3px #ffffff, 0 0 0 5px #b026ff;
+}
+
+.train-marker--tracked .train-pulse {
+  background-color: #b026ff !important;
 }
 
 .train-pulse {
@@ -167,6 +187,11 @@ div.train-marker {
 .train-tooltip-title {
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);
+}
+
+.train-tooltip-identity {
+  color: var(--color-text);
+  margin-top: 0.15rem;
 }
 
 .train-tooltip-meta {

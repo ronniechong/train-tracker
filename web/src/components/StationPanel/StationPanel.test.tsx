@@ -98,6 +98,9 @@ describe('StationPanel', () => {
         position_updated_at: new Date().toISOString(),
         schedule_updated_at: null,
         last_seen_at: new Date().toISOString(),
+        start_time: null,
+        trip_headsign: null,
+        direction_id: null,
       }],
     ])
     render(

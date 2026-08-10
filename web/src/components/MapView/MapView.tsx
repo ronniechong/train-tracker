@@ -12,6 +12,7 @@ import {
 } from '../../map/mapController'
 import { createTrainMarkerManager, type TrainMarkerManager } from '../../map/trainMarkers'
 import { createStationPopupManager, type StationPopupManager } from '../../map/stationPopup'
+import { createTrainPopupManager, type TrainPopupManager } from '../../map/trainPopup'
 import { LoadingOverlay } from '../LoadingOverlay'
 import type { Train } from '../../api-types'
 import type { StationScheduleState } from '../../hooks/useStationSchedule'
@@ -42,6 +43,19 @@ interface MapViewProps {
   recenterRequest: number | null
   theme: Theme
   schedule: StationScheduleState
+  // Train tracking (M12 follow-up): trackedTripId is the currently
+  // tracked trip, or null if nothing is tracked. isFollowing is whether
+  // the camera should keep re-centering on it right now -- distinct from
+  // "is a train tracked" because a manual pan/zoom keeps the train
+  // tracked but pauses following until the user hits the resume CTA.
+  trackedTripId: string | null
+  isFollowing: boolean
+  clickedTrainId: string | null
+  onTrainClick: (tripId: string) => void
+  onTrainRemoved: (tripId: string) => void
+  onToggleTrack: (tripId: string) => void
+  onUserMapInteraction: () => void
+  onResumeTracking: () => void
 }
 
 /** Owns the MapLibre instance imperatively -- trains/routes update via
@@ -59,11 +73,20 @@ export function MapView({
   recenterRequest,
   theme,
   schedule,
+  trackedTripId,
+  isFollowing,
+  clickedTrainId,
+  onTrainClick,
+  onTrainRemoved,
+  onToggleTrack,
+  onUserMapInteraction,
+  onResumeTracking,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markerManagerRef = useRef<TrainMarkerManager | null>(null)
   const popupManagerRef = useRef<StationPopupManager | null>(null)
+  const trainPopupManagerRef = useRef<TrainPopupManager | null>(null)
   // Effects below read the latest hiddenRouteIds without re-running the
   // mount effect (which must only run once) when it changes.
   const hiddenRouteIdsRef = useRef(hiddenRouteIds)
@@ -72,6 +95,15 @@ export function MapView({
   // effect, but must always call the latest onStationClick from props.
   const onStationClickRef = useRef(onStationClick)
   onStationClickRef.current = onStationClick
+  // Same latest-callback-ref reason: wired once in the mount effect
+  // (marker manager creation, dragstart/zoomstart listeners) but must
+  // always call the latest prop.
+  const onTrainClickRef = useRef(onTrainClick)
+  onTrainClickRef.current = onTrainClick
+  const onTrainRemovedRef = useRef(onTrainRemoved)
+  onTrainRemovedRef.current = onTrainRemoved
+  const onUserMapInteractionRef = useRef(onUserMapInteraction)
+  onUserMapInteractionRef.current = onUserMapInteraction
   // Tracks whichever theme the basemap is CURRENTLY showing, so the style-
   // swap effect below only fires on a genuine change, not on mount (initMap
   // already loads the right style first time) or on unrelated re-renders.
@@ -89,8 +121,24 @@ export function MapView({
       resetInitialView(map)
       addGeometryLayers(map, hiddenRouteIdsRef.current)
       registerStationInteractions(map, (stationId) => onStationClickRef.current(stationId))
-      markerManagerRef.current = createTrainMarkerManager(map)
+      markerManagerRef.current = createTrainMarkerManager(
+        map,
+        (tripId) => onTrainClickRef.current(tripId),
+        (tripId) => onTrainRemovedRef.current(tripId),
+      )
       popupManagerRef.current = createStationPopupManager(map)
+      trainPopupManagerRef.current = createTrainPopupManager(map)
+      // `dragstart` only ever fires from a real user drag gesture, never
+      // programmatically -- safe from the follow-camera `easeTo` below
+      // (pan-only, no zoom) canceling itself. `zoomstart` fires for BOTH
+      // user gestures AND programmatic zoom changes (flyToStation,
+      // flyToDefaultView) -- deliberately left listening to both here: the
+      // follow camera itself never changes zoom, so it can't self-trigger
+      // this, and a search-fly/recenter-button navigating the camera
+      // elsewhere is exactly the kind of "user went and looked at
+      // something else" that should also pause tracking.
+      map.on('dragstart', () => onUserMapInteractionRef.current())
+      map.on('zoomstart', () => onUserMapInteractionRef.current())
       setLoaded(true)
     })
 
@@ -102,6 +150,8 @@ export function MapView({
       markerManagerRef.current = null
       popupManagerRef.current?.destroy()
       popupManagerRef.current = null
+      trainPopupManagerRef.current?.destroy()
+      trainPopupManagerRef.current = null
       map.remove()
       mapRef.current = null
       setLoaded(false)
@@ -111,8 +161,32 @@ export function MapView({
   useEffect(() => {
     if (!loaded || !mapRef.current) return
     applyHiddenRoutes(mapRef.current, hiddenRouteIds)
-    markerManagerRef.current?.sync(trains, hiddenRouteIds, hideGhosts)
-  }, [loaded, hiddenRouteIds, trains, hideGhosts])
+    markerManagerRef.current?.sync(trains, hiddenRouteIds, hideGhosts, trackedTripId)
+  }, [loaded, hiddenRouteIds, trains, hideGhosts, trackedTripId])
+
+  // Track/untrack click popup -- same open/close-in-lockstep pattern as
+  // the station popup above, driven by App.tsx's clickedTrainId rather
+  // than a click event handled locally here.
+  useEffect(() => {
+    if (!loaded) return
+    const train = clickedTrainId ? (trains.get(clickedTrainId) ?? null) : null
+    trainPopupManagerRef.current?.sync(clickedTrainId, train, clickedTrainId === trackedTripId, () => {
+      if (clickedTrainId) onToggleTrack(clickedTrainId)
+    })
+  }, [loaded, clickedTrainId, trains, trackedTripId, onToggleTrack])
+
+  // Sat-nav-style camera follow: re-centers on the tracked train every time
+  // its position updates, as long as isFollowing hasn't been paused by a
+  // manual pan/zoom (see the dragstart/zoomstart listeners above). Pan
+  // only, no zoom argument -- keeps the user's chosen zoom level and,
+  // just as importantly, avoids firing `zoomstart` itself (which would
+  // immediately cancel the very follow it just performed).
+  useEffect(() => {
+    if (!loaded || !mapRef.current || !trackedTripId || !isFollowing) return
+    const train = trains.get(trackedTripId)
+    if (!train || train.latitude === null || train.longitude === null) return
+    mapRef.current.easeTo({ center: [train.longitude, train.latitude], duration: 400 })
+  }, [loaded, trackedTripId, isFollowing, trains])
 
   // Popup opens/closes in lockstep with selectedStationId -- same
   // click-same-station-again / click-elsewhere / close-button deselect
@@ -158,6 +232,11 @@ export function MapView({
     <main className={styles.mapContainer}>
       <div ref={containerRef} className={styles.map} />
       <LoadingOverlay visible={!loaded} />
+      {trackedTripId && !isFollowing && (
+        <button type="button" className={styles.resumeTrackingButton} onClick={onResumeTracking}>
+          Recenter &amp; resume tracking
+        </button>
+      )}
     </main>
   )
 }

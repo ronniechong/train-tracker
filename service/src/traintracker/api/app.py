@@ -28,6 +28,7 @@ from ..ai.llm_client import LLMClient
 from ..ai.tools import ToolContext
 from ..digests.store import WeeklyDigestStore
 from ..gateway.client import Feed
+from ..gtfs.gtfstime import service_date_for_instant
 from ..gtfs.schedule import ScheduledDeparture
 from ..gtfs.routes import Route
 from ..gtfs.schedule_cache import NoPinnedSnapshotError, PinnedScheduleCache
@@ -133,9 +134,47 @@ def _is_current(tracked: TrackedTrainView, now: datetime) -> bool:
     return (now - tracked.last_touched_at).total_seconds() <= MAX_GHOST_AGE_S
 
 
-def _train(store: StateStore, tracked: TrackedTrainView) -> Train:
+def _parse_start_date(value: str) -> date:
+    """TU's `trip.start_date` is GTFS-RT's own "YYYYMMDD" string -- kept as
+    a small local parser matching state/completion.py's own precedent of a
+    tiny local helper over cross-module coupling for a one-line format."""
+    return date(int(value[0:4]), int(value[4:6]), int(value[6:8]))
+
+
+def _trip_static_fields(
+    schedule_cache: PinnedScheduleCache | None,
+    trip_id: str,
+    start_date: str | None,
+    now: datetime,
+) -> tuple[str | None, int | None]:
+    """(trip_headsign, direction_id) from the static schedule, or (None,
+    None) when unavailable (no schedule_cache configured, no snapshot
+    pinned yet for the trip's service_date, or a real-time-only ADDED trip
+    with no static trips.txt row) -- never an error, same "missing data is
+    honest, not a crash" convention as terminus_for."""
+    if schedule_cache is None:
+        return None, None
+    if start_date is not None:
+        try:
+            service_date = _parse_start_date(start_date)
+        except (ValueError, IndexError):
+            service_date = service_date_for_instant(now)
+    else:
+        service_date = service_date_for_instant(now)
+    trip = schedule_cache.trip_for(trip_id, service_date)
+    if trip is None:
+        return None, None
+    return (trip.trip_headsign or None), trip.direction_id
+
+
+def _train(
+    store: StateStore, tracked: TrackedTrainView, schedule_cache: PinnedScheduleCache | None, now: datetime
+) -> Train:
     snapshot = store.latest_snapshots.get(tracked.trip_id)
     if snapshot is not None:
+        trip_headsign, direction_id = _trip_static_fields(
+            schedule_cache, tracked.trip_id, snapshot.start_date, now
+        )
         return Train(
             trip_id=tracked.trip_id,
             route_id=snapshot.route_id,
@@ -146,12 +185,18 @@ def _train(store: StateStore, tracked: TrackedTrainView) -> Train:
             position_updated_at=snapshot.position_updated_at,
             schedule_updated_at=snapshot.schedule_updated_at,
             last_seen_at=tracked.last_seen_at,
+            start_time=snapshot.start_time,
+            trip_headsign=trip_headsign,
+            direction_id=direction_id,
         )
 
     # Dropped out of both live feeds entirely (coasting/ghost with only a
     # last-known fix) -- report what's actually known (position, honestly
     # timestamped via last_seen_at) rather than either inventing fresher
-    # data or silently omitting the train from the response.
+    # data or silently omitting the train from the response. Static fields
+    # still resolvable from trip_id alone via "today"'s pin (no start_date
+    # to anchor to once the live snapshot is gone).
+    trip_headsign, direction_id = _trip_static_fields(schedule_cache, tracked.trip_id, None, now)
     latitude, longitude = tracked.last_position or (None, None)
     return Train(
         trip_id=tracked.trip_id,
@@ -163,6 +208,9 @@ def _train(store: StateStore, tracked: TrackedTrainView) -> Train:
         position_updated_at=None,
         schedule_updated_at=None,
         last_seen_at=tracked.last_seen_at,
+        start_time=None,
+        trip_headsign=trip_headsign,
+        direction_id=direction_id,
     )
 
 
@@ -269,14 +317,16 @@ def _alert_response(
     )
 
 
-def _current_state(loop: PollerLoop, store: StateStore) -> StateResponse:
+def _current_state(
+    loop: PollerLoop, store: StateStore, schedule_cache: PinnedScheduleCache | None = None
+) -> StateResponse:
     now = datetime.now(timezone.utc)
     return StateResponse(
         generated_at=now,
         backoff_active=loop.breaker.backoff_active,
         feeds={feed.value: _feed_status(loop, feed, now) for feed in ALL_FEEDS},
         trains=[
-            _train(store, tracked)
+            _train(store, tracked, schedule_cache, now)
             for tracked in store.all_tracked()
             if _is_current(tracked, now)
         ],
@@ -339,6 +389,7 @@ async def _event_source(
     hub: EventHub,
     is_disconnected: Callable[[], Awaitable[bool]],
     heartbeat_interval_s: float,
+    schedule_cache: PinnedScheduleCache | None = None,
 ) -> AsyncIterator[str]:
     """The actual SSE event logic, independent of FastAPI/Starlette/ASGI --
     `is_disconnected` is injected rather than taking a `Request` so this can
@@ -358,7 +409,7 @@ async def _event_source(
     # loss -- see state/eventhub.py's InProcessEventHub.
     queue = hub.subscribe(maxsize=1)
     try:
-        state = _current_state(loop, store)
+        state = _current_state(loop, store, schedule_cache)
         sent = {train.trip_id: train for train in state.trains}
         yield _sse_event("snapshot", state)
 
@@ -371,7 +422,7 @@ async def _event_source(
                 yield ": heartbeat\n\n"
                 continue
 
-            state = _current_state(loop, store)
+            state = _current_state(loop, store, schedule_cache)
             current = {train.trip_id: train for train in state.trains}
             changed, removed = _diff(sent, current)
             if changed or removed:
@@ -461,7 +512,7 @@ def create_app(
         dependencies=[Depends(_rate_limit_dependency(rate_limiter, "state"))],
     )
     async def get_state() -> StateResponse:
-        return _current_state(loop, store)
+        return _current_state(loop, store, schedule_cache)
 
     @app.get(
         "/api/alerts",
@@ -697,7 +748,7 @@ def create_app(
         async def bound_source() -> AsyncIterator[str]:
             try:
                 async for chunk in _event_source(
-                    loop, store, hub, request.is_disconnected, heartbeat_interval_s
+                    loop, store, hub, request.is_disconnected, heartbeat_interval_s, schedule_cache
                 ):
                     yield chunk
             finally:

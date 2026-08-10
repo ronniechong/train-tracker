@@ -17,6 +17,7 @@ const ROUTES_SOURCE_ID = 'metro-routes'
 const STATIONS_SOURCE_ID = 'metro-stations'
 const ROUTE_LINES_LAYER_ID = 'metro-route-lines'
 const STATION_POINTS_LAYER_ID = 'metro-station-points'
+const STATION_HIT_LAYER_ID = 'metro-station-hit'
 
 // Stations only render once zoomed in enough to avoid ~226 dots cluttering
 // the whole-network view.
@@ -138,6 +139,23 @@ export function addGeometryLayers(map: maplibregl.Map, hiddenRouteIds: ReadonlyS
     paint: { 'line-color': ['get', 'color'], 'line-width': 3, 'line-opacity': 0.85 },
   })
 
+  // Invisible, larger circle underneath the visible dot -- MapLibre hit-tests
+  // whatever's actually rendered at the pixel, so an 8px-diameter dot means
+  // an 8px-diameter click/tap target. This layer is added first (renders
+  // below) and is what interactions below actually query/listen on; the
+  // visible dot layer stays purely cosmetic.
+  map.addLayer({
+    id: STATION_HIT_LAYER_ID,
+    type: 'circle',
+    source: STATIONS_SOURCE_ID,
+    minzoom: STATION_MIN_ZOOM,
+    paint: {
+      'circle-radius': 16,
+      'circle-color': '#000000',
+      'circle-opacity': 0,
+    },
+  })
+
   map.addLayer({
     id: STATION_POINTS_LAYER_ID,
     type: 'circle',
@@ -181,10 +199,10 @@ export function registerStationInteractions(
   map: maplibregl.Map,
   onStationClick: (stationId: string | null) => void,
 ): void {
-  map.on('mouseenter', STATION_POINTS_LAYER_ID, () => {
+  map.on('mouseenter', STATION_HIT_LAYER_ID, () => {
     map.getCanvas().style.cursor = 'pointer'
   })
-  map.on('mouseleave', STATION_POINTS_LAYER_ID, () => {
+  map.on('mouseleave', STATION_HIT_LAYER_ID, () => {
     map.getCanvas().style.cursor = ''
   })
   map.on('click', (event) => {
@@ -199,7 +217,7 @@ export function registerStationInteractions(
     const target = event.originalEvent.target
     if (target instanceof Element && target.closest('.train-marker')) return
 
-    const features = map.queryRenderedFeatures(event.point, { layers: [STATION_POINTS_LAYER_ID] })
+    const features = map.queryRenderedFeatures(event.point, { layers: [STATION_HIT_LAYER_ID] })
     const stationId = (features[0]?.properties?.id as string | undefined) ?? null
     onStationClick(stationId)
   })

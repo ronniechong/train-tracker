@@ -35,6 +35,17 @@ export function App() {
   // `max-width: 768px` media query, so this has zero visual effect on
   // desktop regardless of its value.
   const [drawerOpen, setDrawerOpen] = useState(false)
+  // Train tracking (M12 follow-up). trackedTripId survives while the train
+  // is live/coasting/ghost -- only cleared when the marker manager reports
+  // the trip fully removed (see handleTrainRemoved) or the user explicitly
+  // untracks. isFollowing is a separate flag: a manual pan/zoom pauses the
+  // camera follow without dropping the tracked train itself, per the
+  // "click to resume" decision (no auto-resume). clickedTrainId is which
+  // train's click/tap track-untrack popup is currently open -- independent
+  // of trackedTripId, since clicking a train just to look doesn't track it.
+  const [trackedTripId, setTrackedTripId] = useState<string | null>(null)
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [clickedTrainId, setClickedTrainId] = useState<string | null>(null)
 
   function handleToggleRoute(routeId: string, visible: boolean): void {
     setHiddenRouteIds((prev) => {
@@ -66,7 +77,10 @@ export function App() {
   // Map click: null means the click missed every station (clear
   // selection); clicking the already-selected station again also clears it,
   // matching Search's own "click elsewhere/close button" deselect paths.
+  // Also closes the train track/untrack popup -- a background click should
+  // dismiss whichever on-map popup is open, not just the station one.
   function handleStationClick(stationId: string | null): void {
+    setClickedTrainId(null)
     if (stationId === null || stationId === selectedStationId) {
       setSelectedStationId(null)
       return
@@ -76,6 +90,45 @@ export function App() {
       trackStationSelect(station.name, 'map')
       selectStation(station)
     }
+  }
+
+  // Opens the click/tap track-untrack popup for a train -- clears any open
+  // station selection so the two on-map popups never show at once.
+  function handleTrainClick(tripId: string): void {
+    setSelectedStationId(null)
+    setClickedTrainId(tripId)
+  }
+
+  // The marker manager reports every marker teardown, including a
+  // legend/hide-ghosts-driven hide of an untracked train -- only act when
+  // the removed trip is the one actually being tracked (the "ghost/coasting
+  // stays tracked, only removal untracks" rule from planning).
+  function handleTrainRemoved(tripId: string): void {
+    if (tripId !== trackedTripId) return
+    setTrackedTripId(null)
+    setIsFollowing(false)
+  }
+
+  function handleToggleTrack(tripId: string): void {
+    if (trackedTripId === tripId) {
+      setTrackedTripId(null)
+      setIsFollowing(false)
+    } else {
+      setTrackedTripId(tripId)
+      setIsFollowing(true)
+    }
+    setClickedTrainId(null)
+  }
+
+  // Any manual pan/zoom pauses following (see MapView's dragstart/
+  // zoomstart listeners) -- deliberately doesn't drop trackedTripId, so
+  // the resume CTA can bring the camera back to the same train.
+  function handleUserMapInteraction(): void {
+    setIsFollowing(false)
+  }
+
+  function handleResumeTracking(): void {
+    setIsFollowing(true)
   }
 
   // Search selection additionally requests a camera fly -- a plain map
@@ -131,6 +184,14 @@ export function App() {
         recenterRequest={recenterRequest}
         theme={theme}
         schedule={schedule}
+        trackedTripId={trackedTripId}
+        isFollowing={isFollowing}
+        clickedTrainId={clickedTrainId}
+        onTrainClick={handleTrainClick}
+        onTrainRemoved={handleTrainRemoved}
+        onToggleTrack={handleToggleTrack}
+        onUserMapInteraction={handleUserMapInteraction}
+        onResumeTracking={handleResumeTracking}
       />
     </div>
   )
