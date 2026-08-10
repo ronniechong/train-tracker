@@ -10,7 +10,7 @@ from prometheus_client import CollectorRegistry
 from traintracker.ai.budget import BudgetExceededError
 from traintracker.ai.llm_client import LLMResponse
 from traintracker.ai.tools import ToolContext
-from traintracker.api.app import _event_source, _scheduled_train, create_app
+from traintracker.api.app import _event_source, _scheduled_train, _train, create_app
 from traintracker.api.limits import ConnectionTracker, RateLimiter
 from traintracker.digests.store import LineStat, WeeklyDigestRecord, WeeklyDigestStore
 from traintracker.gateway.client import GatewayClient
@@ -24,6 +24,7 @@ from traintracker.poller.loop import PollerLoop
 from traintracker.state.alerts import ActivePeriod, Alert, InformedEntity
 from traintracker.state.eventhub import InProcessEventHub
 from traintracker.state.eventlog import InMemoryEventLog
+from traintracker.state.ghost import TrackedTrainView
 from traintracker.state.merge import StopTimeUpdate, TrainSnapshot
 from traintracker.state.store import StateStore
 
@@ -658,6 +659,7 @@ async def test_station_schedule_returns_well_formed_response_for_known_station(
     body = response.json()
     assert body["station_id"] == "STATION_A"
     assert isinstance(body["departures"], list)
+    assert isinstance(body["lines_no_service_today"], list)
     # Whether any departures are actually present depends on the real time
     # of day vs. the fixture's fixed ~08-09am schedule -- see
     # gtfs/test_schedule.py's next_departures tests (fixed `after` values)
@@ -667,6 +669,63 @@ async def test_station_schedule_returns_well_formed_response_for_known_station(
     for train in body["departures"]:
         assert train["trip_id"]
         assert train["scheduled_time"]
+
+
+def test_train_reports_next_stop_and_delay_from_live_snapshot():
+    # `_train` wires `state/station.py`'s `next_stop_and_delay` + the
+    # caller-supplied stops dict into the public Train shape (M12 #2).
+    from traintracker.gtfs.stops import Stop
+
+    now = datetime.fromtimestamp(1050, tz=timezone.utc)
+    store = _empty_store()
+    store.latest_snapshots["T1"] = TrainSnapshot(
+        trip_id="T1",
+        route_id="R1",
+        start_time="19:00:00",
+        start_date="20260718",
+        schedule_relationship="SCHEDULED",
+        stop_time_updates=(
+            StopTimeUpdate(
+                stop_sequence=1, stop_id="A", arrival_delay=None, arrival_time=None,
+                departure_delay=None, departure_time="1000", schedule_relationship="SCHEDULED",
+            ),
+            StopTimeUpdate(
+                stop_sequence=2, stop_id="B", arrival_delay=90, arrival_time="1100",
+                departure_delay=60, departure_time="1120", schedule_relationship="SCHEDULED",
+            ),
+        ),
+        schedule_updated_at=now,
+        latitude=-37.81, longitude=144.96, bearing=90.0, position_updated_at=now,
+    )
+    tracked = TrackedTrainView(
+        trip_id="T1", status="live", last_seen_at=now, last_position=(-37.81, 144.96), last_touched_at=now,
+    )
+    stops = {"B": Stop("B", "B Station", -37.810, 144.950)}
+
+    train = _train(store, tracked, schedule_cache=None, now=now, stops=stops)
+
+    assert train.next_stop_id == "B"
+    assert train.next_stop_name == "B Station"
+    assert train.next_stop_delay_seconds == 90
+
+
+def test_train_next_stop_is_none_when_stops_dict_not_supplied():
+    now = datetime.fromtimestamp(1050, tz=timezone.utc)
+    store = _empty_store()
+    store.latest_snapshots["T1"] = TrainSnapshot(
+        trip_id="T1", route_id="R1", start_time=None, start_date=None,
+        schedule_relationship="SCHEDULED", stop_time_updates=(), schedule_updated_at=now,
+        latitude=None, longitude=None, bearing=None, position_updated_at=None,
+    )
+    tracked = TrackedTrainView(
+        trip_id="T1", status="live", last_seen_at=now, last_position=None, last_touched_at=now,
+    )
+
+    train = _train(store, tracked, schedule_cache=None, now=now, stops=None)
+
+    assert train.next_stop_id is None
+    assert train.next_stop_name is None
+    assert train.next_stop_delay_seconds is None
 
 
 def test_scheduled_train_is_added_for_a_real_time_only_trip():

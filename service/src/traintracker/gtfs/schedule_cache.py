@@ -177,6 +177,14 @@ class PinnedScheduleCache:
             return None
         return self._load(pin.digest).trips_by_id.get(trip_id)
 
+    def stops_for(self, now: datetime) -> dict[str, Stop]:
+        """stop_id -> Stop for whichever static snapshot is pinned for
+        "today" - the per-train "next stop" tooltip (M12 #2) resolves a
+        `next_stop_id` into a human-readable name via this. Raises
+        `NoPinnedSnapshotError` under the same condition as
+        `next_departures_for`."""
+        return self._load_for(now).stops
+
     def routes_for(self, now: datetime) -> dict[str, Route]:
         """route_id -> Route (short/long name) for whichever static
         snapshot is pinned for "today" -- the AI layer's tools (get_line_
@@ -226,6 +234,41 @@ class PinnedScheduleCache:
         if winner_votes <= len(ids) / 2 or winner_votes <= runner_up_votes:
             return []
         return [route_by_name[winner_name]]
+
+    def lines_no_service_today(self, station_id: str, now: datetime) -> list[Route] | None:
+        """Lines that normally call at `station_id` (per this static
+        snapshot's own `stop_times.txt`, regardless of calendar) but have
+        ZERO calendar-active trips anywhere today (M12 #3: distinguishes
+        "this line doesn't run today" from `next_departures_for` silently
+        returning an empty/short list, which is indistinguishable from
+        "no more departures today" or "check back later").
+
+        System-wide activity, not station-specific: a route with any
+        active trip today counts as "has service" even on the rare chance
+        none of today's trips happen to call at this exact station -- the
+        cheap, common case this exists for is a whole line suspended for
+        the day (e.g. weekend-only closures), not a single stop's pattern
+        variation. Returns `None` under the same "unknown station_id"
+        condition as `next_departures_for`."""
+        parsed = self._load_for(now)
+        platform_ids = platforms_for_station(parsed.stops, station_id)
+        if not platform_ids:
+            return None
+
+        ever_serving: set[str] = set()
+        for platform_id in platform_ids:
+            ever_serving |= parsed.stop_routes.get(platform_id, frozenset())
+
+        service_date = service_date_for_instant(now)
+        active_trip_ids = parsed.snapshot.trip_ids_for_service_date(service_date)
+        active_route_ids = {
+            t.route_id for t in parsed.snapshot.trips if t.trip_id in active_trip_ids
+        }
+
+        return sorted(
+            (parsed.routes[rid] for rid in ever_serving - active_route_ids if rid in parsed.routes),
+            key=lambda r: r.long_name,
+        )
 
     def next_departures_for(
         self,

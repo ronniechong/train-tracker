@@ -22,6 +22,12 @@ export interface Train {
   start_time: string | null
   trip_headsign: string | null
   direction_id: number | null
+  // Rolling-window-aware "what's next" (M12 #2) -- all three null together
+  // whenever the window hasn't surfaced a next stop yet. delay_seconds is
+  // signed: positive late, negative early.
+  next_stop_id: string | null
+  next_stop_name: string | null
+  next_stop_delay_seconds: number | null
 }
 
 export interface StateResponse {
@@ -57,10 +63,20 @@ export interface ScheduledTrain {
   is_added: boolean
 }
 
+export interface LineSummary {
+  route_id: string
+  short_name: string
+  long_name: string
+}
+
 export interface StationScheduleResponse {
   station_id: string
   generated_at: string
   departures: ScheduledTrain[]
+  // M12 #3: lines that normally call here but have zero calendar-active
+  // trips today anywhere on the network. Empty, not omitted, when nothing
+  // is suspended today.
+  lines_no_service_today: LineSummary[]
 }
 
 export interface AlertActivePeriod {

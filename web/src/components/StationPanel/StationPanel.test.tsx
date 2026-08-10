@@ -101,6 +101,9 @@ describe('StationPanel', () => {
         start_time: null,
         trip_headsign: null,
         direction_id: null,
+        next_stop_id: null,
+        next_stop_name: null,
+        next_stop_delay_seconds: null,
       }],
     ])
     render(
@@ -134,6 +137,7 @@ describe('StationPanel', () => {
             is_added: false,
           },
         ],
+        lines_no_service_today: [],
       },
       loading: false,
       error: false,
@@ -148,5 +152,28 @@ describe('StationPanel', () => {
       />
     )
     expect(screen.getByText('Belgrave')).toBeInTheDocument()
+  })
+
+  it('shows lines with no service today', () => {
+    const schedule = {
+      data: {
+        station_id: 's1',
+        generated_at: new Date().toISOString(),
+        departures: [],
+        lines_no_service_today: [{ route_id: 'r1', short_name: 'BEG', long_name: 'Belgrave' }],
+      },
+      loading: false,
+      error: false,
+    }
+    render(
+      <StationPanel
+        stationId="s1"
+        trains={new Map()}
+        hideGhosts={false}
+        schedule={schedule}
+        onClear={() => {}}
+      />
+    )
+    expect(screen.getByText(/No service today on Belgrave/)).toBeInTheDocument()
   })
 })

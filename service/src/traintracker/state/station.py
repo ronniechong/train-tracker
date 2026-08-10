@@ -164,3 +164,43 @@ def derive_station_state(
     # anchors[-1].departure)), so every instant falls in some anchor's dwell
     # window or some cur/nxt gap - this is an unreachable safety net.
     return StationState(status="unknown")
+
+
+def next_stop_and_delay(
+    snapshot: TrainSnapshot, now: datetime,
+) -> tuple[str | None, int | None]:
+    """(stop_id, delay_seconds) for whichever stop the train is currently
+    heading to or dwelling before departing (M12 #2: per-train "Next:
+    Richmond, 3 min late"). Reuses `_anchors`' rolling-window-aware
+    boundaries rather than `derive_station_state`'s at/between distinction
+    directly - "next stop" collapses both "not yet departed origin" and
+    "en route toward it" to the same target stop_id, and dwelling at any
+    stop other than the last known one always means "next" is its
+    immediate successor in the (already-trimmed) list.
+
+    Returns (None, None) when the rolling window hasn't surfaced a next
+    stop yet (dwelling at, or past, the last known anchor) - same "missing
+    data is honest, not a crash" convention as `derive_station_state`."""
+    anchors = _anchors(snapshot.stop_time_updates)
+    if not anchors:
+        return None, None
+
+    now_epoch = int(now.timestamp())
+    target_stop_id: str | None = None
+
+    if now_epoch < anchors[0].arrival:
+        target_stop_id = anchors[0].stop_id
+    elif now_epoch < anchors[-1].departure:
+        for cur, nxt in zip(anchors, anchors[1:]):
+            if cur.arrival <= now_epoch <= cur.departure or cur.departure <= now_epoch < nxt.arrival:
+                target_stop_id = nxt.stop_id
+                break
+
+    if target_stop_id is None:
+        return None, None
+
+    stu = next((s for s in snapshot.stop_time_updates if s.stop_id == target_stop_id), None)
+    if stu is None:
+        return target_stop_id, None
+    delay = stu.arrival_delay if stu.arrival_delay is not None else stu.departure_delay
+    return target_stop_id, delay

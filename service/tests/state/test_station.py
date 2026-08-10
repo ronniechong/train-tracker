@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from traintracker.gtfs.stops import Stop
 from traintracker.state.merge import StopTimeUpdate, TrainSnapshot
-from traintracker.state.station import derive_station_state
+from traintracker.state.station import derive_station_state, next_stop_and_delay
 
 
 def _snapshot(stop_time_updates, latitude=None, longitude=None) -> TrainSnapshot:
@@ -21,11 +21,11 @@ def _snapshot(stop_time_updates, latitude=None, longitude=None) -> TrainSnapshot
     )
 
 
-def _stu(seq, stop_id, arrival_time=None, departure_time=None):
+def _stu(seq, stop_id, arrival_time=None, departure_time=None, arrival_delay=None, departure_delay=None):
     return StopTimeUpdate(
         stop_sequence=seq, stop_id=stop_id,
-        arrival_delay=None, arrival_time=arrival_time,
-        departure_delay=None, departure_time=departure_time,
+        arrival_delay=arrival_delay, arrival_time=arrival_time,
+        departure_delay=departure_delay, departure_time=departure_time,
         schedule_relationship="SCHEDULED",
     )
 
@@ -152,3 +152,56 @@ def test_zero_dwell_stop_is_detected_as_at_not_between():
     state = derive_station_state(_snapshot(stus), STOPS, _at(1050))
     assert state.status == "at"
     assert state.at_stop_id == "B"
+
+
+def test_next_stop_before_departure_is_origin():
+    stop_id, delay = next_stop_and_delay(_snapshot(THREE_STOPS), _at(950))
+    assert stop_id == "A"
+    assert delay is None  # THREE_STOPS carries no delay fields
+
+
+def test_next_stop_between_two_stops_is_the_upcoming_one():
+    stop_id, delay = next_stop_and_delay(_snapshot(THREE_STOPS), _at(1050))
+    assert stop_id == "B"
+
+
+def test_next_stop_dwelling_at_intermediate_is_its_successor():
+    # Dwelling at B (1100-1120): the "next" stop is C, not B itself.
+    stop_id, delay = next_stop_and_delay(_snapshot(THREE_STOPS), _at(1110))
+    assert stop_id == "C"
+
+
+def test_next_stop_dwelling_at_last_known_anchor_is_unknown():
+    # Rolling window hasn't surfaced what comes after the terminus yet -
+    # honest "unresolved", not a guess.
+    stop_id, delay = next_stop_and_delay(_snapshot(THREE_STOPS), _at(1250))
+    assert stop_id is None
+    assert delay is None
+
+
+def test_next_stop_no_stop_time_updates_is_unknown():
+    stop_id, delay = next_stop_and_delay(_snapshot([]), _at(1000))
+    assert stop_id is None
+    assert delay is None
+
+
+def test_next_stop_delay_prefers_arrival_delay():
+    stus = [
+        _stu(1, "A", departure_time="1000"),
+        _stu(2, "B", arrival_time="1100", departure_time="1120", arrival_delay=90, departure_delay=60),
+        _stu(3, "C", arrival_time="1200"),
+    ]
+    stop_id, delay = next_stop_and_delay(_snapshot(stus), _at(1050))
+    assert stop_id == "B"
+    assert delay == 90
+
+
+def test_next_stop_delay_falls_back_to_departure_delay():
+    stus = [
+        _stu(1, "A", departure_time="1000"),
+        _stu(2, "B", arrival_time="1100", departure_time="1120", departure_delay=-30),
+        _stu(3, "C", arrival_time="1200"),
+    ]
+    stop_id, delay = next_stop_and_delay(_snapshot(stus), _at(1050))
+    assert stop_id == "B"
+    assert delay == -30

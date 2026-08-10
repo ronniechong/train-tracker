@@ -97,6 +97,7 @@ export function StationPanel({ stationId, trains, hideGhosts, onClear, schedule 
   const station = stationId ? stationsById.get(stationId) : undefined
   const nearby = station ? nearbyTrains(station.id, trains, hideGhosts) : []
   const departures = schedule.data?.departures ?? []
+  const linesNoServiceToday = schedule.data?.lines_no_service_today ?? []
 
   return (
     <Section title="Station">
@@ -119,6 +120,12 @@ export function StationPanel({ stationId, trains, hideGhosts, onClear, schedule 
           </div>
 
           <h3 className={styles.subheading}>Next trains</h3>
+          {!schedule.loading && linesNoServiceToday.length > 0 && (
+            <p className={styles.caption}>
+              No service today on{' '}
+              {linesNoServiceToday.map((line) => line.long_name || line.short_name).join(', ')}.
+            </p>
+          )}
           {schedule.loading && <p className={styles.empty}>Loading schedule…</p>}
           {!schedule.loading && schedule.error && (
             <p className={styles.empty}>Schedule unavailable right now.</p>

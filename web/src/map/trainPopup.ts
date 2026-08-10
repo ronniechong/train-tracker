@@ -1,7 +1,7 @@
 import * as maplibregl from 'maplibre-gl'
 import './trainPopup.css'
 import { relativeTime } from '../lib/relativeTime'
-import { lineNameForTrain, markerColor, STATUS_LABEL, trainIdentityLabel } from './trainMarkers'
+import { lineNameForTrain, markerColor, nextStopLabel, STATUS_LABEL, trainIdentityLabel } from './trainMarkers'
 import type { Train } from '../api-types'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -49,6 +49,14 @@ function buildTrainPopupContent(train: Train, isTracked: boolean, onToggleTrack:
     identityRow.className = 'train-popup-identity'
     identityRow.textContent = identity
     content.append(identityRow)
+  }
+
+  const nextStop = nextStopLabel(train)
+  if (nextStop) {
+    const nextStopRow = document.createElement('div')
+    nextStopRow.className = 'train-popup-identity'
+    nextStopRow.textContent = nextStop
+    content.append(nextStopRow)
   }
 
   const meta = document.createElement('div')

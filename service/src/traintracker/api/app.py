@@ -32,6 +32,7 @@ from ..gtfs.gtfstime import service_date_for_instant
 from ..gtfs.schedule import ScheduledDeparture
 from ..gtfs.routes import Route
 from ..gtfs.schedule_cache import NoPinnedSnapshotError, PinnedScheduleCache
+from ..gtfs.stops import Stop
 from ..insights.ranges import RANGE_NAMES, InvalidRangeError, resolve_range
 from ..insights.store import InsightsStore
 from ..metrics import STALENESS_THRESHOLD_S, Metrics
@@ -41,6 +42,7 @@ from ..state.alerts import Alert as AlertRecord
 from ..state.alerts import alerts_matching
 from ..state.eventhub import EventHub
 from ..state.ghost import MAX_GHOST_AGE_S, TrackedTrainView
+from ..state.station import next_stop_and_delay
 from ..state.store import StateStore
 from .http_metrics import HttpMetricsMiddleware
 from .limits import (
@@ -64,6 +66,7 @@ from .schemas import (
     InsightsHourlyStat,
     InsightsLineStat,
     InsightsResponse,
+    LineSummary,
     ScheduledTrain,
     StateResponse,
     StationScheduleResponse,
@@ -168,12 +171,22 @@ def _trip_static_fields(
 
 
 def _train(
-    store: StateStore, tracked: TrackedTrainView, schedule_cache: PinnedScheduleCache | None, now: datetime
+    store: StateStore,
+    tracked: TrackedTrainView,
+    schedule_cache: PinnedScheduleCache | None,
+    now: datetime,
+    stops: dict[str, Stop] | None = None,
 ) -> Train:
     snapshot = store.latest_snapshots.get(tracked.trip_id)
     if snapshot is not None:
         trip_headsign, direction_id = _trip_static_fields(
             schedule_cache, tracked.trip_id, snapshot.start_date, now
+        )
+        next_stop_id, next_stop_delay_seconds = next_stop_and_delay(snapshot, now)
+        next_stop_name = (
+            stops[next_stop_id].name
+            if stops is not None and next_stop_id in stops
+            else None
         )
         return Train(
             trip_id=tracked.trip_id,
@@ -188,6 +201,9 @@ def _train(
             start_time=snapshot.start_time,
             trip_headsign=trip_headsign,
             direction_id=direction_id,
+            next_stop_id=next_stop_id,
+            next_stop_name=next_stop_name,
+            next_stop_delay_seconds=next_stop_delay_seconds,
         )
 
     # Dropped out of both live feeds entirely (coasting/ghost with only a
@@ -195,7 +211,9 @@ def _train(
     # timestamped via last_seen_at) rather than either inventing fresher
     # data or silently omitting the train from the response. Static fields
     # still resolvable from trip_id alone via "today"'s pin (no start_date
-    # to anchor to once the live snapshot is gone).
+    # to anchor to once the live snapshot is gone). No live snapshot means
+    # no stop_time_updates either, so next-stop is unresolvable the same
+    # honest way `next_stop_and_delay` reports "window hasn't surfaced it".
     trip_headsign, direction_id = _trip_static_fields(schedule_cache, tracked.trip_id, None, now)
     latitude, longitude = tracked.last_position or (None, None)
     return Train(
@@ -211,6 +229,9 @@ def _train(
         start_time=None,
         trip_headsign=trip_headsign,
         direction_id=direction_id,
+        next_stop_id=None,
+        next_stop_name=None,
+        next_stop_delay_seconds=None,
     )
 
 
@@ -321,12 +342,18 @@ def _current_state(
     loop: PollerLoop, store: StateStore, schedule_cache: PinnedScheduleCache | None = None
 ) -> StateResponse:
     now = datetime.now(timezone.utc)
+    stops: dict[str, Stop] | None = None
+    if schedule_cache is not None:
+        try:
+            stops = schedule_cache.stops_for(now)
+        except NoPinnedSnapshotError:
+            stops = None
     return StateResponse(
         generated_at=now,
         backoff_active=loop.breaker.backoff_active,
         feeds={feed.value: _feed_status(loop, feed, now) for feed in ALL_FEEDS},
         trains=[
-            _train(store, tracked, schedule_cache, now)
+            _train(store, tracked, schedule_cache, now, stops)
             for tracked in store.all_tracked()
             if _is_current(tracked, now)
         ],
@@ -731,10 +758,15 @@ def create_app(
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         if departures is None:
             raise HTTPException(status_code=404, detail=f"unknown station_id: {station_id}")
+        no_service_today = schedule_cache.lines_no_service_today(station_id, now) or []
         return StationScheduleResponse(
             station_id=station_id,
             generated_at=now,
             departures=[_scheduled_train(store, dep) for dep in departures],
+            lines_no_service_today=[
+                LineSummary(route_id=r.route_id, short_name=r.short_name, long_name=r.long_name)
+                for r in no_service_today
+            ],
         )
 
     @app.get("/api/stream")

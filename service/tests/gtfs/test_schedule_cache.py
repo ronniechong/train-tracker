@@ -161,3 +161,68 @@ def test_terminus_for_returns_none_when_nothing_pinned_for_that_service_date(
     cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes, pin_date=date(2026, 7, 20))
 
     assert cache.terminus_for("WEEKDAY_TRIP_1", date(2099, 1, 1)) is None
+
+
+_TWO_LINES_ONE_WEEKDAY_ONLY_FILES = {
+    "routes.txt": (
+        "route_id,route_short_name,route_long_name\n"
+        "ROUTE_A,A,A - City\n"
+        "ROUTE_B,B,B - City\n"
+    ),
+    "trips.txt": (
+        "route_id,service_id,trip_id,trip_headsign,direction_id\n"
+        "ROUTE_A,WEEKDAY,TRIP_A,City,0\n"
+        "ROUTE_B,SATURDAY,TRIP_B,City,0\n"
+    ),
+    "stop_times.txt": (
+        "trip_id,stop_sequence,stop_id,arrival_time,departure_time\n"
+        # Both routes call at STOP_1 -- normal service, just on different
+        # days of the week.
+        "TRIP_A,1,STOP_1,08:00:00,08:00:00\n"
+        "TRIP_B,1,STOP_1,09:00:00,09:00:00\n"
+    ),
+    "stops.txt": (
+        "stop_id,stop_name,stop_lat,stop_lon,location_type,parent_station\n"
+        "STOP_1,Platform One,-37.8,144.9,0,\n"
+    ),
+    "calendar.txt": (
+        "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,"
+        "start_date,end_date\n"
+        "WEEKDAY,1,1,1,1,1,0,0,20260101,20261231\n"
+        "SATURDAY,0,0,0,0,0,1,0,20260101,20261231\n"
+    ),
+    "calendar_dates.txt": "service_id,date,exception_type\n",
+}
+
+
+def test_lines_no_service_today_reports_lines_with_zero_active_trips(tmp_path):
+    monday = datetime(2026, 7, 20, 1, 0, tzinfo=timezone.utc)  # 2026-07-20 is a Monday
+    data = _zip_bytes(_TWO_LINES_ONE_WEEKDAY_ONLY_FILES)
+    digest = hashlib.sha256(data).hexdigest()
+    (tmp_path / f"{digest}.zip").write_bytes(data)
+    manifest = PinManifest(tmp_path / "pin_manifest.json")
+    manifest.pin_digest(date(2026, 7, 20), digest)
+    cache = PinnedScheduleCache(tmp_path, manifest)
+
+    no_service = cache.lines_no_service_today("STOP_1", monday)
+
+    assert [r.route_id for r in no_service] == ["ROUTE_B"]  # Saturday-only, not today
+
+
+def test_lines_no_service_today_flips_with_the_pinned_service_date(tmp_path):
+    # Same fixture, a different day of the week -- proves this reads the
+    # real calendar per service_date rather than a fixed/cached answer.
+    cache = _pinned_cache_from_files(tmp_path, _TWO_LINES_ONE_WEEKDAY_ONLY_FILES)
+    saturday = datetime(2026, 7, 25, 1, 0, tzinfo=timezone.utc)  # 2026-07-25 is a Saturday
+    manifest = PinManifest(tmp_path / "pin_manifest.json")
+    manifest.pin_digest(date(2026, 7, 25), hashlib.sha256(_zip_bytes(_TWO_LINES_ONE_WEEKDAY_ONLY_FILES)).hexdigest())
+
+    no_service = cache.lines_no_service_today("STOP_1", saturday)
+
+    assert [r.route_id for r in no_service] == ["ROUTE_A"]  # now it's Weekday-only that's out
+
+
+def test_lines_no_service_today_returns_none_for_unknown_station(tmp_path):
+    cache = _pinned_cache_from_files(tmp_path, _TWO_LINES_ONE_WEEKDAY_ONLY_FILES)
+
+    assert cache.lines_no_service_today("NOT_A_REAL_STOP", datetime.now(timezone.utc)) is None

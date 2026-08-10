@@ -72,9 +72,9 @@ describe('StatusPanel', () => {
 
   it('shows train counts', () => {
     const trains = new Map([
-      ['t1', { trip_id: 't1', route_id: 'r1', status: 'live' as const, latitude: 0, longitude: 0, bearing: 0, position_updated_at: null, schedule_updated_at: null, last_seen_at: null, start_time: null, trip_headsign: null, direction_id: null }],
-      ['t2', { trip_id: 't2', route_id: 'r2', status: 'coasting' as const, latitude: 0, longitude: 0, bearing: 0, position_updated_at: null, schedule_updated_at: null, last_seen_at: null, start_time: null, trip_headsign: null, direction_id: null }],
-      ['t3', { trip_id: 't3', route_id: 'r3', status: 'ghost' as const, latitude: 0, longitude: 0, bearing: 0, position_updated_at: null, schedule_updated_at: null, last_seen_at: null, start_time: null, trip_headsign: null, direction_id: null }],
+      ['t1', { trip_id: 't1', route_id: 'r1', status: 'live' as const, latitude: 0, longitude: 0, bearing: 0, position_updated_at: null, schedule_updated_at: null, last_seen_at: null, start_time: null, trip_headsign: null, direction_id: null, next_stop_id: null, next_stop_name: null, next_stop_delay_seconds: null }],
+      ['t2', { trip_id: 't2', route_id: 'r2', status: 'coasting' as const, latitude: 0, longitude: 0, bearing: 0, position_updated_at: null, schedule_updated_at: null, last_seen_at: null, start_time: null, trip_headsign: null, direction_id: null, next_stop_id: null, next_stop_name: null, next_stop_delay_seconds: null }],
+      ['t3', { trip_id: 't3', route_id: 'r3', status: 'ghost' as const, latitude: 0, longitude: 0, bearing: 0, position_updated_at: null, schedule_updated_at: null, last_seen_at: null, start_time: null, trip_headsign: null, direction_id: null, next_stop_id: null, next_stop_name: null, next_stop_delay_seconds: null }],
     ])
     render(
       <StatusPanel liveState={createLiveState({ trains })} hideGhosts={false} onToggleHideGhosts={() => {}} />

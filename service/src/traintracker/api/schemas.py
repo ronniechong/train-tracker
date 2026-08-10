@@ -35,6 +35,13 @@ class Train(BaseModel):
     start_time: str | None
     trip_headsign: str | None
     direction_id: int | None
+    # Rolling-window-aware "what's next" (M12 #2) -- all three null
+    # together whenever the window hasn't surfaced a next stop yet (see
+    # `state/station.py`'s `next_stop_and_delay`), never a crash.
+    # `next_stop_delay_seconds` is signed: positive late, negative early.
+    next_stop_id: str | None
+    next_stop_name: str | None
+    next_stop_delay_seconds: int | None
     # Distinct from position_updated_at: set for every train regardless of
     # whether it's still present in the live feeds, so a fully-vanished
     # ghost (route_id/position_updated_at all null -- see api/app.py) still
@@ -97,10 +104,22 @@ class ScheduledTrain(BaseModel):
     is_added: bool
 
 
+class LineSummary(BaseModel):
+    route_id: str
+    short_name: str
+    long_name: str
+
+
 class StationScheduleResponse(BaseModel):
     station_id: str
     generated_at: datetime
     departures: list[ScheduledTrain]
+    # M12 #3: lines that normally call here but have zero calendar-active
+    # trips today anywhere on the network -- see
+    # `PinnedScheduleCache.lines_no_service_today`'s docstring for why this
+    # is system-wide, not station-specific. Empty, not omitted, when
+    # nothing's suspended today.
+    lines_no_service_today: list[LineSummary]
 
 
 class AlertActivePeriod(BaseModel):

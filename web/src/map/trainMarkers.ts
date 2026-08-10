@@ -52,6 +52,26 @@ export function trainIdentityLabel(train: Train): string | null {
   return `${time} to ${train.trip_headsign}`
 }
 
+// Below this, a live prediction reads as "on time" rather than delayed --
+// same band StationPanel.tsx's scheduleBadge already uses for the same
+// reason (GTFS delay can be mildly negative too).
+const ON_TIME_BAND_S = 60
+
+// "Next: Richmond, 3 min late" (M12 #2) -- null whenever the rolling
+// window hasn't surfaced a next stop yet (see `state/station.py`'s
+// `next_stop_and_delay` docstring), same "omit rather than half-fill"
+// convention as `trainIdentityLabel`.
+export function nextStopLabel(train: Train): string | null {
+  if (!train.next_stop_name) return null
+  const delay = train.next_stop_delay_seconds
+  if (delay === null || Math.abs(delay) <= ON_TIME_BAND_S) {
+    return `Next: ${train.next_stop_name}`
+  }
+  const minutes = Math.round(Math.abs(delay) / 60)
+  const suffix = delay > 0 ? `${minutes} min late` : `${minutes} min early`
+  return `Next: ${train.next_stop_name}, ${suffix}`
+}
+
 interface MarkerElements {
   root: HTMLDivElement
   pulse: HTMLDivElement
@@ -61,6 +81,7 @@ interface MarkerElements {
   tooltipSwatch: SVGRectElement
   tooltipTitle: HTMLSpanElement
   tooltipIdentity: HTMLDivElement
+  tooltipNextStop: HTMLDivElement
   tooltipMeta: HTMLDivElement
 }
 
@@ -136,12 +157,17 @@ function createMarkerElements(): MarkerElements {
   titleRow.append(swatchSvg, tooltipTitle)
   const tooltipIdentity = document.createElement('div')
   tooltipIdentity.className = 'train-tooltip-identity'
+  const tooltipNextStop = document.createElement('div')
+  tooltipNextStop.className = 'train-tooltip-identity'
   const tooltipMeta = document.createElement('div')
   tooltipMeta.className = 'train-tooltip-meta'
-  tooltip.append(titleRow, tooltipIdentity, tooltipMeta)
+  tooltip.append(titleRow, tooltipIdentity, tooltipNextStop, tooltipMeta)
   root.append(tooltip)
 
-  return { root, pulse, dot, arrow, tooltip, tooltipSwatch, tooltipTitle, tooltipIdentity, tooltipMeta }
+  return {
+    root, pulse, dot, arrow, tooltip, tooltipSwatch, tooltipTitle,
+    tooltipIdentity, tooltipNextStop, tooltipMeta,
+  }
 }
 
 function styleMarkerElements(elements: MarkerElements, train: Train, isTracked: boolean): void {
@@ -185,6 +211,9 @@ function styleMarkerElements(elements: MarkerElements, train: Train, isTracked: 
   const identity = trainIdentityLabel(train)
   elements.tooltipIdentity.textContent = identity
   elements.tooltipIdentity.style.display = identity ? 'block' : 'none'
+  const nextStop = nextStopLabel(train)
+  elements.tooltipNextStop.textContent = nextStop
+  elements.tooltipNextStop.style.display = nextStop ? 'block' : 'none'
   const trackedPrefix = isTracked ? 'Tracked · ' : ''
   elements.tooltipMeta.textContent = `${trackedPrefix}${STATUS_LABEL[train.status]} · confirmed ${relativeTime(train.last_seen_at)}`
 }
