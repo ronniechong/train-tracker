@@ -122,6 +122,12 @@ function createMarkerElements(): MarkerElements {
 
   const pulse = document.createElement('div')
   pulse.className = 'train-pulse'
+  pulse.addEventListener('animationend', () => {
+    if (!root.classList.contains('train-marker--tracked')) {
+      pulse.classList.remove('train-pulse--flash')
+      pulse.style.display = 'none'
+    }
+  })
   root.append(pulse)
 
   const dot = document.createElement('div')
@@ -170,7 +176,9 @@ function createMarkerElements(): MarkerElements {
   }
 }
 
-function styleMarkerElements(elements: MarkerElements, train: Train, isTracked: boolean): void {
+function styleMarkerElements(
+  elements: MarkerElements, train: Train, isTracked: boolean, positionChanged: boolean,
+): void {
   // Two distinct colors, deliberately not one: `lineColor` is the train's
   // actual line -- always what the tooltip swatch shows, tracked or not,
   // since the swatch's job is "which line is this," not "is this tracked"
@@ -187,10 +195,19 @@ function styleMarkerElements(elements: MarkerElements, train: Train, isTracked: 
   elements.dot.classList.toggle('train-dot--ghost', train.status === 'ghost')
   elements.root.classList.toggle('train-marker--tracked', isTracked)
 
-  // Only pulse when the feed has actually confirmed this train recently --
-  // pulsing a ghost/coasting train would visually claim freshness the data
-  // doesn't have.
-  elements.pulse.style.display = train.status === 'live' ? 'block' : 'none'
+  const live = train.status === 'live'
+  if (!live) {
+    elements.pulse.style.display = 'none'
+    elements.pulse.classList.remove('train-pulse--flash')
+  } else if (isTracked) {
+    elements.pulse.style.display = 'block'
+    elements.pulse.classList.remove('train-pulse--flash')
+  } else if (positionChanged) {
+    elements.pulse.style.display = 'block'
+    elements.pulse.classList.remove('train-pulse--flash')
+    void elements.pulse.offsetWidth
+    elements.pulse.classList.add('train-pulse--flash')
+  }
   elements.pulse.style.backgroundColor = dotColor
 
   // `bearing` is a real compass heading from the feed (VP-populated,
@@ -256,11 +273,13 @@ export function createTrainMarkerManager(
 ): TrainMarkerManager {
   const markers = new Map<string, maplibregl.Marker>()
   const elementsByTripId = new Map<string, MarkerElements>()
+  const lastPositionUpdatedAt = new Map<string, string | null>()
 
   function removeTrain(tripId: string): void {
     markers.get(tripId)?.remove()
     markers.delete(tripId)
     elementsByTripId.delete(tripId)
+    lastPositionUpdatedAt.delete(tripId)
     onTrainRemoved(tripId)
   }
 
@@ -295,7 +314,9 @@ export function createTrainMarkerManager(
     } else {
       marker.setLngLat([train.longitude, train.latitude])
     }
-    styleMarkerElements(elements, train, train.trip_id === trackedTripId)
+    const positionChanged = lastPositionUpdatedAt.get(train.trip_id) !== train.position_updated_at
+    lastPositionUpdatedAt.set(train.trip_id, train.position_updated_at)
+    styleMarkerElements(elements, train, train.trip_id === trackedTripId, positionChanged)
   }
 
   return {

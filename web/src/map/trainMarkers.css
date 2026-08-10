@@ -59,6 +59,21 @@ div.train-marker {
   cursor: pointer;
 }
 
+/* Each train marker is its own top-level sibling element (MapLibre's
+   Marker API appends `element` directly to the map's marker container,
+   not nested under a shared wrapper) -- the hover tooltip's own z-index
+   only wins against ITS OWN marker's dot/arrow (children of the same
+   root), never against a neighboring train's dot, since sibling markers
+   with no z-index of their own paint strictly in DOM order regardless of
+   what z-index some descendant deep inside an earlier one declares (that
+   descendant's stacking context is confined to its own ancestor's paint
+   slot). Bumping the ROOT's z-index on hover is what actually lifts the
+   whole marker -- tooltip included -- above every other train on the map,
+   confirmed live 2026-08-11 (tooltip was rendering behind nearby dots). */
+div.train-marker:hover {
+  z-index: 30;
+}
+
 /* Enlarges the effective tap/hover target to ~44px (mobile touch-target
    guideline) without changing the 12px visual dot -- negative inset lets
    it overflow the root's own box, which is fine since nothing clips it. */
@@ -89,14 +104,19 @@ div.train-marker {
 
 .train-marker--tracked .train-pulse {
   background-color: #b026ff !important;
+  animation: train-pulse 1.6s ease-out infinite;
 }
 
 .train-pulse {
   position: absolute;
   inset: -1px;
   border-radius: 50%;
-  animation: train-pulse 1.6s ease-out infinite;
   pointer-events: none;
+  display: none;
+}
+
+.train-pulse--flash {
+  animation: train-pulse 1.6s ease-out 2;
 }
 
 @keyframes train-pulse {
