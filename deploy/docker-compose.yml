@@ -82,6 +82,13 @@ services:
       # mount, not a subdirectory of /data, so the backup copy is a genuinely
       # separate location on disk.
       - ${TT_BACKUP_DIR:-./backup}:/backup
+      # Same host directory the `archiver` service below writes to, mounted
+      # here READ-ONLY so GET /archive/status can read its
+      # `public_status.json` -- the one public-safe fact from the archive
+      # pipeline (archive/public_status.py explains why only that one file
+      # is meant to be read from here). `poller` never writes to this path;
+      # the archiver container remains the sole writer.
+      - ${TT_ARCHIVE_STATE_DIR:-./archive-state}:/archive-state:ro
     depends_on:
       - egress-proxy
     networks:

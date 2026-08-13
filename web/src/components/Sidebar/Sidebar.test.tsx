@@ -3,9 +3,11 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Sidebar } from './Sidebar'
 import { useAlerts } from '../../hooks/useAlerts'
+import { useArchiveStatus } from '../../hooks/useArchiveStatus'
 import type { LiveState } from '../../hooks/useLiveFeed'
 
 const mockUseAlerts = vi.mocked(useAlerts)
+const mockUseArchiveStatus = vi.mocked(useArchiveStatus)
 
 // Mock hooks
 vi.mock('../../hooks/useAttribution', () => ({
@@ -17,6 +19,10 @@ vi.mock('../../hooks/useAttribution', () => ({
 
 vi.mock('../../hooks/useAlerts', () => ({
   useAlerts: vi.fn(() => ({ alerts: [], loading: false, error: false })),
+}))
+
+vi.mock('../../hooks/useArchiveStatus', () => ({
+  useArchiveStatus: vi.fn(() => null),
 }))
 
 // Mock child components
@@ -105,6 +111,20 @@ describe('Sidebar', () => {
   it('renders legend section', () => {
     render(<Sidebar {...defaultProps} />)
     expect(screen.getByTestId('legend')).toBeInTheDocument()
+  })
+
+  it('shows the last archived date when the archiver has run', () => {
+    mockUseArchiveStatus.mockReturnValue({ last_archived_date: '2026-08-13' })
+    render(<Sidebar {...defaultProps} />)
+    expect(screen.getByText(/Last archived day: Aug 13, 2026/)).toBeInTheDocument()
+    mockUseArchiveStatus.mockReturnValue(null)
+  })
+
+  it('shows nothing about the archive when the archiver has never run', () => {
+    mockUseArchiveStatus.mockReturnValue({ last_archived_date: null })
+    render(<Sidebar {...defaultProps} />)
+    expect(screen.queryByText(/Last archived day/)).not.toBeInTheDocument()
+    mockUseArchiveStatus.mockReturnValue(null)
   })
 
   it('renders search section', () => {

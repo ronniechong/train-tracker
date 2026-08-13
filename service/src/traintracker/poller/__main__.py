@@ -59,6 +59,14 @@ from .weekly_digest_trigger import WeeklyDigestTrigger
 # bind-mount substitution on the host side, never as an env var in-container.
 DATA_DIR = Path("/data")
 
+# Read-only mount of the archiver's own persistent state dir (see
+# `deploy/docker-compose.yml`'s `archiver` service and `TT_ARCHIVE_STATE_DIR`)
+# -- added so the API can read `public_status.json`, the one fact from the
+# otherwise fully internal HF archive pipeline (M9) worth showing on the
+# public site. `poller` never writes here; the archiver container is the
+# only writer, same as `DATA_DIR`'s roles are reversed for that mount.
+ARCHIVE_STATE_DIR = Path("/archive-state")
+
 # Scraped by Prometheus over the `internal` docker network -- not
 # published to the host, so this doesn't change the poller's external
 # exposure at all. Not the OpenTelemetry-default 9464 or node_exporter's
@@ -305,6 +313,7 @@ async def main() -> int:
         ai_client=ai_client, ai_tool_context=tool_context, ai_notify_client=notify_client,
         metrics=metrics, digest_store=digest_store, insights_store=insights_store,
         briefing_token=os.environ.get(BRIEFING_TOKEN_ENV) or None,
+        archive_status_path=ARCHIVE_STATE_DIR / "public_status.json",
     )
     server = uvicorn.Server(uvicorn.Config(api, host="0.0.0.0", port=API_PORT, log_level="info"))
 

@@ -24,7 +24,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -32,6 +32,7 @@ import httpx
 from ..poller.healthcheck import ping
 from ..redaction import configure_logging
 from .metrics import write_textfile_metrics
+from .public_status import write_public_status
 from .report import prune_gap_report
 from .run import run_archive_pass
 
@@ -42,6 +43,7 @@ BACKUP_DIR = Path("/backup")
 STAGING_DIR = Path("/staging")
 ARCHIVE_STATE_DIR = Path("/archive-state")
 METRICS_PATH = ARCHIVE_STATE_DIR / "metrics" / "archiver.prom"
+PUBLIC_STATUS_PATH = ARCHIVE_STATE_DIR / "public_status.json"
 
 HF_TOKEN_ENV = "HF_TOKEN"
 HF_DATASET_REPO_ENV = "HF_DATASET_REPO"
@@ -96,6 +98,7 @@ def main() -> int:
         logger.info("pruned %d gap report entries older than 6 months", pruned)
 
     write_textfile_metrics(METRICS_PATH, result, now)
+    _write_public_status_safely(PUBLIC_STATUS_PATH, result.latest_archived_date, now)
 
     # Pings on every completed pass, including ones that left some days
     # pending -- this check answers "did the archiver container itself run
@@ -104,6 +107,18 @@ def main() -> int:
     asyncio.run(_ping_deadman())
 
     return 0
+
+
+def _write_public_status_safely(path: Path, latest_archived_date: date | None, now: datetime) -> None:
+    # By the time this runs, the real archive/upload work is already
+    # complete -- a failure here only means the public API's "last
+    # archived date" line goes briefly stale, not that anything was lost.
+    # Must not raise: doing so would skip the deadman ping in `main()` and
+    # misreport a fully successful pass as a failure.
+    try:
+        write_public_status(path, latest_archived_date, now)
+    except OSError:
+        logger.exception("failed to write public archive status (non-fatal)")
 
 
 async def _ping_deadman() -> None:

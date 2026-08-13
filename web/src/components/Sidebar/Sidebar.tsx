@@ -12,9 +12,11 @@ import { Modal } from '../Modal'
 import { Tabs, type TabDef } from '../Tabs'
 import { Section } from '../Section'
 import { useAttribution } from '../../hooks/useAttribution'
+import { useArchiveStatus } from '../../hooks/useArchiveStatus'
 import { useAlerts } from '../../hooks/useAlerts'
 import { cx } from '../../lib/cx'
 import { trackEvent } from '../../lib/analytics'
+import { formatArchiveDate } from '../../lib/formatDigest'
 import type { LiveState } from '../../hooks/useLiveFeed'
 import type { StationScheduleState } from '../../hooks/useStationSchedule'
 import type { Theme } from '../../hooks/useTheme'
@@ -116,6 +118,7 @@ export function Sidebar({
   schedule,
 }: SidebarProps) {
   const attribution = useAttribution()
+  const archiveStatus = useArchiveStatus()
   // Service Alerts + Weekly Performance were crowding the always-visible
   // sidebar -- moved behind this CTA into a modal instead of removing them,
   // since both are still real content, just lower-cadence than the live
@@ -192,6 +195,12 @@ export function Sidebar({
               {attribution.license}
             </a>
             . {attribution.note}
+          </p>
+        )}
+        {archiveStatus?.last_archived_date && (
+          <p className={styles.attribution}>
+            History archived nightly to a permanent dataset. Last archived day:{' '}
+            {formatArchiveDate(archiveStatus.last_archived_date)}.
           </p>
         )}
         <p className={styles.disclaimer}>

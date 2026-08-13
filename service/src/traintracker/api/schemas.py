@@ -212,6 +212,17 @@ class AttributionResponse(BaseModel):
     note: str
 
 
+class ArchiveStatusResponse(BaseModel):
+    """The one public-safe fact from the (otherwise fully internal) nightly
+    Hugging Face archive pipeline -- see `archive/public_status.py`'s
+    docstring for why this is deliberately the only thing exposed.
+    `last_archived_date` is `None` if the archiver has never completed a
+    successful pass yet (not the same as the feature being unconfigured,
+    which is a 503, not a 200 with a null field)."""
+
+    last_archived_date: date | None
+
+
 class InsightsLineStat(BaseModel):
     """One real line's rollup for the requested range -- never a `-R`
     (replacement bus) row: a substitute bus doesn't undo a cancelled,

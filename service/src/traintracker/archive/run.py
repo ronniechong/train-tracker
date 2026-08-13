@@ -44,6 +44,10 @@ class ArchiveRunResult:
     recovered_from_backup: tuple[date, ...]
     drift_findings: tuple[DriftFinding, ...]
     upload_retry_failures: int
+    # Max over the pre-existing HF listing AND anything newly archived this
+    # pass -- so this stays correct on a no-op catch-up run (archived=())
+    # too, not just the run that actually uploaded something.
+    latest_archived_date: date | None
 
 
 def _closed_local_days(history_dir: Path, backup_dir: Path, now: datetime) -> list[date]:
@@ -153,10 +157,12 @@ def run_archive_pass(
         archived_ok.append(service_date)
         logger.info("archived service_date=%s", service_date)
 
+    all_known = set(archived) | set(archived_ok)
     return ArchiveRunResult(
         archived=tuple(archived_ok),
         failed=tuple(failed),
         recovered_from_backup=tuple(recovered),
         drift_findings=tuple(drift_findings),
         upload_retry_failures=upload_stats.retry_failures,
+        latest_archived_date=max(all_known) if all_known else None,
     )

@@ -145,6 +145,7 @@ async def _client_for(
     metrics=None,
     digest_store=None,
     briefing_token=None,
+    archive_status_path=None,
 ) -> httpx.AsyncClient:
     app = create_app(
         loop=loop,
@@ -160,6 +161,7 @@ async def _client_for(
         metrics=metrics,
         digest_store=digest_store,
         briefing_token=briefing_token,
+        archive_status_path=archive_status_path,
     )
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
 
@@ -188,6 +190,45 @@ async def test_attribution_returns_cc_by_credit():
     assert body["license"] == "CC BY 4.0"
     assert body["license_url"] == "https://creativecommons.org/licenses/by/4.0/"
     assert "derived" in body["note"]
+
+
+async def test_archive_status_returns_503_when_not_configured():
+    loop, store = await _running_loop()
+    async with await _client_for(loop, store) as client:
+        response = await client.get("/archive/status")
+
+    assert response.status_code == 503
+
+
+async def test_archive_status_returns_503_when_file_missing(tmp_path):
+    loop, store = await _running_loop()
+    missing_path = tmp_path / "public_status.json"
+    async with await _client_for(loop, store, archive_status_path=missing_path) as client:
+        response = await client.get("/archive/status")
+
+    assert response.status_code == 503
+
+
+async def test_archive_status_returns_last_archived_date(tmp_path):
+    loop, store = await _running_loop()
+    status_path = tmp_path / "public_status.json"
+    status_path.write_text('{"last_archived_date": "2026-08-13", "updated_at": "2026-08-14T03:30:00+00:00"}')
+    async with await _client_for(loop, store, archive_status_path=status_path) as client:
+        response = await client.get("/archive/status")
+
+    assert response.status_code == 200
+    assert response.json() == {"last_archived_date": "2026-08-13"}
+
+
+async def test_archive_status_returns_null_before_first_successful_pass(tmp_path):
+    loop, store = await _running_loop()
+    status_path = tmp_path / "public_status.json"
+    status_path.write_text('{"last_archived_date": null, "updated_at": "2026-08-14T03:30:00+00:00"}')
+    async with await _client_for(loop, store, archive_status_path=status_path) as client:
+        response = await client.get("/archive/status")
+
+    assert response.status_code == 200
+    assert response.json() == {"last_archived_date": None}
 
 
 async def test_healthz_returns_ok():

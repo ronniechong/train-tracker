@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { formatPercent, parseNarrative } from './formatDigest'
+import { formatArchiveDate, formatPercent, parseNarrative } from './formatDigest'
+
+describe('formatArchiveDate', () => {
+  it('formats a plain YYYY-MM-DD date without an off-by-one day', () => {
+    expect(formatArchiveDate('2026-08-13')).toBe('Aug 13, 2026')
+  })
+})
 
 describe('formatPercent', () => {
   it('keeps a decimal when the source value has one', () => {

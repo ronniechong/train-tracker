@@ -15,6 +15,18 @@ export function formatWeekRange(weekStart: string, weekEnd: string): string {
   return `${dateFormatter.format(start)} – ${dateFormatter.format(end)}`
 }
 
+const archiveDateFormatter = new Intl.DateTimeFormat(undefined, {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+})
+
+// Same UTC-anchored parse as formatWeekRange, same reason: `date` is a
+// plain "YYYY-MM-DD" with no time component.
+export function formatArchiveDate(date: string): string {
+  return archiveDateFormatter.format(new Date(`${date}T00:00:00Z`))
+}
+
 // `pct` is already 0-100 (see api-types.ts's WeeklyDigest docstring) --
 // this only handles locale-aware formatting, not the /100 a `style:
 // 'percent'` Intl formatter would otherwise apply. maximumFractionDigits:1

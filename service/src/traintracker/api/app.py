@@ -10,11 +10,13 @@ reason to publish a live schema explorer alongside it.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import secrets
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -57,6 +59,7 @@ from .schemas import (
     AlertActivePeriod,
     AlertInformedEntity,
     AlertsResponse,
+    ArchiveStatusResponse,
     AttributionResponse,
     BriefingTriggerResponse,
     DeltaResponse,
@@ -493,6 +496,12 @@ def create_app(
     # enforced, same "feature not configured" convention as the params
     # above -- lets tests/dev exercise this route without wiring a token.
     briefing_token: str | None = None,
+    # Path to the archiver's `public_status.json` (see
+    # `archive/public_status.py`). None by default, same "feature not
+    # configured" 503 convention as the other optional params above --
+    # lets tests/dev construct an app without the archiver's read-only
+    # mount wired up.
+    archive_status_path: Path | None = None,
 ) -> FastAPI:
     connections = connections or ConnectionTracker()
     rate_limiter = rate_limiter or RateLimiter()
@@ -573,6 +582,28 @@ def create_app(
     )
     async def attribution() -> AttributionResponse:
         return DATA_ATTRIBUTION
+
+    @app.get(
+        "/archive/status",
+        response_model=ArchiveStatusResponse,
+        dependencies=[Depends(_rate_limit_dependency(rate_limiter, "archive_status"))],
+    )
+    async def archive_status() -> ArchiveStatusResponse:
+        # Read-only (invariant 3), and read-only in a second sense: this
+        # container never writes `archive_status_path` -- the archiver
+        # container is the sole writer (see `poller/__main__.py`'s
+        # `ARCHIVE_STATE_DIR` comment). A missing file (feature not wired
+        # up, e.g. local dev) is the existing "not configured" 503
+        # convention; a *present* file whose `last_archived_date` is null
+        # (archiver wired up but has never completed a pass) is a normal
+        # 200 -- those are different facts, not the same error.
+        if archive_status_path is None or not archive_status_path.exists():
+            raise HTTPException(status_code=503, detail="archive status feature not configured")
+        try:
+            body = json.loads(archive_status_path.read_text())
+        except (OSError, json.JSONDecodeError):
+            raise HTTPException(status_code=503, detail="archive status unavailable")
+        return ArchiveStatusResponse(last_archived_date=body.get("last_archived_date"))
 
     @app.post(
         "/briefing/trigger",

@@ -13,6 +13,7 @@ def _result(**overrides):
         recovered_from_backup=(),
         drift_findings=(),
         upload_retry_failures=0,
+        latest_archived_date=None,
     )
     defaults.update(overrides)
     return ArchiveRunResult(**defaults)

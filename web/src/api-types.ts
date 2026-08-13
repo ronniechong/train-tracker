@@ -50,6 +50,16 @@ export interface Attribution {
   note: string
 }
 
+// The one public-safe fact from the nightly Hugging Face archive
+// pipeline -- see the backend's archive/public_status.py docstring for
+// why nothing else from that pipeline is exposed here. `null` means the
+// archiver is wired up but hasn't completed a successful pass yet, not
+// the same as the endpoint being unavailable (a 404/503, handled by the
+// hook rendering nothing).
+export interface ArchiveStatus {
+  last_archived_date: string | null
+}
+
 export interface ScheduledTrain {
   trip_id: string
   route_id: string
