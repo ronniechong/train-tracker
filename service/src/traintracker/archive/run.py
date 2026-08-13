@@ -157,7 +157,13 @@ def run_archive_pass(
         archived_ok.append(service_date)
         logger.info("archived service_date=%s", service_date)
 
-    all_known = set(archived) | set(archived_ok)
+    # `archived` is `dict[str, set[date]]` (table -> its own archived days,
+    # see `upload.py`'s `archived_days` docstring) -- `set(archived)` would
+    # silently take the dict's KEYS (table names) instead of the dates
+    # inside it, so this explicitly unions every table's date set.
+    all_known: set[date] = set(archived_ok)
+    for days in archived.values():
+        all_known |= days
     return ArchiveRunResult(
         archived=tuple(archived_ok),
         failed=tuple(failed),

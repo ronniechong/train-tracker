@@ -99,6 +99,15 @@ def test_already_archived_day_is_skipped(mock_archived_days, mock_upload_day, tm
 
     assert result.archived == ()
     mock_upload_day.assert_not_called()
+    # Regression check: `archived_days` returns dict[str, set[date]] (table
+    # -> its own dates), NOT a flat collection of dates -- a naive
+    # `set(archived)` over that dict silently yields its string KEYS (table
+    # names) instead, which only surfaced in production as an
+    # AttributeError once something tried to call `.isoformat()` on what
+    # should have been a `date`. No prior test asserted this field's real
+    # value against a realistic non-empty `archived_days` mock, which is
+    # exactly why it wasn't caught before a live deploy.
+    assert result.latest_archived_date == date(2026, 7, 20)
 
 
 @patch("traintracker.archive.run.record_empty_day")
