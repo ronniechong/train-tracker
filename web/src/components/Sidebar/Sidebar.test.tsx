@@ -72,7 +72,7 @@ vi.mock('../Section/Section', () => ({
 // flag as off, same as Production's real default, so the (flag-gated)
 // Insights <Link> never renders and doesn't need a Router context either.
 vi.mock('@flagsmith/flagsmith/react', () => ({
-  useFlags: vi.fn(() => ({ 'train-insghts': { enabled: false, value: null } })),
+  useFlags: vi.fn(() => ({ 'train-insights': { enabled: false, value: null } })),
 }))
 
 function createLiveState(overrides: Partial<LiveState> = {}): LiveState {

@@ -124,12 +124,8 @@ export function Sidebar({
   // since both are still real content, just lower-cadence than the live
   // map/station panels that should own the default view.
   const [announcementsOpen, setAnnouncementsOpen] = useState(false)
-  // M8 Insights nav entry -- gated on the real Flagsmith flag key
-  // (`train-insghts`, Ronnie's own typo in the dashboard, used verbatim
-  // since the SDK looks up the exact string). Off in Production until
-  // the 2-week data-maturity gate is met; on in Development throughout
-  // the build (locked 2026-08-04, milestones/08-analytics-insights.md).
-  const insightsFlag = useFlags(['train-insghts'])
+  // M8 Insights nav entry -- gated on the Flagsmith flag `train-insights`.
+  const insightsFlag = useFlags(['train-insights'])
 
   return (
     <aside className={cx(styles.sidebar, open && styles.open)}>
@@ -158,7 +154,7 @@ export function Sidebar({
         >
           Announcements
         </button>
-        {insightsFlag['train-insghts']?.enabled && (
+        {insightsFlag['train-insights']?.enabled && (
           <Link
             to="/insights"
             className={styles.announcementsButton}
