@@ -280,7 +280,7 @@ async def test_state_marks_feed_stale_when_never_changed():
 
 
 async def test_cors_rejects_origin_not_on_allowlist(monkeypatch):
-    monkeypatch.setenv("TT_CORS_ORIGINS", "https://ronniechong.com")
+    monkeypatch.setenv("TT_CORS_ORIGINS", "https://example.com")
     loop, store = await _running_loop()
     async with await _client_for(loop, store) as client:
         response = await client.get("/api/state", headers={"Origin": "https://evil.invalid"})
@@ -291,12 +291,12 @@ async def test_cors_rejects_origin_not_on_allowlist(monkeypatch):
 
 
 async def test_cors_allows_configured_origin(monkeypatch):
-    monkeypatch.setenv("TT_CORS_ORIGINS", "https://ronniechong.com")
+    monkeypatch.setenv("TT_CORS_ORIGINS", "https://example.com")
     loop, store = await _running_loop()
     async with await _client_for(loop, store) as client:
-        response = await client.get("/api/state", headers={"Origin": "https://ronniechong.com"})
+        response = await client.get("/api/state", headers={"Origin": "https://example.com"})
 
-    assert response.headers["access-control-allow-origin"] == "https://ronniechong.com"
+    assert response.headers["access-control-allow-origin"] == "https://example.com"
 
 
 async def test_state_includes_vanished_train_as_ghost_with_last_known_position():

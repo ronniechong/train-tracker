@@ -3,10 +3,9 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { geometry, routesByStationId, type Bounds } from '../geometry'
 import type { Theme } from '../hooks/useTheme'
 
-// OpenFreeMap: free, no API key, no published rate limits (chosen as the M4
-// MVP basemap — see work-docs milestones/04-map.md). Provisional; swap the
-// style URLs here if it turns out to behave badly under real use. `dark`
-// confirmed live (2026-07-31) as a real, separate OpenFreeMap style (not a
+// OpenFreeMap: free, no API key, no published rate limits. Provisional;
+// swap the style URLs here if it turns out to behave badly under real
+// use. `dark` confirmed live as a real, separate OpenFreeMap style (not a
 // CSS filter) -- same URL pattern as `liberty`.
 const OPENFREEMAP_STYLES: Record<Theme, string> = {
   light: 'https://tiles.openfreemap.org/styles/liberty',

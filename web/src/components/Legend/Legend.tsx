@@ -5,12 +5,11 @@ import { trackEvent } from '../../lib/analytics'
 import styles from './Legend.module.css'
 
 // Groups lines by color family to match PTV's own published line-color
-// spec sheet (Ronnie's reference, 2026-07-30), City Circle pinned first
-// per his ask -- not alphabetical, which scattered same-colored lines
-// apart from each other. Stony Point isn't in that spec sheet but shares
-// Frankston's color/family, so it's placed right after Williamstown.
-// Anything not listed here (future new routes) falls back to alphabetical
-// at the end rather than silently vanishing.
+// spec sheet, City Circle pinned first -- not alphabetical, which
+// scattered same-colored lines apart from each other. Stony Point isn't
+// in that spec sheet but shares Frankston's color/family, so it's placed
+// right after Williamstown. Anything not listed here (future new routes)
+// falls back to alphabetical at the end rather than silently vanishing.
 export const LEGEND_ORDER = [
   'City Circle',
   'Sandringham',

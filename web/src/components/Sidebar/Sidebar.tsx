@@ -29,20 +29,18 @@ const GITHUB_URL = 'https://github.com/ronniechong/train-tracker'
 // PTV's own official site -- the real-time source of truth for actual
 // travel decisions. This project is a portfolio/learning build, not a
 // dependable daily tool (see CLAUDE.md's "close to real-time" framing
-// throughout) -- Ronnie's explicit ask (2026-07-31) to say so plainly
-// rather than let a stranger assume otherwise.
+// throughout), stated plainly rather than left for a stranger to assume.
 const PTV_URL = 'https://transport.vic.gov.au/'
 
 /** Tabs + tab content for the Announcements modal, split out from Sidebar
- * itself (2026-08-09) so `useAlerts()` mounts only while the modal is open
- * (same fetch-scoping the tab content used to get on its own, before it
- * needed to be mounted just to render a count) -- the "Service alerts (N)"
- * tab label needs the count immediately when the modal opens, before the
- * user has necessarily clicked into that tab, so the hook has to live
- * above the per-tab conditional rendering, not inside AlertsPanel. Weekly
- * performance is the default tab (explicit call, 2026-08-09) -- also
- * sidesteps a modal that opens on an empty tab most of the time if there
- * happen to be no active alerts. */
+ * so `useAlerts()` mounts only while the modal is open (same fetch-scoping
+ * the tab content used to get on its own, before it needed to be mounted
+ * just to render a count) -- the "Service alerts (N)" tab label needs the
+ * count immediately when the modal opens, before the user has necessarily
+ * clicked into that tab, so the hook has to live above the per-tab
+ * conditional rendering, not inside AlertsPanel. Weekly performance is the
+ * default tab -- also sidesteps a modal that opens on an empty tab most of
+ * the time if there happen to be no active alerts. */
 function AnnouncementsBody() {
   const [activeTab, setActiveTab] = useState('weekly')
   const { alerts, loading, error } = useAlerts()

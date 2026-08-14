@@ -46,8 +46,7 @@ function createSwatch(color: string): SVGSVGElement {
 /** Builds the click-tooltip content for one station: name, one swatch+name
  * row per serving line, then (if loaded) one compact schedule row per
  * direction. Deliberately a flat list of appended rows rather than a fixed
- * template -- Ronnie's plan is to add more metadata here over time, so a
- * new field should just be another row, not a restructure. */
+ * template, so a future new field is just another row, not a restructure. */
 function buildStationPopupContent(
   stationId: string,
   schedule: StationScheduleResponse | null,

@@ -130,8 +130,7 @@ export interface WeeklyLineStat {
 }
 
 // `on_time_pct` is 0-100, and only meaningful when `days_covered > 0` --
-// a cold-start week with no data yet is a plain 0.0, not null (see
-// work-docs milestones/05-ai-layer.md's "known sharp edge" note). Any
+// a cold-start week with no data yet is a plain 0.0, not null. Any
 // renderer must check `days_covered`/counts, not just print the number.
 export interface WeeklyDigest {
   week_start: string
