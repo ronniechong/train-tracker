@@ -57,6 +57,21 @@ def test_real_line_status_counts_exclude_replacement_bus_rows():
     assert BEG_R not in [r.route_id for r in rollup.line_rollups]
 
 
+def test_duplicate_trip_id_rows_count_only_once():
+    # A restart storm can re-finalize the same trip multiple times (the
+    # tracker's dup guard is in-memory, lost on restart) -- the aggregation
+    # must not let that inflate volume.
+    events = (
+        _event(SBY, "on_time", trip_id="dup"),
+        _event(SBY, "on_time", trip_id="dup"),
+        _event(SBY, "on_time", trip_id="dup"),
+    )
+    rollup = aggregate_day(SERVICE_DATE, events, ROUTES)
+
+    [sby] = [r for r in rollup.line_rollups if r.route_id == SBY]
+    assert sby.on_time_count == 1
+
+
 def test_line_with_no_replacement_bus_activity_has_zero_count():
     events = (_event(SBY, "on_time"),)
     rollup = aggregate_day(SERVICE_DATE, events, ROUTES)

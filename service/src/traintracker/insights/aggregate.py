@@ -104,7 +104,21 @@ def aggregate_day(
     hourly: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
     histogram = {"on_time": 0, "late_5_10": 0, "late_10_plus": 0, "cancelled": 0, "gap": 0}
 
+    # A trip_id should complete at most once per service_date. The tracker
+    # guards against duplicate finalization in-memory, but that guard is
+    # lost on process restart -- an in-flight trip can get re-finalized
+    # once per restart if one happens while its terminus STU is still
+    # visible in TU. Dedup here (first occurrence per trip_id) so a
+    # restart storm can never re-inflate a rollup's counts.
+    seen_trip_ids: set[str] = set()
+    deduped_events: list[TripCompletionEvent] = []
     for event in events:
+        if event.trip_id in seen_trip_ids:
+            continue
+        seen_trip_ids.add(event.trip_id)
+        deduped_events.append(event)
+
+    for event in deduped_events:
         if event.route_id is None:
             continue
         idx = status_index.get(event.status)
