@@ -1,5 +1,16 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { useInsights } from '../../hooks/useInsights'
 import { routesById } from '../../geometry'
 import { LEGEND_ORDER } from '../Legend/Legend'
@@ -15,6 +26,16 @@ const RANGE_OPTIONS: { name: InsightsRangeName; label: string }[] = [
 ]
 
 const SAMPLE_SIZE_GUARD = 20 // trips/week floor, same as the weekly digest's own ranking guard
+
+const GRID_STROKE = 'var(--color-border)'
+const AXIS_TICK = { fill: 'var(--color-text-dim)', fontSize: 12 }
+const TOOLTIP_STYLE = {
+  background: 'var(--color-panel-bg)',
+  border: '1px solid var(--color-border)',
+  borderRadius: 8,
+  fontSize: 12,
+  color: 'var(--color-text)',
+}
 
 function lineName(routeId: string): string {
   return routesById.get(routeId)?.name ?? routeId
@@ -54,7 +75,15 @@ export function InsightsPage() {
         : [],
     [data],
   )
-  const maxLineVolume = Math.max(1, ...perLineSorted.map(ranThisRange))
+
+  const perLineChartData = useMemo(
+    () => perLineSorted.map((l) => ({ name: lineName(l.route_id), value: ranThisRange(l), color: lineColor(l.route_id) })),
+    [perLineSorted],
+  )
+  const busiestChartData = useMemo(
+    () => busiestSorted.map((l) => ({ name: lineName(l.route_id), value: ranThisRange(l), color: lineColor(l.route_id) })),
+    [busiestSorted],
+  )
 
   const networkOnTime = useMemo(() => {
     if (!data) return null
@@ -86,7 +115,7 @@ export function InsightsPage() {
       const late = lines.reduce((s, l) => s + l.late_count, 0)
       const cancelled = lines.reduce((s, l) => s + l.cancelled_count, 0)
       const gap = lines.reduce((s, l) => s + l.gap_count, 0)
-      return { day, onTime, late, cancelled, gap, hasData: lines.length > 0 }
+      return { day: day.slice(5), fullDate: day, onTime, late, cancelled, gap, hasData: lines.length > 0 }
     })
   }, [data])
 
@@ -94,13 +123,29 @@ export function InsightsPage() {
   const weekdayVsWeekend = useMemo(() => {
     const buckets = { weekday: { onTime: 0, ran: 0 }, weekend: { onTime: 0, ran: 0 } }
     for (const day of dailySeries) {
-      const dow = new Date(`${day.day}T00:00:00`).getDay() // 0=Sun..6=Sat
+      const dow = new Date(`${day.fullDate}T00:00:00`).getDay() // 0=Sun..6=Sat
       const bucket = dow === 0 || dow === 6 ? buckets.weekend : buckets.weekday
       bucket.onTime += day.onTime
       bucket.ran += day.onTime + day.late
     }
     return buckets
   }, [dailySeries])
+
+  const weekdayVsWeekendChartData = useMemo(
+    () =>
+      (['weekday', 'weekend'] as const).map((key) => {
+        const bucket = weekdayVsWeekend[key]
+        const hasData = bucket.ran > 0
+        return {
+          name: key === 'weekday' ? 'Weekday' : 'Weekend',
+          pct: hasData ? (bucket.onTime / bucket.ran) * 100 : 0,
+          onTime: bucket.onTime,
+          ran: bucket.ran,
+          hasData,
+        }
+      }),
+    [weekdayVsWeekend],
+  )
 
   // "Today" means the server's Melbourne-service-date "today"
   // (service_date_for_instant's 3am boundary), not a client-computed
@@ -124,7 +169,6 @@ export function InsightsPage() {
       { label: 'Undetermined gap', value: h.gap_count, color: 'var(--color-text-dim)' },
     ]
   }, [data])
-  const maxHistogramValue = Math.max(1, ...histogramRows.map((r) => r.value))
 
   const networkHourly = useMemo(() => {
     if (!data) return []
@@ -133,9 +177,10 @@ export function InsightsPage() {
       if (h.route_id !== null) continue // route_id=null rows are already the network-wide sum
       byHour.set(h.hour_local, h.completion_count)
     }
-    return Array.from(byHour.entries()).sort((a, b) => a[0] - b[0])
+    return Array.from(byHour.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([hour, count]) => ({ hour: `${hour}:00`, count }))
   }, [data])
-  const maxHourly = Math.max(1, ...networkHourly.map(([, count]) => count))
 
   return (
     <div className={styles.page}>
@@ -207,24 +252,23 @@ export function InsightsPage() {
           <section className={styles.chartGrid}>
             <article className={styles.card}>
               <h2 className={styles.cardTitle}>Trips completed per line</h2>
-              <div className={styles.barList}>
-                {perLineSorted.map((line) => (
-                  <div className={styles.barRow} key={line.route_id}>
-                    <span className={styles.barName}>{lineName(line.route_id)}</span>
-                    <span className={styles.barTrack}>
-                      <span
-                        className={styles.barSeg}
-                        style={{
-                          width: `${(ranThisRange(line) / maxLineVolume) * 100}%`,
-                          background: lineColor(line.route_id),
-                        }}
-                      />
-                    </span>
-                    <span className={styles.barValue}>{ranThisRange(line)}</span>
-                  </div>
-                ))}
-                {perLineSorted.length === 0 && <p className={styles.status}>No data yet for this range.</p>}
-              </div>
+              {perLineChartData.length === 0 ? (
+                <p className={styles.status}>No data yet for this range.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={Math.max(180, perLineChartData.length * 28)}>
+                  <BarChart data={perLineChartData} layout="vertical" margin={{ left: 8, right: 16 }}>
+                    <CartesianGrid stroke={GRID_STROKE} horizontal={false} />
+                    <XAxis type="number" allowDecimals={false} tick={AXIS_TICK} />
+                    <YAxis type="category" dataKey="name" width={100} tick={AXIS_TICK} />
+                    <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [v as number, 'Trips completed']} />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                      {perLineChartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </article>
 
             <article className={styles.card}>
@@ -235,67 +279,52 @@ export function InsightsPage() {
                   deepens.
                 </p>
               )}
-              <div className={styles.barList}>
-                {busiestSorted.map((line) => (
-                  <div className={styles.barRow} key={line.route_id}>
-                    <span className={styles.barName}>{lineName(line.route_id)}</span>
-                    <span className={styles.barTrack}>
-                      <span
-                        className={styles.barSeg}
-                        style={{
-                          width: `${(ranThisRange(line) / maxLineVolume) * 100}%`,
-                          background: lineColor(line.route_id),
-                        }}
-                      />
-                    </span>
-                    <span className={styles.barValue}>{ranThisRange(line)}</span>
-                  </div>
-                ))}
-              </div>
+              {busiestChartData.length === 0 ? (
+                <p className={styles.status}>No data yet for this range.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={Math.max(180, busiestChartData.length * 28)}>
+                  <BarChart data={busiestChartData} layout="vertical" margin={{ left: 8, right: 16 }}>
+                    <CartesianGrid stroke={GRID_STROKE} horizontal={false} />
+                    <XAxis type="number" allowDecimals={false} tick={AXIS_TICK} />
+                    <YAxis type="category" dataKey="name" width={100} tick={AXIS_TICK} />
+                    <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [v as number, 'Trips completed']} />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                      {busiestChartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </article>
 
             <article className={`${styles.card} ${styles.cardWide}`}>
               <h2 className={styles.cardTitle}>Cancellations &amp; delays over time</h2>
               <p className={styles.cardCaption}>
-                Daily status breakdown, network-wide. Undetermined gap is always its own segment.
+                Daily completed-trip counts, network-wide, split by outcome. Undetermined gap is always its own
+                segment.
               </p>
               {dailySeries.length === 1 && (
                 <p className={styles.guard}>
                   ⚠ A single day can't show a trend — select Last 7 days or Last 30 days to see one.
                 </p>
               )}
-              <div className={styles.dailyChart}>
-                {dailySeries.map((day) => {
-                  const total = day.onTime + day.late + day.cancelled + day.gap || 1
-                  return (
-                    <div className={styles.dailyBar} key={day.day} title={day.hasData ? day.day : `${day.day} — no data yet`}>
-                      {day.hasData ? (
-                        <div className={styles.dailyStack}>
-                          <span
-                            className={styles.dailySeg}
-                            style={{ height: `${(day.onTime / total) * 100}%`, background: 'var(--color-success)' }}
-                          />
-                          <span
-                            className={styles.dailySeg}
-                            style={{ height: `${(day.late / total) * 100}%`, background: 'var(--color-warning)' }}
-                          />
-                          <span
-                            className={styles.dailySeg}
-                            style={{ height: `${(day.cancelled / total) * 100}%`, background: 'var(--color-danger)' }}
-                          />
-                          <span
-                            className={styles.dailySeg}
-                            style={{ height: `${(day.gap / total) * 100}%`, background: 'var(--color-text-dim)' }}
-                          />
-                        </div>
-                      ) : (
-                        <div className={`${styles.dailyStack} ${styles.dailyStackEmpty}`} />
-                      )}
-                      <span className={styles.dailyLabel}>{day.day.slice(5)}</span>
-                    </div>
-                  )
-                })}
-              </div>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={dailySeries} margin={{ left: 0, right: 16 }}>
+                  <CartesianGrid stroke={GRID_STROKE} vertical={false} />
+                  <XAxis dataKey="day" tick={AXIS_TICK} />
+                  <YAxis allowDecimals={false} tick={AXIS_TICK} width={40} />
+                  <Tooltip
+                    contentStyle={TOOLTIP_STYLE}
+                    labelFormatter={(_label, payload) => payload?.[0]?.payload?.fullDate ?? _label}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12, color: 'var(--color-text-dim)' }} />
+                  <Bar dataKey="onTime" name="On time" stackId="status" fill="var(--color-success)" />
+                  <Bar dataKey="late" name="Late" stackId="status" fill="var(--color-warning)" />
+                  <Bar dataKey="cancelled" name="Cancelled" stackId="status" fill="var(--color-danger)" />
+                  <Bar dataKey="gap" name="Undetermined gap" stackId="status" fill="var(--color-text-dim)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </article>
 
             <article className={styles.card}>
@@ -304,20 +333,19 @@ export function InsightsPage() {
                 Delay margin, network-wide, for the selected range. Cancellations shown, never scored as a
                 punctuality miss.
               </p>
-              <div className={styles.barList}>
-                {histogramRows.map((row) => (
-                  <div className={styles.barRow} key={row.label}>
-                    <span className={styles.barName}>{row.label}</span>
-                    <span className={styles.barTrack}>
-                      <span
-                        className={styles.barSeg}
-                        style={{ width: `${(row.value / maxHistogramValue) * 100}%`, background: row.color }}
-                      />
-                    </span>
-                    <span className={styles.barValue}>{row.value}</span>
-                  </div>
-                ))}
-              </div>
+              <ResponsiveContainer width="100%" height={Math.max(180, histogramRows.length * 32)}>
+                <BarChart data={histogramRows} layout="vertical" margin={{ left: 8, right: 16 }}>
+                  <CartesianGrid stroke={GRID_STROKE} horizontal={false} />
+                  <XAxis type="number" allowDecimals={false} tick={AXIS_TICK} />
+                  <YAxis type="category" dataKey="label" width={110} tick={AXIS_TICK} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [v as number, 'Trips']} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                    {histogramRows.map((entry) => (
+                      <Cell key={entry.label} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </article>
 
             <article className={styles.card}>
@@ -325,40 +353,41 @@ export function InsightsPage() {
               <p className={styles.cardCaption}>
                 Terminus-arrival times, Melbourne local time — an arrival proxy, not a departure-frequency count.
               </p>
-              <div className={styles.hourlyChart}>
-                {networkHourly.map(([hour, count]) => (
-                  <div className={styles.hourlyBar} key={hour} title={`${hour}:00`}>
-                    <span
-                      className={styles.hourlyFill}
-                      style={{ height: `${(count / maxHourly) * 100}%` }}
-                    />
-                  </div>
-                ))}
-                {networkHourly.length === 0 && <p className={styles.status}>No data yet for this range.</p>}
-              </div>
+              {networkHourly.length === 0 ? (
+                <p className={styles.status}>No data yet for this range.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={networkHourly} margin={{ left: 0, right: 16 }}>
+                    <CartesianGrid stroke={GRID_STROKE} vertical={false} />
+                    <XAxis dataKey="hour" interval={2} tick={AXIS_TICK} />
+                    <YAxis allowDecimals={false} tick={AXIS_TICK} width={32} />
+                    <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [v as number, 'Completions']} />
+                    <Bar dataKey="count" name="Completions" fill="var(--color-accent)" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </article>
 
             <article className={styles.card}>
               <h2 className={styles.cardTitle}>Weekday vs. weekend</h2>
-              <div className={styles.barList}>
-                {(['weekday', 'weekend'] as const).map((key) => {
-                  const bucket = weekdayVsWeekend[key]
-                  const hasData = bucket.ran > 0
-                  const pct = hasData ? (bucket.onTime / bucket.ran) * 100 : 0
-                  return (
-                    <div className={styles.barRow} key={key}>
-                      <span className={styles.barName}>{key === 'weekday' ? 'Weekday' : 'Weekend'}</span>
-                      <span className={styles.barTrack}>
-                        <span className={styles.barSeg} style={{ width: `${pct}%`, background: 'var(--color-accent)' }} />
-                      </span>
-                      {/* "No data" for an empty bucket, not "0%" -- an empty
-                          weekend bucket hasn't been measured at 0%, it just
-                          isn't in the selected range yet. */}
-                      <span className={styles.barValue}>{hasData ? `${pct.toFixed(0)}%` : 'No data'}</span>
-                    </div>
-                  )
-                })}
-              </div>
+              <p className={styles.cardCaption}>
+                On-time percentage of completed trips, network-wide, for the selected range.
+              </p>
+              <ResponsiveContainer width="100%" height={140}>
+                <BarChart data={weekdayVsWeekendChartData} layout="vertical" margin={{ left: 8, right: 16 }}>
+                  <CartesianGrid stroke={GRID_STROKE} horizontal={false} />
+                  <XAxis type="number" domain={[0, 100]} unit="%" tick={AXIS_TICK} />
+                  <YAxis type="category" dataKey="name" width={80} tick={AXIS_TICK} />
+                  <Tooltip
+                    contentStyle={TOOLTIP_STYLE}
+                    formatter={(_v, _n, item) => {
+                      const p = item.payload as (typeof weekdayVsWeekendChartData)[number]
+                      return [p.hasData ? `${p.pct.toFixed(0)}% (${p.onTime}/${p.ran} trips)` : 'No data', 'On time']
+                    }}
+                  />
+                  <Bar dataKey="pct" fill="var(--color-accent)" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
               {dailySeries.filter((d) => d.hasData).length < 2 && (
                 <p className={styles.guard}>⚠ Only a few days observed so far — read as directional.</p>
               )}

@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router'
 import { FlagsmithProvider } from '@flagsmith/flagsmith/react'
@@ -7,8 +7,13 @@ import './styles/tokens.css'
 import './styles/global.css'
 import { App } from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { InsightsPage } from './components/Insights/InsightsPage'
 import { flagsmith, flagsmithOptions } from './lib/flags'
+
+// Lazy-loaded: Recharts (and its d3 dependencies) would otherwise ship in
+// the main bundle every visitor downloads just to see the live map.
+const InsightsPage = lazy(() =>
+  import('./components/Insights/InsightsPage').then((m) => ({ default: m.InsightsPage })),
+)
 
 const container = document.getElementById('app')
 if (!container) throw new Error('#app root element not found')
@@ -24,7 +29,14 @@ createRoot(container).render(
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Routes>
             <Route path="/" element={<App />} />
-            <Route path="/insights" element={<InsightsPage />} />
+            <Route
+              path="/insights"
+              element={
+                <Suspense fallback={null}>
+                  <InsightsPage />
+                </Suspense>
+              }
+            />
           </Routes>
         </BrowserRouter>
       </FlagsmithProvider>
