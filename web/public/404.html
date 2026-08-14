@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Melbourne Train Tracker</title>
+    <script>
+      // GitHub Pages has no server-side rewrite for a client-side router --
+      // a direct request/refresh to a deep route like /train-tracker/insights
+      // hits this static 404 page. Re-encode the path as a query string and
+      // redirect to the app root; index.html's inline script below decodes
+      // it and restores the real URL via history.replaceState before React
+      // Router mounts. Pattern: https://github.com/rafgraph/spa-github-pages
+      var path = location.pathname + location.search + location.hash;
+      location.replace('/train-tracker/?redirect=' + encodeURIComponent(path));
+    </script>
+  </head>
+  <body></body>
+</html>

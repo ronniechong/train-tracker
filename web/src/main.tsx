@@ -15,6 +15,16 @@ const InsightsPage = lazy(() =>
   import('./components/Insights/InsightsPage').then((m) => ({ default: m.InsightsPage })),
 )
 
+// GitHub Pages has no server-side rewrite for a client-side router: a direct
+// request or refresh against a deep route (e.g. /insights) hits 404.html,
+// which re-encodes the path into a `redirect` query param and sends the
+// browser back here. Restore it before the router reads location, so a
+// refresh lands on the same route instead of the map.
+const redirect = new URLSearchParams(window.location.search).get('redirect')
+if (redirect) {
+  window.history.replaceState(null, '', redirect)
+}
+
 const container = document.getElementById('app')
 if (!container) throw new Error('#app root element not found')
 
