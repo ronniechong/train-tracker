@@ -331,30 +331,33 @@ export function InsightsPage() {
                 </p>
               )}
               <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={dailySeries} margin={{ left: 0, right: 16 }}>
+                <BarChart data={dailySeries} margin={{ left: 0, right: 16 }} barGap={0}>
                   <CartesianGrid stroke={GRID_STROKE} vertical={false} />
-                  <XAxis dataKey="day" tick={AXIS_TICK} />
+                  <XAxis dataKey="day" tick={AXIS_TICK} padding={{ left: 40, right: 40 }} />
                   <YAxis allowDecimals={false} tick={AXIS_TICK} width={40} />
                   <Tooltip
                     contentStyle={TOOLTIP_STYLE}
                     labelFormatter={(_label, payload) => payload?.[0]?.payload?.fullDate ?? _label}
                   />
                   <Legend wrapperStyle={{ fontSize: 12, color: 'var(--color-text-dim)' }} />
-                  {/* maxBarSize caps bar width regardless of how few days are in
-                      the selected range -- otherwise a single-day range (Today,
-                      Yesterday) stretches its one bar to fill the whole chart
-                      width, matching roughly what a 7-bar "Last 7 days" view
-                      produces instead of scaling with category count. */}
-                  <Bar dataKey="onTime" name="On time" stackId="status" fill="var(--color-success)" maxBarSize={60} />
-                  <Bar dataKey="late" name="Late" stackId="status" fill="var(--color-warning)" maxBarSize={60} />
-                  <Bar dataKey="cancelled" name="Cancelled" stackId="status" fill="var(--color-danger)" maxBarSize={60} />
+                  {/* barSize (not maxBarSize -- doesn't reliably cap a
+                      single-category chart in this Recharts version) fixes
+                      the bar to a sane width when there are few days in the
+                      selected range (Today, Yesterday). Left unset once
+                      there's enough days that the default auto-sizing already
+                      looks proportionate (verified against the real "Last 7
+                      days" view), so a "Last 30 days" chart isn't forced into
+                      the same fixed width per bar. */}
+                  <Bar dataKey="onTime" name="On time" stackId="status" fill="var(--color-success)" barSize={dailySeries.length <= 3 ? 60 : undefined} />
+                  <Bar dataKey="late" name="Late" stackId="status" fill="var(--color-warning)" barSize={dailySeries.length <= 3 ? 60 : undefined} />
+                  <Bar dataKey="cancelled" name="Cancelled" stackId="status" fill="var(--color-danger)" barSize={dailySeries.length <= 3 ? 60 : undefined} />
                   <Bar
                     dataKey="gap"
                     name="Undetermined gap"
                     stackId="status"
                     fill="var(--color-text-dim)"
                     radius={[4, 4, 0, 0]}
-                    maxBarSize={60}
+                    barSize={dailySeries.length <= 3 ? 60 : undefined}
                   />
                 </BarChart>
               </ResponsiveContainer>
