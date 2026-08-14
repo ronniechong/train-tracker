@@ -340,10 +340,22 @@ export function InsightsPage() {
                     labelFormatter={(_label, payload) => payload?.[0]?.payload?.fullDate ?? _label}
                   />
                   <Legend wrapperStyle={{ fontSize: 12, color: 'var(--color-text-dim)' }} />
-                  <Bar dataKey="onTime" name="On time" stackId="status" fill="var(--color-success)" />
-                  <Bar dataKey="late" name="Late" stackId="status" fill="var(--color-warning)" />
-                  <Bar dataKey="cancelled" name="Cancelled" stackId="status" fill="var(--color-danger)" />
-                  <Bar dataKey="gap" name="Undetermined gap" stackId="status" fill="var(--color-text-dim)" radius={[4, 4, 0, 0]} />
+                  {/* maxBarSize caps bar width regardless of how few days are in
+                      the selected range -- otherwise a single-day range (Today,
+                      Yesterday) stretches its one bar to fill the whole chart
+                      width, matching roughly what a 7-bar "Last 7 days" view
+                      produces instead of scaling with category count. */}
+                  <Bar dataKey="onTime" name="On time" stackId="status" fill="var(--color-success)" maxBarSize={60} />
+                  <Bar dataKey="late" name="Late" stackId="status" fill="var(--color-warning)" maxBarSize={60} />
+                  <Bar dataKey="cancelled" name="Cancelled" stackId="status" fill="var(--color-danger)" maxBarSize={60} />
+                  <Bar
+                    dataKey="gap"
+                    name="Undetermined gap"
+                    stackId="status"
+                    fill="var(--color-text-dim)"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={60}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </article>
