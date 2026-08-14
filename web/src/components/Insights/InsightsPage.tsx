@@ -49,6 +49,14 @@ function ranThisRange(line: InsightsLineStat): number {
   return line.on_time_count + line.late_count
 }
 
+// 24-hour local hour -> "12am"/"1am".../"12pm"/"1pm"..., not a bare "0"-"23"
+// -- those read ambiguously (is "8" 8am or 8pm?) at a glance on the chart axis.
+function formatHour12(hour: number): string {
+  const period = hour < 12 ? 'am' : 'pm'
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12
+  return `${hour12}${period}`
+}
+
 // Same ordering as the map sidebar's Legend (PTV's own color-family
 // grouping, City Circle first) -- so a line occupies the same relative
 // position whether you're looking at the map or Insights. Falls back to
@@ -170,16 +178,21 @@ export function InsightsPage() {
     ]
   }, [data])
 
+  // All 24 hours always shown, even ones with zero completions so far
+  // (e.g. hours not yet reached in "Today") -- an hour with no data
+  // isn't the same as an hour that hasn't happened yet, but both should
+  // render as an explicit 0 bar rather than silently missing from the
+  // x-axis, same honesty pattern used for zero-completion lines elsewhere
+  // on this page.
   const networkHourly = useMemo(() => {
-    if (!data) return []
     const byHour = new Map<number, number>()
-    for (const h of data.hourly_stats) {
-      if (h.route_id !== null) continue // route_id=null rows are already the network-wide sum
-      byHour.set(h.hour_local, h.completion_count)
+    if (data) {
+      for (const h of data.hourly_stats) {
+        if (h.route_id !== null) continue // route_id=null rows are already the network-wide sum
+        byHour.set(h.hour_local, h.completion_count)
+      }
     }
-    return Array.from(byHour.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map(([hour, count]) => ({ hour: `${hour}:00`, count }))
+    return Array.from({ length: 24 }, (_, hour) => ({ hour: formatHour12(hour), count: byHour.get(hour) ?? 0 }))
   }, [data])
 
   return (
@@ -361,19 +374,15 @@ export function InsightsPage() {
               <p className={styles.cardCaption}>
                 Terminus-arrival times, Melbourne local time — an arrival proxy, not a departure-frequency count.
               </p>
-              {networkHourly.length === 0 ? (
-                <p className={styles.status}>No data yet for this range.</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={networkHourly} margin={{ left: 0, right: 16 }}>
-                    <CartesianGrid stroke={GRID_STROKE} vertical={false} />
-                    <XAxis dataKey="hour" interval={2} tick={AXIS_TICK} />
-                    <YAxis allowDecimals={false} tick={AXIS_TICK} width={32} />
-                    <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [v as number, 'Completions']} />
-                    <Bar dataKey="count" name="Completions" fill="var(--color-accent)" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={networkHourly} margin={{ left: 0, right: 16 }}>
+                  <CartesianGrid stroke={GRID_STROKE} vertical={false} />
+                  <XAxis dataKey="hour" interval={0} tick={{ ...AXIS_TICK, fontSize: 10 }} angle={-45} textAnchor="end" height={40} />
+                  <YAxis allowDecimals={false} tick={AXIS_TICK} width={32} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [v as number, 'Completions']} />
+                  <Bar dataKey="count" name="Completions" fill="var(--color-accent)" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </article>
 
             <article className={styles.card}>
