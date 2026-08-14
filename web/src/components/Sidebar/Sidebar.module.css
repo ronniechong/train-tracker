@@ -28,15 +28,19 @@
 }
 
 .recenterButton {
+  display: block;
   width: 100%;
+  margin: 0;
   padding: 0.45rem 0.6rem;
   font-family: inherit;
   font-size: var(--font-size-base);
+  line-height: 1.45;
   font-weight: var(--font-weight-medium);
   color: var(--color-text);
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  appearance: none;
   cursor: pointer;
 }
 
@@ -46,26 +50,28 @@
 }
 
 .announcementsButton {
+  display: block;
   width: 100%;
-  margin-top: var(--space-2);
+  margin: var(--space-2) 0 0;
   padding: 0.45rem 0.6rem;
   font-family: inherit;
   font-size: var(--font-size-base);
+  line-height: 1.45;
   font-weight: var(--font-weight-medium);
   color: #fff;
   background: var(--color-accent);
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-md);
+  appearance: none;
+  box-sizing: border-box;
   cursor: pointer;
 }
 
 /* Applied to the "Insights" nav entry too (a <Link>, not a <button>) --
    these two rules make it look identical despite the different element. */
 a.announcementsButton {
-  display: block;
   text-align: center;
   text-decoration: none;
-  box-sizing: border-box;
 }
 
 .announcementsButton:hover {
