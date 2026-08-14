@@ -221,7 +221,15 @@ export function InsightsPage() {
         ))}
       </nav>
 
-      {loading && <p className={styles.status}>Loading…</p>}
+      {loading && (
+        <div className={styles.loading} role="status" aria-live="polite">
+          <svg className={styles.spinner} viewBox="0 0 50 50" width="32" height="32" aria-hidden="true">
+            <circle className={styles.spinnerTrack} cx="25" cy="25" r="20" fill="none" strokeWidth="4" />
+            <circle className={styles.spinnerArc} cx="25" cy="25" r="20" fill="none" strokeWidth="4" />
+          </svg>
+          <span>Loading Insights…</span>
+        </div>
+      )}
       {error && <p className={styles.status}>Couldn't load Insights data. Try again shortly.</p>}
 
       {data && !loading && !error && (

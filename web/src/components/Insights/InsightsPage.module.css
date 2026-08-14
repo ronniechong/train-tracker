@@ -95,6 +95,31 @@
   font-size: var(--font-size-sm);
 }
 
+.loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-text-dim);
+  font-size: var(--font-size-sm);
+  padding: var(--space-6) 0;
+}
+.spinner {
+  animation: insights-spinner-rotate 1s linear infinite;
+}
+.spinnerTrack {
+  stroke: var(--color-border);
+}
+.spinnerArc {
+  stroke: var(--color-accent);
+  stroke-linecap: round;
+  stroke-dasharray: 90 125.6;
+}
+@keyframes insights-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .kpiRow {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
