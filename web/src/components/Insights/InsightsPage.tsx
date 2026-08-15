@@ -16,6 +16,7 @@ import { routesById } from '../../geometry'
 import { LEGEND_ORDER } from '../Legend/Legend'
 import type { InsightsLineStat, InsightsRangeName } from '../../api-types'
 import { relativeTime } from '../../lib/relativeTime'
+import { trackEvent } from '../../lib/analytics'
 import styles from './InsightsPage.module.css'
 
 const RANGE_OPTIONS: { name: InsightsRangeName; label: string }[] = [
@@ -199,7 +200,11 @@ export function InsightsPage() {
     <div className={styles.page}>
       <header className={styles.topbar}>
         <div>
-          <Link to="/" className={styles.backLink}>
+          <Link
+            to="/"
+            className={styles.backLink}
+            data-goatcounter-click="click-insights-back"
+          >
             ← Back to live map
           </Link>
           <h1 className={styles.title}>Insights</h1>
@@ -227,7 +232,10 @@ export function InsightsPage() {
             type="button"
             className={styles.filterChip}
             aria-pressed={range === option.name}
-            onClick={() => setRange(option.name)}
+            onClick={() => {
+              if (option.name !== range) trackEvent(`click-insights-range/${option.name}`)
+              setRange(option.name)
+            }}
           >
             {option.label}
           </button>

@@ -4,6 +4,7 @@ import { useWeeklyDigests } from '../../hooks/useWeeklyDigests'
 import { routesById } from '../../geometry'
 import { LEGEND_ORDER } from '../Legend'
 import { formatWeekRange, formatPercent, parseNarrative } from '../../lib/formatDigest'
+import { trackEvent } from '../../lib/analytics'
 import type { WeeklyDigest, WeeklyLineStat } from '../../api-types'
 import styles from './WeeklyDigestPanel.module.css'
 
@@ -107,7 +108,11 @@ function PastDigestRow({ digest }: { digest: WeeklyDigest }) {
       <button
         type="button"
         className={styles.pastToggle}
-        onClick={() => canExpand && setExpanded((prev) => !prev)}
+        onClick={() => {
+          if (!canExpand) return
+          if (!expanded) trackEvent('click-expand-past-digest', digest.week_start)
+          setExpanded((prev) => !prev)
+        }}
         aria-expanded={expanded}
         disabled={!canExpand}
       >
