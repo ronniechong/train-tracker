@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nextStopLabel } from './trainMarkers'
+import { nextStopLabel, progressLabel } from './trainMarkers'
 import type { Train } from '../api-types'
 
 function makeTrain(overrides: Partial<Train> = {}): Train {
@@ -19,6 +19,8 @@ function makeTrain(overrides: Partial<Train> = {}): Train {
     next_stop_id: null,
     next_stop_name: null,
     next_stop_delay_seconds: null,
+    progress_stop_sequence: null,
+    progress_total_stops: null,
     ...overrides,
   }
 }
@@ -50,5 +52,22 @@ describe('nextStopLabel', () => {
     expect(nextStopLabel(makeTrain({ next_stop_name: 'Richmond', next_stop_delay_seconds: null }))).toBe(
       'Next: Richmond',
     )
+  })
+})
+
+describe('progressLabel', () => {
+  it('is null when progress is unknown', () => {
+    expect(progressLabel(makeTrain())).toBeNull()
+  })
+
+  it('is null when only one of the two fields is known', () => {
+    expect(progressLabel(makeTrain({ progress_stop_sequence: 3, progress_total_stops: null }))).toBeNull()
+    expect(progressLabel(makeTrain({ progress_stop_sequence: null, progress_total_stops: 12 }))).toBeNull()
+  })
+
+  it('formats "N of M stops" when both are known', () => {
+    expect(
+      progressLabel(makeTrain({ progress_stop_sequence: 3, progress_total_stops: 12 })),
+    ).toBe('3 of 12 stops')
   })
 })

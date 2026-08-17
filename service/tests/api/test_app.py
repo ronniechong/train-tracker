@@ -794,6 +794,67 @@ def test_train_next_stop_is_none_when_stops_dict_not_supplied():
     assert train.next_stop_delay_seconds is None
 
 
+def test_train_reports_trip_progress_against_the_static_terminus(tmp_path, sample_static_zip_bytes):
+    # `_train` wires `state/station.py`'s `current_stop_sequence` +
+    # `PinnedScheduleCache.terminus_for` into the public Train shape
+    # (M12 #5). WEEKDAY_TRIP_1 in the shared fixture is a 2-stop trip
+    # (PLAT_A1 seq 1 -> PLAT_B1 seq 2, terminus sequence 2) -- pinned to a
+    # fixed service_date matching the snapshot's own start_date, so this
+    # doesn't depend on wall-clock "today" the way `_pinned_schedule_cache`
+    # above does.
+    digest = hashlib.sha256(sample_static_zip_bytes).hexdigest()
+    (tmp_path / f"{digest}.zip").write_bytes(sample_static_zip_bytes)
+    manifest = PinManifest(tmp_path / "pin_manifest.json")
+    manifest.pin_digest(date(2026, 7, 20), digest)
+    schedule_cache = PinnedScheduleCache(tmp_path, manifest)
+
+    now = datetime.fromtimestamp(1000, tz=timezone.utc)  # dwelling at PLAT_A1's departure
+    store = _empty_store()
+    store.latest_snapshots["WEEKDAY_TRIP_1"] = TrainSnapshot(
+        trip_id="WEEKDAY_TRIP_1", route_id="2-PKM", start_time="08:00:00", start_date="20260720",
+        schedule_relationship="SCHEDULED",
+        stop_time_updates=(
+            StopTimeUpdate(
+                stop_sequence=1, stop_id="PLAT_A1", arrival_delay=None, arrival_time=None,
+                departure_delay=None, departure_time="1000", schedule_relationship="SCHEDULED",
+            ),
+        ),
+        schedule_updated_at=now, latitude=None, longitude=None, bearing=None, position_updated_at=None,
+    )
+    tracked = TrackedTrainView(
+        trip_id="WEEKDAY_TRIP_1", status="live", last_seen_at=now, last_position=None, last_touched_at=now,
+    )
+
+    train = _train(store, tracked, schedule_cache=schedule_cache, now=now, stops=None)
+
+    assert train.progress_stop_sequence == 1
+    assert train.progress_total_stops == 2
+
+
+def test_train_progress_is_none_without_a_schedule_cache():
+    now = datetime.fromtimestamp(1000, tz=timezone.utc)
+    store = _empty_store()
+    store.latest_snapshots["T1"] = TrainSnapshot(
+        trip_id="T1", route_id="R1", start_time=None, start_date=None,
+        schedule_relationship="SCHEDULED",
+        stop_time_updates=(
+            StopTimeUpdate(
+                stop_sequence=1, stop_id="A", arrival_delay=None, arrival_time=None,
+                departure_delay=None, departure_time="1000", schedule_relationship="SCHEDULED",
+            ),
+        ),
+        schedule_updated_at=now, latitude=None, longitude=None, bearing=None, position_updated_at=None,
+    )
+    tracked = TrackedTrainView(
+        trip_id="T1", status="live", last_seen_at=now, last_position=None, last_touched_at=now,
+    )
+
+    train = _train(store, tracked, schedule_cache=None, now=now, stops=None)
+
+    assert train.progress_stop_sequence is None
+    assert train.progress_total_stops is None
+
+
 def test_scheduled_train_is_added_for_a_real_time_only_trip():
     # TU schedule_relationship ADDED means a real-time-only
     # extra service (no static row) -- `_scheduled_train` reads it off the

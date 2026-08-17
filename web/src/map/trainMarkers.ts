@@ -72,6 +72,14 @@ export function nextStopLabel(train: Train): string | null {
   return `Next: ${train.next_stop_name}, ${suffix}`
 }
 
+// "3 of 12 stops done" (M12 #5) -- null whenever a total isn't resolvable
+// (see `Train.progress_total_stops`'s own null-together contract), same
+// "omit rather than half-fill" convention as the labels above.
+export function progressLabel(train: Train): string | null {
+  if (train.progress_stop_sequence === null || train.progress_total_stops === null) return null
+  return `${train.progress_stop_sequence} of ${train.progress_total_stops} stops`
+}
+
 interface MarkerElements {
   root: HTMLDivElement
   pulse: HTMLDivElement
@@ -82,6 +90,7 @@ interface MarkerElements {
   tooltipTitle: HTMLSpanElement
   tooltipIdentity: HTMLDivElement
   tooltipNextStop: HTMLDivElement
+  tooltipProgress: HTMLDivElement
   tooltipMeta: HTMLDivElement
 }
 
@@ -165,14 +174,16 @@ function createMarkerElements(): MarkerElements {
   tooltipIdentity.className = 'train-tooltip-identity'
   const tooltipNextStop = document.createElement('div')
   tooltipNextStop.className = 'train-tooltip-identity'
+  const tooltipProgress = document.createElement('div')
+  tooltipProgress.className = 'train-tooltip-identity'
   const tooltipMeta = document.createElement('div')
   tooltipMeta.className = 'train-tooltip-meta'
-  tooltip.append(titleRow, tooltipIdentity, tooltipNextStop, tooltipMeta)
+  tooltip.append(titleRow, tooltipIdentity, tooltipNextStop, tooltipProgress, tooltipMeta)
   root.append(tooltip)
 
   return {
     root, pulse, dot, arrow, tooltip, tooltipSwatch, tooltipTitle,
-    tooltipIdentity, tooltipNextStop, tooltipMeta,
+    tooltipIdentity, tooltipNextStop, tooltipProgress, tooltipMeta,
   }
 }
 
@@ -231,6 +242,9 @@ function styleMarkerElements(
   const nextStop = nextStopLabel(train)
   elements.tooltipNextStop.textContent = nextStop
   elements.tooltipNextStop.style.display = nextStop ? 'block' : 'none'
+  const progress = progressLabel(train)
+  elements.tooltipProgress.textContent = progress
+  elements.tooltipProgress.style.display = progress ? 'block' : 'none'
   const trackedPrefix = isTracked ? 'Tracked · ' : ''
   elements.tooltipMeta.textContent = `${trackedPrefix}${STATUS_LABEL[train.status]} · confirmed ${relativeTime(train.last_seen_at)}`
 }

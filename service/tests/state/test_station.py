@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from traintracker.gtfs.stops import Stop
 from traintracker.state.merge import StopTimeUpdate, TrainSnapshot
-from traintracker.state.station import derive_station_state, next_stop_and_delay
+from traintracker.state.station import current_stop_sequence, derive_station_state, next_stop_and_delay
 
 
 def _snapshot(stop_time_updates, latitude=None, longitude=None) -> TrainSnapshot:
@@ -205,3 +205,30 @@ def test_next_stop_delay_falls_back_to_departure_delay():
     stop_id, delay = next_stop_and_delay(_snapshot(stus), _at(1050))
     assert stop_id == "B"
     assert delay == -30
+
+
+def test_progress_before_first_arrival_is_one_before_earliest_known():
+    # 950 is before A's departure (1000) -- window hasn't confirmed we've
+    # reached any stop yet, so this reports A's sequence minus one (a
+    # floor, not a guess about what was trimmed off the front).
+    assert current_stop_sequence(_snapshot(THREE_STOPS), _at(950)) == 0
+
+
+def test_progress_dwelling_at_origin_is_its_own_sequence():
+    assert current_stop_sequence(_snapshot(THREE_STOPS), _at(1000)) == 1
+
+
+def test_progress_between_two_stops_is_the_one_just_departed():
+    assert current_stop_sequence(_snapshot(THREE_STOPS), _at(1050)) == 1
+
+
+def test_progress_dwelling_at_intermediate_stop_is_its_own_sequence():
+    assert current_stop_sequence(_snapshot(THREE_STOPS), _at(1110)) == 2
+
+
+def test_progress_after_last_departure_is_terminus_sequence():
+    assert current_stop_sequence(_snapshot(THREE_STOPS), _at(1250)) == 3
+
+
+def test_progress_no_stop_time_updates_is_unknown():
+    assert current_stop_sequence(_snapshot([]), _at(1000)) is None

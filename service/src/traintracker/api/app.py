@@ -44,7 +44,7 @@ from ..state.alerts import Alert as AlertRecord
 from ..state.alerts import alerts_matching
 from ..state.eventhub import EventHub
 from ..state.ghost import MAX_GHOST_AGE_S, TrackedTrainView
-from ..state.station import next_stop_and_delay
+from ..state.station import current_stop_sequence, next_stop_and_delay
 from ..state.store import StateStore
 from .http_metrics import HttpMetricsMiddleware
 from .limits import (
@@ -147,6 +147,18 @@ def _parse_start_date(value: str) -> date:
     return date(int(value[0:4]), int(value[4:6]), int(value[6:8]))
 
 
+def _resolve_service_date(start_date: str | None, now: datetime) -> date:
+    """TU's `trip.start_date` when present and parseable, else falls back
+    to "today" resolved from wall-clock `now` -- shared by every static-
+    schedule lookup keyed on a trip's own service_date."""
+    if start_date is not None:
+        try:
+            return _parse_start_date(start_date)
+        except (ValueError, IndexError):
+            pass
+    return service_date_for_instant(now)
+
+
 def _trip_static_fields(
     schedule_cache: PinnedScheduleCache | None,
     trip_id: str,
@@ -160,13 +172,7 @@ def _trip_static_fields(
     honest, not a crash" convention as terminus_for."""
     if schedule_cache is None:
         return None, None
-    if start_date is not None:
-        try:
-            service_date = _parse_start_date(start_date)
-        except (ValueError, IndexError):
-            service_date = service_date_for_instant(now)
-    else:
-        service_date = service_date_for_instant(now)
+    service_date = _resolve_service_date(start_date, now)
     trip = schedule_cache.trip_for(trip_id, service_date)
     if trip is None:
         return None, None
@@ -191,6 +197,21 @@ def _train(
             if stops is not None and next_stop_id in stops
             else None
         )
+        progress_stop_sequence = current_stop_sequence(snapshot, now)
+        progress_total_stops = None
+        terminus = None
+        if progress_stop_sequence is not None and schedule_cache is not None:
+            service_date = _resolve_service_date(snapshot.start_date, now)
+            terminus = schedule_cache.terminus_for(tracked.trip_id, service_date)
+            if terminus is not None:
+                progress_total_stops = terminus.stop_sequence
+        if terminus is None:
+            # Symmetric with the schema's own "both null together" contract
+            # -- a current position without a known total isn't useful, so
+            # don't surface a half-answer (covers: no schedule_cache
+            # configured, real-time-only ADDED trip with no static row, no
+            # anchor surfaced yet).
+            progress_stop_sequence = None
         return Train(
             trip_id=tracked.trip_id,
             route_id=snapshot.route_id,
@@ -207,6 +228,8 @@ def _train(
             next_stop_id=next_stop_id,
             next_stop_name=next_stop_name,
             next_stop_delay_seconds=next_stop_delay_seconds,
+            progress_stop_sequence=progress_stop_sequence,
+            progress_total_stops=progress_total_stops,
         )
 
     # Dropped out of both live feeds entirely (coasting/ghost with only a
@@ -235,6 +258,8 @@ def _train(
         next_stop_id=None,
         next_stop_name=None,
         next_stop_delay_seconds=None,
+        progress_stop_sequence=None,
+        progress_total_stops=None,
     )
 
 

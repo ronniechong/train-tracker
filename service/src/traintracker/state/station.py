@@ -53,6 +53,7 @@ def _epoch(value: str | int | None) -> int | None:
 @dataclass(frozen=True)
 class _Anchor:
     stop_id: str | None
+    stop_sequence: int
     arrival: int
     departure: int
     # Whether the RAW feed entry actually carried this field, vs. it being
@@ -80,6 +81,7 @@ def _anchors(stus: tuple[StopTimeUpdate, ...]) -> list[_Anchor]:
             continue
         out.append(_Anchor(
             stop_id=stu.stop_id,
+            stop_sequence=stu.stop_sequence,
             arrival=arrival if arrival is not None else departure,
             departure=departure if departure is not None else arrival,
             had_arrival=arrival is not None,
@@ -204,3 +206,42 @@ def next_stop_and_delay(
         return target_stop_id, None
     delay = stu.arrival_delay if stu.arrival_delay is not None else stu.departure_delay
     return target_stop_id, delay
+
+
+def current_stop_sequence(snapshot: TrainSnapshot, now: datetime) -> int | None:
+    """The `stop_sequence` of the stop the train has most recently reached
+    or departed (M12 #5: "3 of 12 stops done"). `stop_sequence` values are
+    absolute positions in the trip's FULL static schedule, so unlike
+    `stop_id` they stay meaningful even though TU's `stop_time_update` list
+    is a rolling window that's already trimmed earlier stops off the front
+    -- no need to know how many stops were trimmed to place this one
+    correctly.
+
+    Before the first known anchor's arrival: the rolling window hasn't
+    surfaced any stop this train has actually reached yet, so this reports
+    "one before the earliest we know about" (`stop_sequence - 1`) rather
+    than guessing forward - a defensible floor since sequences are
+    contiguous from 1, not an exact count of what the window trimmed.
+    Past the last known anchor's departure: reports that anchor's own
+    sequence, the most recent confirmed position - if the trip has since
+    advanced further, this is honestly a lower bound, not a guess."""
+    anchors = _anchors(snapshot.stop_time_updates)
+    if not anchors:
+        return None
+
+    now_epoch = int(now.timestamp())
+
+    if now_epoch < anchors[0].arrival:
+        return anchors[0].stop_sequence - 1
+    if now_epoch >= anchors[-1].departure:
+        return anchors[-1].stop_sequence
+
+    for cur, nxt in zip(anchors, anchors[1:]):
+        if cur.arrival <= now_epoch <= cur.departure:
+            return cur.stop_sequence
+        if cur.departure <= now_epoch < nxt.arrival:
+            return cur.stop_sequence
+
+    # Bounds-checked above, same unreachable safety net as
+    # derive_station_state.
+    return None

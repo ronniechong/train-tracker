@@ -28,6 +28,11 @@ export interface Train {
   next_stop_id: string | null
   next_stop_name: string | null
   next_stop_delay_seconds: number | null
+  // Trip progress (M12 #5) -- both null together whenever a total isn't
+  // resolvable (no static row, e.g. a real-time-only ADDED trip, or the
+  // window hasn't surfaced any anchor yet).
+  progress_stop_sequence: number | null
+  progress_total_stops: number | null
 }
 
 export interface StateResponse {

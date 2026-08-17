@@ -42,6 +42,14 @@ class Train(BaseModel):
     next_stop_id: str | None
     next_stop_name: str | None
     next_stop_delay_seconds: int | None
+    # Trip progress (M12 #5: "3 of 12 stops done") -- `progress_stop_sequence`
+    # is absolute (see `state/station.py`'s `current_stop_sequence` for why
+    # that stays meaningful despite TU's rolling window), `progress_total_stops`
+    # is the trip's static terminus stop_sequence. Both null together for a
+    # real-time-only ADDED trip (no static stop_times.txt row to total
+    # against) or when the rolling window hasn't surfaced any anchor yet.
+    progress_stop_sequence: int | None
+    progress_total_stops: int | None
     # Distinct from position_updated_at: set for every train regardless of
     # whether it's still present in the live feeds, so a fully-vanished
     # ghost (route_id/position_updated_at all null -- see api/app.py) still
