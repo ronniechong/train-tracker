@@ -98,6 +98,7 @@ export function StationPanel({ stationId, trains, hideGhosts, onClear, schedule 
   const nearby = station ? nearbyTrains(station.id, trains, hideGhosts) : []
   const departures = schedule.data?.departures ?? []
   const linesNoServiceToday = schedule.data?.lines_no_service_today ?? []
+  const wheelchairBoarding = schedule.data?.wheelchair_boarding ?? null
 
   return (
     <Section title="Station">
@@ -118,6 +119,8 @@ export function StationPanel({ stationId, trains, hideGhosts, onClear, schedule 
               ×
             </button>
           </div>
+          {wheelchairBoarding === 1 && <p className={styles.caption}>Wheelchair accessible</p>}
+          {wheelchairBoarding === 2 && <p className={styles.caption}>Not wheelchair accessible</p>}
 
           <h3 className={styles.subheading}>Next trains</h3>
           {!schedule.loading && linesNoServiceToday.length > 0 && (
@@ -143,7 +146,12 @@ export function StationPanel({ stationId, trains, hideGhosts, onClear, schedule 
                     const badge = scheduleBadge(dep)
                     return (
                       <li key={`${dep.trip_id}-${dep.scheduled_time}`} className={styles.scheduleRow}>
-                        <span className={styles.scheduleHeadsign}>{dep.headsign}</span>
+                        <span className={styles.scheduleHeadsign}>
+                          {dep.headsign}
+                          {dep.platform_code && (
+                            <span className={styles.platformCode}> · Plat {dep.platform_code}</span>
+                          )}
+                        </span>
                         <span
                           className={
                             dep.is_cancelled

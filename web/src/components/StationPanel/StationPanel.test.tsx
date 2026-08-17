@@ -123,6 +123,7 @@ describe('StationPanel', () => {
       data: {
         station_id: 's1',
         generated_at: new Date().toISOString(),
+        wheelchair_boarding: null,
         departures: [
           {
             trip_id: 't1',
@@ -135,6 +136,7 @@ describe('StationPanel', () => {
             is_live: false,
             is_cancelled: false,
             is_added: false,
+            platform_code: null,
           },
         ],
         lines_no_service_today: [],
@@ -159,6 +161,7 @@ describe('StationPanel', () => {
       data: {
         station_id: 's1',
         generated_at: new Date().toISOString(),
+        wheelchair_boarding: null,
         departures: [],
         lines_no_service_today: [{ route_id: 'r1', short_name: 'BEG', long_name: 'Belgrave' }],
       },

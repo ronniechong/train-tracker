@@ -17,6 +17,7 @@ from traintracker.gateway.client import GatewayClient
 from traintracker.gtfs.gtfstime import service_date_for_instant
 from traintracker.gtfs.pinning import PinManifest
 from traintracker.gtfs.schedule import ScheduledDeparture
+from traintracker.gtfs.stops import Stop
 from traintracker.gtfs.schedule_cache import PinnedScheduleCache
 from traintracker.metrics import Metrics
 from traintracker.poller.breaker import CircuitBreaker
@@ -496,8 +497,29 @@ def _empty_store() -> StateStore:
     return StateStore(discrepancy_log=InMemoryEventLog(), ghost_log=InMemoryEventLog())
 
 
+def test_scheduled_train_looks_up_platform_code_from_departures_stop_id():
+    stop = Stop(
+        stop_id="PLAT_A1",
+        name="Richmond Platform 1",
+        latitude=-37.82,
+        longitude=144.99,
+        parent_station="STA_RICH",
+        platform_code="1",
+    )
+
+    train = _scheduled_train(_empty_store(), _departure(stop_id="PLAT_A1"), {"PLAT_A1": stop})
+
+    assert train.platform_code == "1"
+
+
+def test_scheduled_train_platform_code_is_none_when_stop_unknown():
+    train = _scheduled_train(_empty_store(), _departure(stop_id="PLAT_A1"), {})
+
+    assert train.platform_code is None
+
+
 def test_scheduled_train_is_schedule_only_when_no_live_snapshot():
-    train = _scheduled_train(_empty_store(), _departure())
+    train = _scheduled_train(_empty_store(), _departure(), {})
 
     assert train.is_live is False
     assert train.is_cancelled is False
@@ -539,7 +561,7 @@ def test_scheduled_train_overlays_live_predicted_time_and_delay():
         position_updated_at=None,
     )
 
-    train = _scheduled_train(store, _departure())
+    train = _scheduled_train(store, _departure(), {})
 
     assert train.is_live is True
     assert train.is_cancelled is False
@@ -574,7 +596,7 @@ def test_scheduled_train_falls_back_to_delay_only_when_no_predicted_time():
     )
     dep = _departure()
 
-    train = _scheduled_train(store, dep)
+    train = _scheduled_train(store, dep, {})
 
     assert train.is_live is True
     assert train.delay_seconds == 90
@@ -607,7 +629,7 @@ def test_scheduled_train_ignores_snapshot_for_a_different_platform():
         position_updated_at=None,
     )
 
-    train = _scheduled_train(store, _departure(stop_id="PLAT_A1"))
+    train = _scheduled_train(store, _departure(stop_id="PLAT_A1"), {})
 
     assert train.is_live is False
 
@@ -631,7 +653,7 @@ def test_scheduled_train_is_cancelled_for_a_whole_trip_cancellation():
         position_updated_at=None,
     )
 
-    train = _scheduled_train(store, _departure())
+    train = _scheduled_train(store, _departure(), {})
 
     assert train.is_cancelled is True
 
@@ -664,7 +686,7 @@ def test_scheduled_train_is_cancelled_for_a_skipped_stop():
         position_updated_at=None,
     )
 
-    train = _scheduled_train(store, _departure(stop_id="PLAT_A1"))
+    train = _scheduled_train(store, _departure(stop_id="PLAT_A1"), {})
 
     assert train.is_cancelled is True
 
@@ -701,6 +723,9 @@ async def test_station_schedule_returns_well_formed_response_for_known_station(
     assert body["station_id"] == "STATION_A"
     assert isinstance(body["departures"], list)
     assert isinstance(body["lines_no_service_today"], list)
+    assert "wheelchair_boarding" in body
+    for train in body["departures"]:
+        assert "platform_code" in train
     # Whether any departures are actually present depends on the real time
     # of day vs. the fixture's fixed ~08-09am schedule -- see
     # gtfs/test_schedule.py's next_departures tests (fixed `after` values)
@@ -788,7 +813,7 @@ def test_scheduled_train_is_added_for_a_real_time_only_trip():
         position_updated_at=None,
     )
 
-    train = _scheduled_train(store, _departure(trip_id="EXTRA1"))
+    train = _scheduled_train(store, _departure(trip_id="EXTRA1"), {})
 
     assert train.is_added is True
     assert train.is_cancelled is False

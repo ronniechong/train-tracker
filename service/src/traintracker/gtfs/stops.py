@@ -26,6 +26,10 @@ class Stop:
     # stop_ids that stop_times.txt actually keys its rows by -- mirrors
     # build_web_geometry.py's own platform_to_station logic.
     parent_station: str | None = None
+    # Platform-level fields (blank on parent-station rows themselves, per
+    # GTFS spec -- location_type=1 rows don't carry these).
+    platform_code: str | None = None
+    wheelchair_boarding: int | None = None
 
 
 def parse_stops(stops_txt: str) -> dict[str, Stop]:
@@ -35,12 +39,15 @@ def parse_stops(stops_txt: str) -> dict[str, Stop]:
         parent_station = row.get("parent_station") or None
         if row.get("location_type") == "1":
             parent_station = None
+        wheelchair_raw = row.get("wheelchair_boarding") or None
         stops[stop_id] = Stop(
             stop_id=stop_id,
             name=row.get("stop_name", ""),
             latitude=float(row["stop_lat"]),
             longitude=float(row["stop_lon"]),
             parent_station=parent_station,
+            platform_code=row.get("platform_code") or None,
+            wheelchair_boarding=int(wheelchair_raw) if wheelchair_raw is not None else None,
         )
     return stops
 

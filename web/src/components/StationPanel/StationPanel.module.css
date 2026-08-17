@@ -120,6 +120,10 @@
   align-self: center;
 }
 
+.platformCode {
+  color: var(--color-text-dim);
+}
+
 .scheduleTime {
   text-align: right;
   font-variant-numeric: tabular-nums;

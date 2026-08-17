@@ -238,7 +238,9 @@ def _train(
     )
 
 
-def _scheduled_train(store: StateStore, dep: ScheduledDeparture) -> ScheduledTrain:
+def _scheduled_train(
+    store: StateStore, dep: ScheduledDeparture, stops: dict[str, Stop]
+) -> ScheduledTrain:
     """Overlays a live Trip Updates prediction onto one scheduled departure,
     when this process's own StateStore happens to have one for the exact
     (trip_id, platform) right now -- reads only already-polled in-memory
@@ -281,6 +283,7 @@ def _scheduled_train(store: StateStore, dep: ScheduledDeparture) -> ScheduledTra
         delay_seconds=delay_seconds,
         is_live=predicted_time is not None or delay_seconds is not None,
         is_cancelled=is_cancelled,
+        platform_code=stops.get(dep.stop_id).platform_code if dep.stop_id in stops else None,
         is_added=is_added,
     )
 
@@ -790,10 +793,13 @@ def create_app(
         if departures is None:
             raise HTTPException(status_code=404, detail=f"unknown station_id: {station_id}")
         no_service_today = schedule_cache.lines_no_service_today(station_id, now) or []
+        stops = schedule_cache.stops_for(now)
+        station_stop = stops.get(station_id)
         return StationScheduleResponse(
             station_id=station_id,
             generated_at=now,
-            departures=[_scheduled_train(store, dep) for dep in departures],
+            wheelchair_boarding=station_stop.wheelchair_boarding if station_stop else None,
+            departures=[_scheduled_train(store, dep, stops) for dep in departures],
             lines_no_service_today=[
                 LineSummary(route_id=r.route_id, short_name=r.short_name, long_name=r.long_name)
                 for r in no_service_today

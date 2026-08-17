@@ -71,6 +71,7 @@ export interface ScheduledTrain {
   is_live: boolean
   is_cancelled: boolean
   is_added: boolean
+  platform_code: string | null
 }
 
 export interface LineSummary {
@@ -82,6 +83,9 @@ export interface LineSummary {
 export interface StationScheduleResponse {
   station_id: string
   generated_at: string
+  // GTFS enum straight from stops.txt: 0=unknown, 1=accessible,
+  // 2=not accessible. Null when the station's own row doesn't carry it.
+  wheelchair_boarding: number | null
   departures: ScheduledTrain[]
   // M12 #3: lines that normally call here but have zero calendar-active
   // trips today anywhere on the network. Empty, not omitted, when nothing

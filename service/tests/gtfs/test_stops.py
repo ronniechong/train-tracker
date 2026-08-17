@@ -40,3 +40,21 @@ def test_parse_stops_parent_station_is_none_for_station_rows():
     )
     stops = parse_stops(station_row)
     assert stops["vic:rail:FGS"].parent_station is None
+
+
+def test_parse_stops_extracts_platform_code_and_wheelchair_boarding():
+    stops = parse_stops(SAMPLE_STOPS_TXT)
+    stop = stops["10920"]
+    assert stop.platform_code == "1"
+    assert stop.wheelchair_boarding == 1
+
+
+def test_parse_stops_platform_code_and_wheelchair_boarding_are_none_when_absent():
+    station_row = (
+        "stop_id,stop_name,stop_lat,stop_lon,location_type,parent_station\n"
+        '"vic:rail:FGS","Flagstaff Station","-37.812","144.956","1",""\n'
+    )
+    stops = parse_stops(station_row)
+    stop = stops["vic:rail:FGS"]
+    assert stop.platform_code is None
+    assert stop.wheelchair_boarding is None

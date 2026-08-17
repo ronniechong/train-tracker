@@ -102,6 +102,7 @@ class ScheduledTrain(BaseModel):
     is_live: bool
     is_cancelled: bool
     is_added: bool
+    platform_code: str | None
 
 
 class LineSummary(BaseModel):
@@ -113,6 +114,10 @@ class LineSummary(BaseModel):
 class StationScheduleResponse(BaseModel):
     station_id: str
     generated_at: datetime
+    # GTFS enum, straight from stops.txt: 0=unknown, 1=accessible,
+    # 2=not accessible. Null when the station's parent-station row itself
+    # doesn't carry the field.
+    wheelchair_boarding: int | None
     departures: list[ScheduledTrain]
     # M12 #3: lines that normally call here but have zero calendar-active
     # trips today anywhere on the network -- see
