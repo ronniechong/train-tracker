@@ -182,9 +182,9 @@ export interface InsightsHistogramStat {
 
 export type InsightsRangeName = 'today' | 'yesterday' | 'last7' | 'last30' | 'custom'
 
-// `days_covered` vs `expected_days` is the partial-calendar-period honesty
-// signal -- "Last 7 days" picked partway through the ISO week returns
-// fewer covered days than 7. `generated_at_by_date` only has a genuine
+// `days_covered` vs `expected_days` is the partial-range honesty signal --
+// a deployment younger than the requested window returns fewer covered
+// days than requested. `generated_at_by_date` only has a genuine
 // freshness meaning for "today" (closed days are finalized once and never
 // touched again) -- look up the specific date you care about, don't
 // collapse this to one timestamp.

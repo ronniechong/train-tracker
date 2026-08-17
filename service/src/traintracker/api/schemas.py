@@ -269,9 +269,9 @@ class InsightsResponse(BaseModel):
     days / Custom), never per-chart -- the frontend slices this one
     payload across all charts.
 
-    `days_covered` vs. `expected_days` is the calendar-aligned-range
-    honesty signal: "Last 7 days" picked on a Tuesday returns 2 covered
-    days against an expected_days of 7 -- the UI's "(N of 7 days)"
+    `days_covered` vs. `expected_days` is the partial-range honesty
+    signal: a deployment only 2 days old returns 2 covered days against
+    an expected_days of 7 for "Last 7 days" -- the UI's "(N of 7 days)"
     indicator is built directly from this pair, not inferred from date
     arithmetic client-side.
 

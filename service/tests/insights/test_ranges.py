@@ -22,31 +22,29 @@ def test_yesterday_resolves_to_the_prior_service_date():
     assert result.expected_days == 1
 
 
-def test_last7_is_calendar_iso_week_partial_on_a_tuesday():
-    # 2026-08-04 is a Tuesday -- ISO week starts Monday 2026-08-03.
+def test_last7_is_a_rolling_seven_day_window_ending_today():
+    # 2026-08-04 is a Tuesday -- the rolling window ignores week boundaries.
     result = resolve_range("last7", NOW)
-    assert result.service_dates == (date(2026, 8, 3), date(2026, 8, 4))
-    assert result.expected_days == 7  # full week length, even though partial
+    assert result.service_dates == tuple(date(2026, 7, d) for d in range(29, 32)) + tuple(
+        date(2026, 8, d) for d in range(1, 5)
+    )
+    assert len(result.service_dates) == 7
+    assert result.expected_days == 7
 
 
-def test_last7_is_full_week_on_a_sunday():
+def test_last7_window_crosses_a_month_boundary_correctly():
     sunday_now = datetime(2026, 8, 9, 9, 0, tzinfo=tz.utc)
     result = resolve_range("last7", sunday_now)
     assert result.service_dates == tuple(date(2026, 8, d) for d in range(3, 10))
     assert len(result.service_dates) == 7
 
 
-def test_last30_is_calendar_month_partial_early_in_the_month():
+def test_last30_is_a_rolling_thirty_day_window_ending_today():
     result = resolve_range("last30", NOW)
-    assert result.service_dates[0] == date(2026, 8, 1)
+    assert result.service_dates[0] == date(2026, 7, 6)
     assert result.service_dates[-1] == date(2026, 8, 4)
-    assert result.expected_days == 31  # August has 31 days
-
-
-def test_last30_expected_days_reflects_actual_month_length():
-    feb_now = datetime(2026, 2, 15, 9, 0, tzinfo=tz.utc)
-    result = resolve_range("last30", feb_now)
-    assert result.expected_days == 28  # 2026 is not a leap year
+    assert len(result.service_dates) == 30
+    assert result.expected_days == 30
 
 
 def test_custom_range_inclusive_of_both_ends():

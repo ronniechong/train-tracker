@@ -3,13 +3,13 @@ concrete list of service_dates -- kept separate from `InsightsStore`,
 which deliberately "has no opinion on calendar-aligned vs. rolling
 ranges" (its own docstring) so this is the one place that decision lives.
 
-**Calendar-aligned, not rolling**: "Last 7 days" = the current ISO week
-(Mon-Sun); "Last 30 days" = the current calendar month. Both are frequently
-PARTIAL -- picking "Last 7 days" on a Tuesday covers 2 days, not 7 -- and a
-range never extends past "today" (there is no data for a future date).
-`ResolvedRange.expected_days` is what the UI's "(N of 7 days)" honesty
-indicator is built from: the full calendar period's length, regardless of
-how much of it has actually elapsed.
+**Rolling, not calendar-aligned**: "Last 7 days" = today and the 6 days
+before it; "Last 30 days" = today and the 29 days before it. A range never
+extends past "today" (there is no data for a future date), so these are
+only PARTIAL near the start of a deployment's data history, before that
+many days of data exist at all. `ResolvedRange.expected_days` is what the
+UI's "(N of 7 days)" honesty indicator is built from: the requested window
+length, regardless of how much of it has actually elapsed.
 
 "Today" here means `service_date_for_instant(now)`, matching this
 project's post-midnight-trains-belong-to-the-prior-service-day
@@ -18,7 +18,6 @@ convention everywhere else -- not the literal calendar date.
 
 from __future__ import annotations
 
-import calendar
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
@@ -35,7 +34,7 @@ class InvalidRangeError(ValueError):
 class ResolvedRange:
     range_name: str
     service_dates: tuple[date, ...]  # ascending, never past "today", may be partial
-    expected_days: int  # the full calendar period's length, for the partial-range indicator
+    expected_days: int  # the requested window length, for the partial-range indicator
 
 
 def resolve_range(
@@ -53,17 +52,12 @@ def resolve_range(
         return ResolvedRange("yesterday", (today - timedelta(days=1),), expected_days=1)
 
     if range_name == "last7":
-        monday = today - timedelta(days=today.weekday())
-        dates = tuple(monday + timedelta(days=i) for i in range((today - monday).days + 1))
+        dates = tuple(today - timedelta(days=i) for i in range(6, -1, -1))
         return ResolvedRange("last7", dates, expected_days=7)
 
     if range_name == "last30":
-        first_of_month = today.replace(day=1)
-        days_in_month = calendar.monthrange(today.year, today.month)[1]
-        dates = tuple(
-            first_of_month + timedelta(days=i) for i in range((today - first_of_month).days + 1)
-        )
-        return ResolvedRange("last30", dates, expected_days=days_in_month)
+        dates = tuple(today - timedelta(days=i) for i in range(29, -1, -1))
+        return ResolvedRange("last30", dates, expected_days=30)
 
     if range_name == "custom":
         if custom_start is None or custom_end is None:
