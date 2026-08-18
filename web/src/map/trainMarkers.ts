@@ -75,8 +75,12 @@ export function nextStopLabel(train: Train): string | null {
 // "3 of 12 stops done" (M12 #5) -- null whenever a total isn't resolvable
 // (see `Train.progress_total_stops`'s own null-together contract), same
 // "omit rather than half-fill" convention as the labels above.
+// `progress_stop_sequence` of 0 means "hasn't departed its first stop yet"
+// (`current_stop_sequence`'s own floor-of-`first.sequence - 1` case) --
+// "At origin" reads clearer than "0 of N stops".
 export function progressLabel(train: Train): string | null {
   if (train.progress_stop_sequence === null || train.progress_total_stops === null) return null
+  if (train.progress_stop_sequence === 0) return 'At origin'
   return `${train.progress_stop_sequence} of ${train.progress_total_stops} stops`
 }
 

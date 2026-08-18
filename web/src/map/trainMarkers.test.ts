@@ -70,4 +70,10 @@ describe('progressLabel', () => {
       progressLabel(makeTrain({ progress_stop_sequence: 3, progress_total_stops: 12 })),
     ).toBe('3 of 12 stops')
   })
+
+  it('reports "At origin" instead of "0 of N stops"', () => {
+    expect(
+      progressLabel(makeTrain({ progress_stop_sequence: 0, progress_total_stops: 12 })),
+    ).toBe('At origin')
+  })
 })
