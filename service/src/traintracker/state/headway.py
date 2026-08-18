@@ -110,6 +110,19 @@ class HeadwayTracker:
         # arrival once per poll cycle, same `_finalized`/
         # `_active_discrepancies` pattern used elsewhere in state/.
         self._recorded_dwell: dict[str, tuple[str, datetime]] = {}
+        # A freshly (re)started tracker has no memory of trips that were
+        # ALREADY mid-dwell before this process came up -- without this
+        # flag, the very first tick would treat every one of them as a
+        # brand-new arrival, all stamped within the same poll cycle. That
+        # produces near-simultaneous, non-independent "arrivals" for
+        # trains that didn't just arrive at all, dragging the average
+        # headway toward zero right after every restart (found via a live
+        # diagnostic 2026-08-18: two distinct trip_ids landed in the same
+        # group 13ms apart on the first tick after a restart). The first
+        # tick primes `_recorded_dwell` from whatever's already dwelling,
+        # without appending to `_arrivals` -- only tracks arrivals genuinely
+        # observed to begin after the tracker itself started.
+        self._primed = False
 
     def tick(
         self,
@@ -118,6 +131,7 @@ class HeadwayTracker:
         stops: dict | None = None,
     ) -> None:
         stops = stops or {}
+        is_priming_tick = not self._primed
         for trip_id, snapshot in snapshots.items():
             if not snapshot.has_schedule or snapshot.start_date is None or snapshot.route_id is None:
                 continue
@@ -133,6 +147,12 @@ class HeadwayTracker:
             if recorded is not None and recorded[0] == state.at_stop_id:
                 # Still dwelling at the same stop already recorded this
                 # episode -- refresh the touch time, don't record again.
+                self._recorded_dwell[trip_id] = (state.at_stop_id, now)
+                continue
+
+            if is_priming_tick:
+                # Already dwelling as of the tracker's very first tick --
+                # mark it seen, but this isn't a genuine fresh arrival.
                 self._recorded_dwell[trip_id] = (state.at_stop_id, now)
                 continue
 
@@ -153,6 +173,7 @@ class HeadwayTracker:
             self._arrivals.setdefault(key, deque(maxlen=MAX_ARRIVALS_PER_GROUP)).append(now)
             self._recorded_dwell[trip_id] = (state.at_stop_id, now)
 
+        self._primed = True
         self._evict_stale(now)
 
     def _evict_stale(self, now: datetime) -> None:

@@ -120,6 +120,7 @@ def test_dwelling_across_multiple_ticks_records_only_one_arrival():
     tracker = HeadwayTracker(_direction_lookup())
     now = _at(0)
 
+    tracker.tick({}, now - timedelta(seconds=1))  # consume the priming tick
     tracker.tick({"t1": _snapshot_at_stop(now)}, now)
     tracker.tick({"t1": _snapshot_at_stop(now + timedelta(seconds=10))}, now + timedelta(seconds=10))
     tracker.tick({"t1": _snapshot_at_stop(now + timedelta(seconds=20))}, now + timedelta(seconds=20))
@@ -132,6 +133,7 @@ def test_a_second_dwell_after_departing_records_a_second_arrival():
     tracker = HeadwayTracker(_direction_lookup())
     t0 = _at(0)
 
+    tracker.tick({}, t0 - timedelta(seconds=1))  # consume the priming tick
     tracker.tick({"t1": _snapshot_at_stop(t0)}, t0)
     # Train departs -- no longer "at" the stop.
     tracker.tick({"t1": _snapshot_between(t0 + timedelta(seconds=100))}, t0 + timedelta(seconds=100))
@@ -160,6 +162,7 @@ def test_different_routes_at_the_same_stop_do_not_blend():
     tracker = HeadwayTracker(_direction_lookup({"t1": 0, "t2": 0}))
     now = _at(0)
 
+    tracker.tick({}, now - timedelta(seconds=1))  # consume the priming tick
     tracker.tick({"t1": _snapshot_at_stop(now, stop_id="PLAT_A", trip_id="t1", route_id="2-BEG")}, now)
     tracker.tick({"t2": _snapshot_at_stop(now, stop_id="PLAT_A", trip_id="t2", route_id="3-CRB")}, now)
 
@@ -173,6 +176,7 @@ def test_different_directions_at_the_same_stop_and_route_do_not_blend():
     tracker = HeadwayTracker(_direction_lookup({"t1": 0, "t2": 1}))
     now = _at(0)
 
+    tracker.tick({}, now - timedelta(seconds=1))  # consume the priming tick
     tracker.tick({"t1": _snapshot_at_stop(now, stop_id="PLAT_A", trip_id="t1", route_id="2-BEG")}, now)
     tracker.tick({"t2": _snapshot_at_stop(now, stop_id="PLAT_A", trip_id="t2", route_id="2-BEG")}, now)
 
@@ -194,7 +198,36 @@ def test_trip_with_no_resolvable_direction_is_never_recorded():
     tracker = HeadwayTracker(_direction_lookup(known={}))
     now = _at(0)
 
+    tracker.tick({}, now - timedelta(seconds=1))  # consume the priming tick
     tracker.tick({"t1": _snapshot_at_stop(now)}, now)
 
     info = tracker.headway_for("PLAT_A", "2-BEG", 0, now)
     assert info.sample_size == 0
+
+
+def test_priming_tick_does_not_record_an_already_dwelling_train():
+    """Regression test (found via a live diagnostic, 2026-08-18): a
+    freshly (re)started tracker's first tick must not treat trains
+    already mid-dwell as fresh arrivals -- otherwise every poller
+    restart manufactures a burst of near-simultaneous fake arrivals for
+    whatever happens to already be dwelling at that instant."""
+    tracker = HeadwayTracker(_direction_lookup())
+    now = _at(0)
+
+    tracker.tick({"t1": _snapshot_at_stop(now)}, now)  # first tick ever -- priming
+
+    info = tracker.headway_for("PLAT_A", "2-BEG", 0, now)
+    assert info.sample_size == 0
+
+    # But the tracker DID note it's dwelling, so it won't be recorded as
+    # a fresh arrival on a later tick just for still sitting there.
+    tracker.tick({"t1": _snapshot_at_stop(now + timedelta(seconds=10))}, now + timedelta(seconds=10))
+    info = tracker.headway_for("PLAT_A", "2-BEG", 0, now + timedelta(seconds=10))
+    assert info.sample_size == 0
+
+    # A genuinely later dwell (after departing) is recorded normally.
+    t1 = now + timedelta(seconds=400)
+    tracker.tick({"t1": _snapshot_between(now + timedelta(seconds=100))}, now + timedelta(seconds=100))
+    tracker.tick({"t1": _snapshot_at_stop(t1)}, t1)
+    info = tracker.headway_for("PLAT_A", "2-BEG", 0, t1)
+    assert info.sample_size == 1
