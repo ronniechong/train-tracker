@@ -46,6 +46,7 @@ from ..metrics import Metrics
 from ..redaction import configure_logging
 from ..state.completion import TripCompletionTracker
 from ..state.delay_observation import DelayObservationTracker
+from ..state.headway import HeadwayTracker
 from ..state.eventhub import InProcessEventHub
 from ..state.store import StateStore
 from .healthcheck import PING_URL_ENV
@@ -254,9 +255,20 @@ async def main() -> int:
     # training data for that feature. Same terminus lookup as
     # completion_tracker, no new I/O path here either.
     delay_observation_tracker = DelayObservationTracker(delay_observation_log, schedule_cache.terminus_for)
+
+    def _direction_lookup(trip_id: str, service_date):
+        trip = schedule_cache.trip_for(trip_id, service_date)
+        return trip.direction_id if trip is not None else None
+
+    # Headway/frequency from history: same in-memory-only, no-new-I/O-path
+    # convention as the trackers above -- direction resolution reuses the
+    # same schedule_cache.trip_for() the M12 #1 per-train direction_id
+    # already relies on.
+    headway_tracker = HeadwayTracker(_direction_lookup)
     store = StateStore(
         discrepancy_log=discrepancy_log, ghost_log=ghost_log, on_tick=metrics.record_tracked_trips,
         completion_tracker=completion_tracker, delay_observation_tracker=delay_observation_tracker,
+        headway_tracker=headway_tracker,
     )
 
     gateway = GatewayClient()

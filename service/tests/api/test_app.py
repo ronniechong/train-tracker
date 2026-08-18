@@ -493,8 +493,53 @@ def _departure(**overrides) -> ScheduledDeparture:
     return ScheduledDeparture(**defaults)
 
 
+_NOW = datetime(2026, 7, 20, 22, 0, tzinfo=timezone.utc)
+
+
 def _empty_store() -> StateStore:
     return StateStore(discrepancy_log=InMemoryEventLog(), ghost_log=InMemoryEventLog())
+
+
+class _StubHeadwayTracker:
+    def tick(self, snapshots, cycle_time):
+        pass
+
+    def headway_for(self, stop_id, route_id, direction_id, now):
+        from traintracker.state.headway import HeadwayInfo
+        return HeadwayInfo(
+            average_headway_seconds=480.0, sample_size=4,
+            seconds_since_last_arrival=90, gap_detected=False,
+        )
+
+
+def test_scheduled_train_surfaces_headway_when_a_tracker_is_configured():
+    # M12 #4: `_scheduled_train` resolves (stop_id, route_id, direction_id)
+    # from the departure and forwards it to `store.headway_for`.
+    store = StateStore(
+        discrepancy_log=InMemoryEventLog(), ghost_log=InMemoryEventLog(),
+        headway_tracker=_StubHeadwayTracker(),
+    )
+
+    train = _scheduled_train(store, _departure(direction_id=0), {}, _NOW)
+
+    assert train.average_headway_seconds == 480.0
+    assert train.headway_sample_size == 4
+    assert train.seconds_since_last_arrival == 90
+    assert train.gap_detected is False
+
+
+def test_scheduled_train_headway_is_null_when_direction_id_is_unknown():
+    store = StateStore(
+        discrepancy_log=InMemoryEventLog(), ghost_log=InMemoryEventLog(),
+        headway_tracker=_StubHeadwayTracker(),
+    )
+
+    train = _scheduled_train(store, _departure(direction_id=None), {}, _NOW)
+
+    assert train.average_headway_seconds is None
+    assert train.headway_sample_size == 0
+    assert train.seconds_since_last_arrival is None
+    assert train.gap_detected is False
 
 
 def test_scheduled_train_looks_up_platform_code_from_departures_stop_id():
@@ -507,19 +552,19 @@ def test_scheduled_train_looks_up_platform_code_from_departures_stop_id():
         platform_code="1",
     )
 
-    train = _scheduled_train(_empty_store(), _departure(stop_id="PLAT_A1"), {"PLAT_A1": stop})
+    train = _scheduled_train(_empty_store(), _departure(stop_id="PLAT_A1"), {"PLAT_A1": stop}, _NOW)
 
     assert train.platform_code == "1"
 
 
 def test_scheduled_train_platform_code_is_none_when_stop_unknown():
-    train = _scheduled_train(_empty_store(), _departure(stop_id="PLAT_A1"), {})
+    train = _scheduled_train(_empty_store(), _departure(stop_id="PLAT_A1"), {}, _NOW)
 
     assert train.platform_code is None
 
 
 def test_scheduled_train_is_schedule_only_when_no_live_snapshot():
-    train = _scheduled_train(_empty_store(), _departure(), {})
+    train = _scheduled_train(_empty_store(), _departure(), {}, _NOW)
 
     assert train.is_live is False
     assert train.is_cancelled is False
@@ -561,7 +606,7 @@ def test_scheduled_train_overlays_live_predicted_time_and_delay():
         position_updated_at=None,
     )
 
-    train = _scheduled_train(store, _departure(), {})
+    train = _scheduled_train(store, _departure(), {}, _NOW)
 
     assert train.is_live is True
     assert train.is_cancelled is False
@@ -596,7 +641,7 @@ def test_scheduled_train_falls_back_to_delay_only_when_no_predicted_time():
     )
     dep = _departure()
 
-    train = _scheduled_train(store, dep, {})
+    train = _scheduled_train(store, dep, {}, _NOW)
 
     assert train.is_live is True
     assert train.delay_seconds == 90
@@ -629,7 +674,7 @@ def test_scheduled_train_ignores_snapshot_for_a_different_platform():
         position_updated_at=None,
     )
 
-    train = _scheduled_train(store, _departure(stop_id="PLAT_A1"), {})
+    train = _scheduled_train(store, _departure(stop_id="PLAT_A1"), {}, _NOW)
 
     assert train.is_live is False
 
@@ -653,7 +698,7 @@ def test_scheduled_train_is_cancelled_for_a_whole_trip_cancellation():
         position_updated_at=None,
     )
 
-    train = _scheduled_train(store, _departure(), {})
+    train = _scheduled_train(store, _departure(), {}, _NOW)
 
     assert train.is_cancelled is True
 
@@ -686,7 +731,7 @@ def test_scheduled_train_is_cancelled_for_a_skipped_stop():
         position_updated_at=None,
     )
 
-    train = _scheduled_train(store, _departure(stop_id="PLAT_A1"), {})
+    train = _scheduled_train(store, _departure(stop_id="PLAT_A1"), {}, _NOW)
 
     assert train.is_cancelled is True
 
@@ -726,6 +771,12 @@ async def test_station_schedule_returns_well_formed_response_for_known_station(
     assert "wheelchair_boarding" in body
     for train in body["departures"]:
         assert "platform_code" in train
+        # M12 #4: no headway_tracker configured on this store -- every
+        # headway field is honestly null/zero/false, never omitted.
+        assert train["average_headway_seconds"] is None
+        assert train["headway_sample_size"] == 0
+        assert train["seconds_since_last_arrival"] is None
+        assert train["gap_detected"] is False
     # Whether any departures are actually present depends on the real time
     # of day vs. the fixture's fixed ~08-09am schedule -- see
     # gtfs/test_schedule.py's next_departures tests (fixed `after` values)
@@ -874,7 +925,7 @@ def test_scheduled_train_is_added_for_a_real_time_only_trip():
         position_updated_at=None,
     )
 
-    train = _scheduled_train(store, _departure(trip_id="EXTRA1"), {})
+    train = _scheduled_train(store, _departure(trip_id="EXTRA1"), {}, _NOW)
 
     assert train.is_added is True
     assert train.is_cancelled is False

@@ -18,6 +18,7 @@ from .completion import TripCompletionTracker
 from .delay_observation import DelayObservationTracker
 from .eventlog import EventLog
 from .ghost import TrackedTrainView, TrainLifecycleTracker
+from .headway import HeadwayInfo, HeadwayTracker
 from .merge import TrainSnapshot, merge
 
 
@@ -29,6 +30,7 @@ class StateStore:
         on_tick: Callable[[tuple[TrackedTrainView, ...]], None] | None = None,
         completion_tracker: TripCompletionTracker | None = None,
         delay_observation_tracker: DelayObservationTracker | None = None,
+        headway_tracker: HeadwayTracker | None = None,
     ):
         self._discrepancy_log = discrepancy_log
         self._lifecycle = TrainLifecycleTracker(ghost_log)
@@ -46,6 +48,9 @@ class StateStore:
         # and a fresh `latest_alerts` are in hand together at the same
         # cycle_time.
         self._delay_observation_tracker = delay_observation_tracker
+        # Optional (headway/frequency from history): same optional-hook
+        # convention as the trackers above.
+        self._headway_tracker = headway_tracker
         # Optional hook fired with the fresh `all_tracked()` result after
         # every `ingest()` -- lets a caller (e.g. metrics) observe tracked-
         # trip counts without this module knowing metrics exist at all,
@@ -103,6 +108,8 @@ class StateStore:
                     self._lifecycle.mark_resolved(event.trip_id, "completed", cycle_time)
         if self._delay_observation_tracker is not None:
             self._delay_observation_tracker.tick(snapshots, cycle_time, self.latest_alerts)
+        if self._headway_tracker is not None:
+            self._headway_tracker.tick(snapshots, cycle_time)
         self.latest_snapshots = snapshots
         if self._on_tick is not None:
             self._on_tick(self._lifecycle.all_tracked())
@@ -116,6 +123,16 @@ class StateStore:
 
     def all_tracked(self) -> tuple[TrackedTrainView, ...]:
         return self._lifecycle.all_tracked()
+
+    def headway_for(
+        self, stop_id: str, route_id: str, direction_id: int, now: datetime,
+    ) -> HeadwayInfo | None:
+        """None when no headway_tracker is configured -- distinct from
+        `HeadwayInfo` with a zero sample_size, which means the tracker IS
+        running but hasn't seen an arrival for this group yet."""
+        if self._headway_tracker is None:
+            return None
+        return self._headway_tracker.headway_for(stop_id, route_id, direction_id, now)
 
     def flush(self, at: datetime) -> None:
         self._lifecycle.flush(at)

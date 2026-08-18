@@ -19,6 +19,29 @@ interface ScheduleBadge {
   className: string
 }
 
+interface HeadwayCaption {
+  text: string
+  gap: boolean
+}
+
+// M12 #4: this platform's own (route, direction) rolling headway --
+// `average_headway_seconds` is only set once the buffer has 2+ arrivals,
+// same null-means-no-data convention the rest of this panel already uses
+// (platform_code, wheelchair_boarding): insufficient sample renders
+// nothing at all, not a placeholder.
+function headwayCaption(dep: ScheduledTrain): HeadwayCaption | null {
+  if (dep.average_headway_seconds === null) return null
+  const minutes = Math.round(dep.average_headway_seconds / 60)
+  if (!dep.gap_detected) return { text: `~${minutes} min apart`, gap: false }
+  const waitMinutes =
+    dep.seconds_since_last_arrival !== null ? Math.round(dep.seconds_since_last_arrival / 60) : null
+  const text =
+    waitMinutes !== null
+      ? `Gap — last seen ${waitMinutes} min ago (usually ~${minutes} min)`
+      : `Gap — usually ~${minutes} min apart`
+  return { text, gap: true }
+}
+
 function scheduleBadge(dep: ScheduledTrain): ScheduleBadge {
   if (dep.is_cancelled) return { label: 'Cancelled', className: styles.cancelledBadge }
   if (dep.is_added) return { label: 'Extra service', className: styles.addedBadge }
@@ -138,9 +161,16 @@ export function StationPanel({ stationId, trains, hideGhosts, onClear, schedule 
           )}
           {!schedule.loading &&
             departures.length > 0 &&
-            groupByDirection(departures).map((group) => (
+            groupByDirection(departures).map((group) => {
+              const headway = headwayCaption(group.departures[0])
+              return (
               <div key={group.label} className={styles.directionGroup}>
                 <h4 className={styles.directionLabel}>{group.label}</h4>
+                {headway && (
+                  <p className={headway.gap ? styles.headwayGapCaption : styles.headwayCaption}>
+                    {headway.text}
+                  </p>
+                )}
                 <ul className={styles.scheduleList}>
                   {group.departures.map((dep) => {
                     const badge = scheduleBadge(dep)
@@ -167,7 +197,8 @@ export function StationPanel({ stationId, trains, hideGhosts, onClear, schedule 
                   })}
                 </ul>
               </div>
-            ))}
+              )
+            })}
 
           <p className={styles.caption}>Trains within {NEARBY_RADIUS_M}m, by live position — not a schedule.</p>
           {nearby.length === 0 && <p className={styles.empty}>No trains currently near this station.</p>}

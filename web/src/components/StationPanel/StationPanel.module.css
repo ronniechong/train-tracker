@@ -171,3 +171,16 @@
   color: var(--color-accent);
   align-self: center;
 }
+
+.headwayCaption {
+  margin: 0 0 0.35rem;
+  color: var(--color-text-dim);
+  font-size: var(--font-size-xs);
+}
+
+.headwayGapCaption {
+  margin: 0 0 0.35rem;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-warning);
+}

@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from traintracker.state.completion import TripCompletionTracker, TripTerminus
 from traintracker.state.eventlog import InMemoryEventLog
 from traintracker.state.ghost import MAX_GHOST_AGE_S
+from traintracker.state.headway import HeadwayInfo
 from traintracker.state.store import StateStore
 
 
@@ -207,3 +208,43 @@ def test_delay_observation_tracker_ticks_on_ingest_with_fresh_alerts():
     # stale/empty one -- the whole reason this tracker is ticked from
     # inside ingest() rather than by a separate caller.
     assert tracker.tick_calls[0][2] is store.latest_alerts
+
+
+class _RecordingHeadwayTracker:
+    def __init__(self):
+        self.tick_calls = []
+
+    def tick(self, snapshots, cycle_time):
+        self.tick_calls.append((snapshots, cycle_time))
+
+    def headway_for(self, stop_id, route_id, direction_id, now):
+        return HeadwayInfo(
+            average_headway_seconds=480.0, sample_size=4,
+            seconds_since_last_arrival=60, gap_detected=False,
+        )
+
+
+def test_headway_tracker_is_optional():
+    # Default None -- must not raise, same convention as the other trackers.
+    store = StateStore(InMemoryEventLog(), InMemoryEventLog())
+    tu = _tu_feed("1000000", "trip-1")
+    vp = _vp_feed("1000000", "trip-1", "1000000")
+
+    store.ingest(tu, vp, _at(0))  # no exception
+    assert store.headway_for("PLAT_A", "r", 0, _at(0)) is None
+
+
+def test_headway_tracker_ticks_on_ingest_and_is_queryable():
+    tracker = _RecordingHeadwayTracker()
+    store = StateStore(InMemoryEventLog(), InMemoryEventLog(), headway_tracker=tracker)
+    tu = _tu_feed("1000000", "trip-1")
+    vp = _vp_feed("1000000", "trip-1", "1000000")
+
+    store.ingest(tu, vp, _at(0))
+
+    assert len(tracker.tick_calls) == 1
+    assert "trip-1" in tracker.tick_calls[0][0]
+    assert tracker.tick_calls[0][1] == _at(0)
+
+    info = store.headway_for("PLAT_A", "r", 0, _at(0))
+    assert info.sample_size == 4

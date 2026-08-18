@@ -111,6 +111,14 @@ class ScheduledTrain(BaseModel):
     is_cancelled: bool
     is_added: bool
     platform_code: str | None
+    # M12 #4: this platform's own (route, direction) rolling headway from
+    # recent arrivals -- see `state/headway.py`'s `HeadwayInfo`. Null-safe:
+    # no history yet (or no headway_tracker configured) means every field
+    # here is null, never omitted.
+    average_headway_seconds: float | None
+    headway_sample_size: int
+    seconds_since_last_arrival: int | None
+    gap_detected: bool
 
 
 class LineSummary(BaseModel):

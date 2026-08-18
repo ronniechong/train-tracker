@@ -264,7 +264,7 @@ def _train(
 
 
 def _scheduled_train(
-    store: StateStore, dep: ScheduledDeparture, stops: dict[str, Stop]
+    store: StateStore, dep: ScheduledDeparture, stops: dict[str, Stop], now: datetime,
 ) -> ScheduledTrain:
     """Overlays a live Trip Updates prediction onto one scheduled departure,
     when this process's own StateStore happens to have one for the exact
@@ -298,6 +298,15 @@ def _scheduled_train(
             elif delay_seconds is not None:
                 predicted_time = dep.scheduled_time + timedelta(seconds=delay_seconds)
 
+    # M12 #4: headway is a property of this exact (platform, route,
+    # direction), not of the individual trip -- null when this departure's
+    # direction_id itself is unknown (can't resolve the group), same
+    # honest-null convention as every other field here.
+    headway = (
+        store.headway_for(dep.stop_id, dep.route_id, dep.direction_id, now)
+        if dep.direction_id is not None else None
+    )
+
     return ScheduledTrain(
         trip_id=dep.trip_id,
         route_id=dep.route_id,
@@ -310,6 +319,10 @@ def _scheduled_train(
         is_cancelled=is_cancelled,
         platform_code=stops.get(dep.stop_id).platform_code if dep.stop_id in stops else None,
         is_added=is_added,
+        average_headway_seconds=headway.average_headway_seconds if headway else None,
+        headway_sample_size=headway.sample_size if headway else 0,
+        seconds_since_last_arrival=headway.seconds_since_last_arrival if headway else None,
+        gap_detected=headway.gap_detected if headway else False,
     )
 
 
@@ -824,7 +837,7 @@ def create_app(
             station_id=station_id,
             generated_at=now,
             wheelchair_boarding=station_stop.wheelchair_boarding if station_stop else None,
-            departures=[_scheduled_train(store, dep, stops) for dep in departures],
+            departures=[_scheduled_train(store, dep, stops, now) for dep in departures],
             lines_no_service_today=[
                 LineSummary(route_id=r.route_id, short_name=r.short_name, long_name=r.long_name)
                 for r in no_service_today

@@ -77,6 +77,13 @@ export interface ScheduledTrain {
   is_cancelled: boolean
   is_added: boolean
   platform_code: string | null
+  // M12 #4: this platform's own (route, direction) rolling headway from
+  // recent arrivals. Null-safe -- no history yet means every field here
+  // is null/zero/false, never omitted.
+  average_headway_seconds: number | null
+  headway_sample_size: number
+  seconds_since_last_arrival: number | null
+  gap_detected: boolean
 }
 
 export interface LineSummary {
