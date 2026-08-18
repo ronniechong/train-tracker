@@ -228,6 +228,65 @@ describe('StationPanel', () => {
     expect(screen.getByText('~8 min apart')).toBeInTheDocument()
   })
 
+  it('falls through to a later departure in the group for the headway caption, labelling its line', () => {
+    const schedule = {
+      data: {
+        station_id: 's1',
+        generated_at: new Date().toISOString(),
+        wheelchair_boarding: null,
+        departures: [
+          {
+            trip_id: 't1',
+            route_id: 'r1',
+            direction_id: 0,
+            headsign: 'Belgrave',
+            scheduled_time: new Date().toISOString(),
+            predicted_time: null,
+            delay_seconds: null,
+            is_live: false,
+            is_cancelled: false,
+            is_added: false,
+            platform_code: null,
+            average_headway_seconds: null,
+            headway_sample_size: 1,
+            seconds_since_last_arrival: 30,
+            gap_detected: false,
+          },
+          {
+            trip_id: 't2',
+            route_id: 'r2',
+            direction_id: 0,
+            headsign: 'Glen Waverley',
+            scheduled_time: new Date().toISOString(),
+            predicted_time: null,
+            delay_seconds: null,
+            is_live: false,
+            is_cancelled: false,
+            is_added: false,
+            platform_code: null,
+            average_headway_seconds: 720,
+            headway_sample_size: 3,
+            seconds_since_last_arrival: 60,
+            gap_detected: false,
+          },
+        ],
+        lines_no_service_today: [],
+      },
+      loading: false,
+      error: false,
+    }
+    render(
+      <StationPanel
+        stationId="s1"
+        trains={new Map()}
+        hideGhosts={false}
+        schedule={schedule}
+        onClear={() => {}}
+      />
+    )
+    expect(screen.getByText('Glen Waverley: ~12 min apart')).toBeInTheDocument()
+  })
+
   it('renders no headway caption when sample size is insufficient', () => {
     const schedule = {
       data: {

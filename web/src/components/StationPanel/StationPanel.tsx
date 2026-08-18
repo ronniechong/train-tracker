@@ -29,17 +29,32 @@ interface HeadwayCaption {
 // same null-means-no-data convention the rest of this panel already uses
 // (platform_code, wheelchair_boarding): insufficient sample renders
 // nothing at all, not a placeholder.
-function headwayCaption(dep: ScheduledTrain): HeadwayCaption | null {
+function headwayCaption(dep: ScheduledTrain, labelLine: boolean): HeadwayCaption | null {
   if (dep.average_headway_seconds === null) return null
   const minutes = Math.round(dep.average_headway_seconds / 60)
-  if (!dep.gap_detected) return { text: `~${minutes} min apart`, gap: false }
+  const prefix = labelLine ? `${dep.headsign}: ` : ''
+  if (!dep.gap_detected) return { text: `${prefix}~${minutes} min apart`, gap: false }
   const waitMinutes =
     dep.seconds_since_last_arrival !== null ? Math.round(dep.seconds_since_last_arrival / 60) : null
   const text =
     waitMinutes !== null
-      ? `Gap — last seen ${waitMinutes} min ago (usually ~${minutes} min)`
-      : `Gap — usually ~${minutes} min apart`
+      ? `${prefix}Gap — last seen ${waitMinutes} min ago (usually ~${minutes} min)`
+      : `${prefix}Gap — usually ~${minutes} min apart`
   return { text, gap: true }
+}
+
+// A direction group can span several routes (e.g. "Outbound" at Flinders
+// Street covers every city-bound line at once), each with its own
+// independent headway -- so scanning for the first departure that HAS
+// data, not just the group's soonest departure, surfaces something to
+// look at far more often. `labelLine` disambiguates which line the
+// number belongs to whenever it isn't the group's own next departure.
+function firstHeadwayInGroup(departures: ScheduledTrain[]): HeadwayCaption | null {
+  for (const dep of departures) {
+    const caption = headwayCaption(dep, dep !== departures[0])
+    if (caption) return caption
+  }
+  return null
 }
 
 function scheduleBadge(dep: ScheduledTrain): ScheduleBadge {
@@ -162,7 +177,7 @@ export function StationPanel({ stationId, trains, hideGhosts, onClear, schedule 
           {!schedule.loading &&
             departures.length > 0 &&
             groupByDirection(departures).map((group) => {
-              const headway = headwayCaption(group.departures[0])
+              const headway = firstHeadwayInGroup(group.departures)
               return (
               <div key={group.label} className={styles.directionGroup}>
                 <h4 className={styles.directionLabel}>{group.label}</h4>
