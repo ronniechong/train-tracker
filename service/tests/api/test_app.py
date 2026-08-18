@@ -880,6 +880,9 @@ def test_train_reports_trip_progress_against_the_static_terminus(tmp_path, sampl
 
     assert train.progress_stop_sequence == 1
     assert train.progress_total_stops == 2
+    # No second comparable trip in the fixture's route+direction+span group
+    # -- an honest "unknown", not a guess (M12 #6).
+    assert train.skipped_stop_count is None
 
 
 def test_train_progress_is_none_without_a_schedule_cache():
@@ -904,6 +907,7 @@ def test_train_progress_is_none_without_a_schedule_cache():
 
     assert train.progress_stop_sequence is None
     assert train.progress_total_stops is None
+    assert train.skipped_stop_count is None
 
 
 def test_scheduled_train_is_added_for_a_real_time_only_trip():

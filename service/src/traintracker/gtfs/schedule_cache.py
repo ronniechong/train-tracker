@@ -21,6 +21,7 @@ from .schedule import (
     next_departures,
     platforms_for_station,
 )
+from .skip_pattern import compute_skip_stop_counts
 from .snapshot import StaticSnapshot, TripRecord
 from .stop_times import StopTimeRecord, stop_times_from_zip_bytes
 from .stops import Stop, stops_from_zip_bytes
@@ -71,6 +72,10 @@ class _ParsedSchedule:
     # per-train tooltip join (M12), same trip_id-keyed lookup shape as
     # termini_by_trip above.
     trips_by_id: dict[str, TripRecord]
+    # trip_id -> stops skipped relative to the most common pattern among
+    # comparable trips (M12 #6), None when no comparable group exists yet.
+    # Computed once per digest -- same reasoning as termini_by_trip.
+    skip_stop_counts: dict[str, int | None]
 
 
 class PinnedScheduleCache:
@@ -113,14 +118,18 @@ class PinnedScheduleCache:
             parent = stops.get(record.stop_id)
             if parent is not None and parent.parent_station:
                 stop_routes.setdefault(parent.parent_station, set()).add(route_id)
+        routes = routes_from_zip_bytes(data)
         parsed = _ParsedSchedule(
             snapshot=snapshot,
             stops=stops,
             stop_times=stop_times,
-            routes=routes_from_zip_bytes(data),
+            routes=routes,
             termini_by_trip=termini_by_trip,
             stop_routes={sid: frozenset(rids) for sid, rids in stop_routes.items()},
             trips_by_id={t.trip_id: t for t in snapshot.trips},
+            skip_stop_counts=compute_skip_stop_counts(
+                snapshot.trips, stop_times, stops, routes
+            ),
         )
         self._by_digest[digest] = parsed
         return parsed
@@ -176,6 +185,18 @@ class PinnedScheduleCache:
         if pin is None:
             return None
         return self._load(pin.digest).trips_by_id.get(trip_id)
+
+    def skip_stop_count_for(self, trip_id: str, service_date: date) -> int | None:
+        """Stops this trip skips relative to the most common static
+        pattern among trips sharing its route, direction, via-Loop-ness,
+        and start/end stops (M12 #6) -- see `gtfs/skip_pattern.py`. `None`
+        under the same "no pin yet, or real-time-only ADDED trip" cases as
+        `terminus_for`/`trip_for`, or when too few comparable trips exist
+        to judge a "normal" pattern against."""
+        pin = self._pin_manifest.get(service_date)
+        if pin is None:
+            return None
+        return self._load(pin.digest).skip_stop_counts.get(trip_id)
 
     def stops_for(self, now: datetime) -> dict[str, Stop]:
         """stop_id -> Stop for whichever static snapshot is pinned for

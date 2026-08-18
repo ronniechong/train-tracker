@@ -226,3 +226,57 @@ def test_lines_no_service_today_returns_none_for_unknown_station(tmp_path):
     cache = _pinned_cache_from_files(tmp_path, _TWO_LINES_ONE_WEEKDAY_ONLY_FILES)
 
     assert cache.lines_no_service_today("NOT_A_REAL_STOP", datetime.now(timezone.utc)) is None
+
+
+_SKIP_STOP_FILES = {
+    "routes.txt": (
+        "route_id,route_short_name,route_long_name\n"
+        "ROUTE_A,A,A - City\n"
+    ),
+    "trips.txt": (
+        "route_id,service_id,trip_id,trip_headsign,direction_id\n"
+        "ROUTE_A,WEEKDAY,ALL_STOPS,City,0\n"
+        "ROUTE_A,WEEKDAY,EXPRESS,City,0\n"
+    ),
+    "stop_times.txt": (
+        "trip_id,stop_sequence,stop_id,arrival_time,departure_time\n"
+        "ALL_STOPS,1,STOP_1,08:00:00,08:00:00\n"
+        "ALL_STOPS,2,STOP_2,08:05:00,08:05:00\n"
+        "ALL_STOPS,3,STOP_3,08:10:00,08:10:00\n"
+        "EXPRESS,1,STOP_1,08:00:00,08:00:00\n"
+        "EXPRESS,2,STOP_3,08:08:00,08:08:00\n"
+    ),
+    "stops.txt": (
+        "stop_id,stop_name,stop_lat,stop_lon,location_type,parent_station\n"
+        "STOP_1,Platform One,-37.8,144.9,0,\n"
+        "STOP_2,Platform Two,-37.8,144.9,0,\n"
+        "STOP_3,Platform Three,-37.8,144.9,0,\n"
+    ),
+    "calendar.txt": (
+        "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,"
+        "start_date,end_date\n"
+        "WEEKDAY,1,1,1,1,1,0,0,20260101,20261231\n"
+    ),
+    "calendar_dates.txt": "service_id,date,exception_type\n",
+}
+
+
+def test_skip_stop_count_for_flags_the_shorter_pattern(tmp_path):
+    cache = _pinned_cache_from_files(tmp_path, _SKIP_STOP_FILES)
+    today = service_date_for_instant(datetime.now(timezone.utc))
+
+    assert cache.skip_stop_count_for("ALL_STOPS", today) == 0
+    assert cache.skip_stop_count_for("EXPRESS", today) == 1
+
+
+def test_skip_stop_count_for_returns_none_for_a_real_time_only_trip(tmp_path):
+    cache = _pinned_cache_from_files(tmp_path, _SKIP_STOP_FILES)
+    today = service_date_for_instant(datetime.now(timezone.utc))
+
+    assert cache.skip_stop_count_for("ADDED_TRIP_NO_STATIC_ROW", today) is None
+
+
+def test_skip_stop_count_for_returns_none_when_no_snapshot_pinned(tmp_path):
+    cache = _pinned_cache_from_files(tmp_path, _SKIP_STOP_FILES)
+
+    assert cache.skip_stop_count_for("ALL_STOPS", date(2099, 1, 1)) is None

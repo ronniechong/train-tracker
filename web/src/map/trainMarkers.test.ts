@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nextStopLabel, progressLabel } from './trainMarkers'
+import { nextStopLabel, progressLabel, skipStopLabel } from './trainMarkers'
 import type { Train } from '../api-types'
 
 function makeTrain(overrides: Partial<Train> = {}): Train {
@@ -21,6 +21,7 @@ function makeTrain(overrides: Partial<Train> = {}): Train {
     next_stop_delay_seconds: null,
     progress_stop_sequence: null,
     progress_total_stops: null,
+    skipped_stop_count: null,
     ...overrides,
   }
 }
@@ -75,5 +76,23 @@ describe('progressLabel', () => {
     expect(
       progressLabel(makeTrain({ progress_stop_sequence: 0, progress_total_stops: 12 })),
     ).toBe('At origin')
+  })
+})
+
+describe('skipStopLabel', () => {
+  it('is null when no comparable pattern exists', () => {
+    expect(skipStopLabel(makeTrain({ skipped_stop_count: null }))).toBeNull()
+  })
+
+  it('is null when the trip matches its comparison group\'s normal pattern', () => {
+    expect(skipStopLabel(makeTrain({ skipped_stop_count: 0 }))).toBeNull()
+  })
+
+  it('pluralizes for more than one skipped stop', () => {
+    expect(skipStopLabel(makeTrain({ skipped_stop_count: 4 }))).toBe('Skips 4 stops')
+  })
+
+  it('does not pluralize for exactly one skipped stop', () => {
+    expect(skipStopLabel(makeTrain({ skipped_stop_count: 1 }))).toBe('Skips 1 stop')
   })
 })

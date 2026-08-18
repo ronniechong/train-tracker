@@ -106,6 +106,7 @@ describe('StationPanel', () => {
         next_stop_delay_seconds: null,
         progress_stop_sequence: null,
         progress_total_stops: null,
+        skipped_stop_count: null,
       }],
     ])
     render(

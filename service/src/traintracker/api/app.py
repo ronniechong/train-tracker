@@ -212,6 +212,13 @@ def _train(
             # configured, real-time-only ADDED trip with no static row, no
             # anchor surfaced yet).
             progress_stop_sequence = None
+        skipped_stop_count = (
+            schedule_cache.skip_stop_count_for(
+                tracked.trip_id, _resolve_service_date(snapshot.start_date, now)
+            )
+            if schedule_cache is not None
+            else None
+        )
         return Train(
             trip_id=tracked.trip_id,
             route_id=snapshot.route_id,
@@ -230,6 +237,7 @@ def _train(
             next_stop_delay_seconds=next_stop_delay_seconds,
             progress_stop_sequence=progress_stop_sequence,
             progress_total_stops=progress_total_stops,
+            skipped_stop_count=skipped_stop_count,
         )
 
     # Dropped out of both live feeds entirely (coasting/ghost with only a
@@ -260,6 +268,7 @@ def _train(
         next_stop_delay_seconds=None,
         progress_stop_sequence=None,
         progress_total_stops=None,
+        skipped_stop_count=None,
     )
 
 

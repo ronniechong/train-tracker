@@ -33,6 +33,10 @@ export interface Train {
   // window hasn't surfaced any anchor yet).
   progress_stop_sequence: number | null
   progress_total_stops: number | null
+  // Stops skipped relative to the most common static pattern among
+  // comparable trips (M12 #6) -- a count, not Metro's own "express"/
+  // "limited express" names. Null when no comparable trip group exists.
+  skipped_stop_count: number | null
 }
 
 export interface StateResponse {

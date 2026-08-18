@@ -84,6 +84,17 @@ export function progressLabel(train: Train): string | null {
   return `${train.progress_stop_sequence} of ${train.progress_total_stops} stops`
 }
 
+// "Skips 4 stops" (M12 #6) -- a plain count, never Metro's own "express"/
+// "limited express" names (those are applied inconsistently on the real
+// network -- see `gtfs/skip_pattern.py`'s docstring). Null both when the
+// trip matches its comparison group's normal pattern (0 skips isn't worth
+// a badge) and when no comparable group exists yet, same "omit rather
+// than half-fill" convention as the other tooltip lines.
+export function skipStopLabel(train: Train): string | null {
+  if (!train.skipped_stop_count) return null
+  return `Skips ${train.skipped_stop_count} stop${train.skipped_stop_count === 1 ? '' : 's'}`
+}
+
 interface MarkerElements {
   root: HTMLDivElement
   pulse: HTMLDivElement
@@ -95,6 +106,7 @@ interface MarkerElements {
   tooltipIdentity: HTMLDivElement
   tooltipNextStop: HTMLDivElement
   tooltipProgress: HTMLDivElement
+  tooltipSkip: HTMLDivElement
   tooltipMeta: HTMLDivElement
 }
 
@@ -180,14 +192,16 @@ function createMarkerElements(): MarkerElements {
   tooltipNextStop.className = 'train-tooltip-identity'
   const tooltipProgress = document.createElement('div')
   tooltipProgress.className = 'train-tooltip-identity'
+  const tooltipSkip = document.createElement('div')
+  tooltipSkip.className = 'train-tooltip-identity'
   const tooltipMeta = document.createElement('div')
   tooltipMeta.className = 'train-tooltip-meta'
-  tooltip.append(titleRow, tooltipIdentity, tooltipNextStop, tooltipProgress, tooltipMeta)
+  tooltip.append(titleRow, tooltipIdentity, tooltipNextStop, tooltipProgress, tooltipSkip, tooltipMeta)
   root.append(tooltip)
 
   return {
     root, pulse, dot, arrow, tooltip, tooltipSwatch, tooltipTitle,
-    tooltipIdentity, tooltipNextStop, tooltipProgress, tooltipMeta,
+    tooltipIdentity, tooltipNextStop, tooltipProgress, tooltipSkip, tooltipMeta,
   }
 }
 
@@ -249,6 +263,9 @@ function styleMarkerElements(
   const progress = progressLabel(train)
   elements.tooltipProgress.textContent = progress
   elements.tooltipProgress.style.display = progress ? 'block' : 'none'
+  const skip = skipStopLabel(train)
+  elements.tooltipSkip.textContent = skip
+  elements.tooltipSkip.style.display = skip ? 'block' : 'none'
   const trackedPrefix = isTracked ? 'Tracked · ' : ''
   elements.tooltipMeta.textContent = `${trackedPrefix}${STATUS_LABEL[train.status]} · confirmed ${relativeTime(train.last_seen_at)}`
 }
