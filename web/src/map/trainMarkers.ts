@@ -97,22 +97,32 @@ export function skipStopLabel(train: Train): string | null {
   return `Skips ${train.skipped_stop_count} stop${train.skipped_stop_count === 1 ? '' : 's'}`
 }
 
-// "Am I late?" CTA result -- `undefined` (never requested) renders
-// nothing, same "omit rather than half-fill" convention as the labels
-// above. Distinct from every other tooltip line: this one is a labelled
-// PREDICTION as of a specific past moment, not live state, so it always
-// carries its own "as of HH:MM" timestamp rather than reading as current.
-export function delayPredictionLabel(state: DelayPredictionState | undefined): string | null {
+// "Am I late?" CTA result, rendered in the click popup (trainPopup.ts)
+// next to the CTA itself, not the hover tooltip -- `undefined` (never
+// requested) renders nothing, same "omit rather than half-fill"
+// convention as the labels above. Distinct from every other label here:
+// this one is a labelled PREDICTION as of a specific past moment, not
+// live state, so it always carries its own "as of HH:MM" timestamp
+// rather than reading as current. The model predicts delay at the
+// trip's OWN terminus (not the viewer's destination if they're getting
+// off earlier) -- `terminusName` (the trip's headsign) makes that scope
+// explicit in the wording rather than leaving "late" ambiguously
+// unanchored. `null` terminusName (headsign not resolved yet) omits the
+// "to reach X" clause rather than showing a broken sentence.
+export function delayPredictionLabel(
+  state: DelayPredictionState | undefined, terminusName: string | null,
+): string | null {
   if (!state) return null
   if (state.status === 'loading') return 'Checking if you’re late…'
   if (state.status === 'error') return 'Couldn’t get a prediction — try again'
   const asOf = `as of ${formatTime(state.predictedAt)}`
+  const destination = terminusName ? ` to reach ${terminusName}` : ''
   const minutes = Math.round(state.predictedDelaySeconds / 60)
   if (Math.abs(state.predictedDelaySeconds) <= ON_TIME_BAND_S) {
-    return `Predicted on time (${asOf})`
+    return `Predicted on time${destination} (${asOf})`
   }
   const direction = minutes > 0 ? 'late' : 'early'
-  return `Predicted ~${Math.abs(minutes)} min ${direction} (${asOf})`
+  return `Predicted ~${Math.abs(minutes)} min ${direction}${destination} (${asOf})`
 }
 
 interface MarkerElements {
@@ -127,7 +137,6 @@ interface MarkerElements {
   tooltipNextStop: HTMLDivElement
   tooltipProgress: HTMLDivElement
   tooltipSkip: HTMLDivElement
-  tooltipDelayPrediction: HTMLDivElement
   tooltipMeta: HTMLDivElement
 }
 
@@ -215,25 +224,19 @@ function createMarkerElements(): MarkerElements {
   tooltipProgress.className = 'train-tooltip-identity'
   const tooltipSkip = document.createElement('div')
   tooltipSkip.className = 'train-tooltip-identity'
-  const tooltipDelayPrediction = document.createElement('div')
-  tooltipDelayPrediction.className = 'train-tooltip-identity'
   const tooltipMeta = document.createElement('div')
   tooltipMeta.className = 'train-tooltip-meta'
-  tooltip.append(
-    titleRow, tooltipIdentity, tooltipNextStop, tooltipProgress, tooltipSkip,
-    tooltipDelayPrediction, tooltipMeta,
-  )
+  tooltip.append(titleRow, tooltipIdentity, tooltipNextStop, tooltipProgress, tooltipSkip, tooltipMeta)
   root.append(tooltip)
 
   return {
     root, pulse, dot, arrow, tooltip, tooltipSwatch, tooltipTitle,
-    tooltipIdentity, tooltipNextStop, tooltipProgress, tooltipSkip, tooltipDelayPrediction, tooltipMeta,
+    tooltipIdentity, tooltipNextStop, tooltipProgress, tooltipSkip, tooltipMeta,
   }
 }
 
 function styleMarkerElements(
   elements: MarkerElements, train: Train, isTracked: boolean, positionChanged: boolean,
-  delayPrediction: DelayPredictionState | undefined,
 ): void {
   // Two distinct colors, deliberately not one: `lineColor` is the train's
   // actual line -- always what the tooltip swatch shows, tracked or not,
@@ -293,9 +296,6 @@ function styleMarkerElements(
   const skip = skipStopLabel(train)
   elements.tooltipSkip.textContent = skip
   elements.tooltipSkip.style.display = skip ? 'block' : 'none'
-  const delayPredictionText = delayPredictionLabel(delayPrediction)
-  elements.tooltipDelayPrediction.textContent = delayPredictionText
-  elements.tooltipDelayPrediction.style.display = delayPredictionText ? 'block' : 'none'
   const trackedPrefix = isTracked ? 'Tracked · ' : ''
   elements.tooltipMeta.textContent = `${trackedPrefix}${STATUS_LABEL[train.status]} · confirmed ${relativeTime(train.last_seen_at)}`
 }
@@ -310,7 +310,6 @@ export interface TrainMarkerManager {
     hiddenRouteIds: ReadonlySet<string>,
     hideGhosts: boolean,
     trackedTripId: string | null,
-    delayPredictions: ReadonlyMap<string, DelayPredictionState>,
   ): void
   /** Removes every marker from the map. Call on MapView unmount. */
   destroy(): void
@@ -354,7 +353,6 @@ export function createTrainMarkerManager(
     hiddenRouteIds: ReadonlySet<string>,
     hideGhosts: boolean,
     trackedTripId: string | null,
-    delayPredictions: ReadonlyMap<string, DelayPredictionState>,
   ): void {
     if (
       train.latitude === null ||
@@ -383,19 +381,16 @@ export function createTrainMarkerManager(
     }
     const positionChanged = lastPositionUpdatedAt.get(train.trip_id) !== train.position_updated_at
     lastPositionUpdatedAt.set(train.trip_id, train.position_updated_at)
-    styleMarkerElements(
-      elements, train, train.trip_id === trackedTripId, positionChanged,
-      delayPredictions.get(train.trip_id),
-    )
+    styleMarkerElements(elements, train, train.trip_id === trackedTripId, positionChanged)
   }
 
   return {
-    sync(trains, hiddenRouteIds, hideGhosts, trackedTripId, delayPredictions) {
+    sync(trains, hiddenRouteIds, hideGhosts, trackedTripId) {
       for (const tripId of markers.keys()) {
         if (!trains.has(tripId)) removeTrain(tripId)
       }
       for (const train of trains.values()) {
-        upsertTrain(train, hiddenRouteIds, hideGhosts, trackedTripId, delayPredictions)
+        upsertTrain(train, hiddenRouteIds, hideGhosts, trackedTripId)
       }
     },
     destroy() {

@@ -1,8 +1,11 @@
 import * as maplibregl from 'maplibre-gl'
 import './trainPopup.css'
 import { relativeTime } from '../lib/relativeTime'
-import { lineNameForTrain, markerColor, nextStopLabel, STATUS_LABEL, trainIdentityLabel } from './trainMarkers'
+import {
+  delayPredictionLabel, lineNameForTrain, markerColor, nextStopLabel, STATUS_LABEL, trainIdentityLabel,
+} from './trainMarkers'
 import type { Train } from '../api-types'
+import type { DelayPredictionState } from '../hooks/useDelayPredictions'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
@@ -32,6 +35,7 @@ function createSwatch(color: string): SVGSVGElement {
  * interactive button, which the pure-CSS hover tooltip never needs to. */
 function buildTrainPopupContent(
   train: Train, isTracked: boolean, onToggleTrack: () => void, onRequestDelayPrediction: () => void,
+  delayPrediction: DelayPredictionState | undefined,
 ): HTMLElement {
   const content = document.createElement('div')
   content.className = 'train-popup-content'
@@ -79,9 +83,11 @@ function buildTrainPopupContent(
 
   // "Am I late?" (M5 delay/ETA prediction) -- a plain regression lookup
   // against already-tracked live state, no LLM call, so there's no per-
-  // click cost to worry about; the result (with an "as of <time>" stamp)
-  // shows in the hover tooltip (trainMarkers.ts), not here, since this
-  // popup closes as soon as the user clicks elsewhere on the map.
+  // click cost to worry about. Result renders right here, below the CTA
+  // (not the hover tooltip -- moved out of it since this popup is what's
+  // actually open when the user clicks the button, and the tooltip only
+  // shows on `:hover`, which isn't guaranteed right after a click,
+  // especially on touch where hover never fires at all).
   const delayButton = document.createElement('button')
   delayButton.type = 'button'
   delayButton.className = 'train-popup-button train-popup-button--secondary'
@@ -91,6 +97,14 @@ function buildTrainPopupContent(
     onRequestDelayPrediction()
   })
   content.append(delayButton)
+
+  const delayText = delayPredictionLabel(delayPrediction, train.trip_headsign)
+  if (delayText) {
+    const delayRow = document.createElement('div')
+    delayRow.className = 'train-popup-identity'
+    delayRow.textContent = delayText
+    content.append(delayRow)
+  }
 
   return content
 }
@@ -102,10 +116,14 @@ export interface TrainPopupManager {
    * stationPopup.ts's `schedule` param. `isTracked` drives the button
    * label/action; `onToggleTrack` is called with no further args since the
    * caller already knows which trip this popup is for. Same for
-   * `onRequestDelayPrediction` -- the "Am I late?" CTA. */
+   * `onRequestDelayPrediction` -- the "Am I late?" CTA. `delayPrediction`
+   * is this trip's current prediction state (if any has been requested),
+   * rendered inline below the CTA -- passed in, not looked up here, same
+   * "caller already holds the map" shape as `train` above. */
   sync(
     tripId: string | null, train: Train | null, isTracked: boolean,
     onToggleTrack: () => void, onRequestDelayPrediction: () => void,
+    delayPrediction: DelayPredictionState | undefined,
   ): void
   /** Removes the popup from the map. Call on MapView unmount. */
   destroy(): void
@@ -120,12 +138,14 @@ export function createTrainPopupManager(map: maplibregl.Map): TrainPopupManager 
   })
 
   return {
-    sync(tripId, train, isTracked, onToggleTrack, onRequestDelayPrediction) {
+    sync(tripId, train, isTracked, onToggleTrack, onRequestDelayPrediction, delayPrediction) {
       if (!tripId || !train || train.latitude === null || train.longitude === null) {
         popup.remove()
         return
       }
-      const content = buildTrainPopupContent(train, isTracked, onToggleTrack, onRequestDelayPrediction)
+      const content = buildTrainPopupContent(
+        train, isTracked, onToggleTrack, onRequestDelayPrediction, delayPrediction,
+      )
       popup.setLngLat([train.longitude, train.latitude]).setDOMContent(content).addTo(map)
     },
     destroy() {

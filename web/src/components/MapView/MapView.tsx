@@ -169,12 +169,15 @@ export function MapView({
   useEffect(() => {
     if (!loaded || !mapRef.current) return
     applyHiddenRoutes(mapRef.current, hiddenRouteIds)
-    markerManagerRef.current?.sync(trains, hiddenRouteIds, hideGhosts, trackedTripId, delayPredictions)
-  }, [loaded, hiddenRouteIds, trains, hideGhosts, trackedTripId, delayPredictions])
+    markerManagerRef.current?.sync(trains, hiddenRouteIds, hideGhosts, trackedTripId)
+  }, [loaded, hiddenRouteIds, trains, hideGhosts, trackedTripId])
 
   // Track/untrack click popup -- same open/close-in-lockstep pattern as
   // the station popup above, driven by App.tsx's clickedTrainId rather
-  // than a click event handled locally here.
+  // than a click event handled locally here. Also re-syncs on
+  // delayPredictions changing so the "Am I late?" result renders inline
+  // in this popup the moment its fetch resolves, without needing another
+  // click.
   useEffect(() => {
     if (!loaded) return
     const train = clickedTrainId ? (trains.get(clickedTrainId) ?? null) : null
@@ -186,8 +189,12 @@ export function MapView({
       () => {
         if (clickedTrainId) onRequestDelayPrediction(clickedTrainId)
       },
+      clickedTrainId ? delayPredictions.get(clickedTrainId) : undefined,
     )
-  }, [loaded, clickedTrainId, trains, trackedTripId, onToggleTrack, onRequestDelayPrediction])
+  }, [
+    loaded, clickedTrainId, trains, trackedTripId, onToggleTrack, onRequestDelayPrediction,
+    delayPredictions,
+  ])
 
   // Sat-nav-style camera follow: re-centers on the tracked train every time
   // its position updates, as long as isFollowing hasn't been paused by a

@@ -100,37 +100,44 @@ describe('skipStopLabel', () => {
 
 describe('delayPredictionLabel', () => {
   it('is null when no prediction has ever been requested', () => {
-    expect(delayPredictionLabel(undefined)).toBeNull()
+    expect(delayPredictionLabel(undefined, 'Pakenham')).toBeNull()
   })
 
   it('shows a checking message while loading', () => {
     const state: DelayPredictionState = { status: 'loading' }
-    expect(delayPredictionLabel(state)).toContain('Checking')
+    expect(delayPredictionLabel(state, 'Pakenham')).toContain('Checking')
   })
 
   it('shows an error message on failure', () => {
     const state: DelayPredictionState = { status: 'error' }
-    expect(delayPredictionLabel(state)).toContain('try again')
+    expect(delayPredictionLabel(state, 'Pakenham')).toContain('try again')
   })
 
-  it('reports "on time" within the on-time band', () => {
+  it('reports "on time" within the on-time band, with the terminus', () => {
     const state: DelayPredictionState = {
       status: 'ok', predictedDelaySeconds: 30, predictedAt: '2026-08-18T10:00:00Z',
     }
-    expect(delayPredictionLabel(state)).toMatch(/^Predicted on time \(as of/)
+    expect(delayPredictionLabel(state, 'Pakenham')).toMatch(/^Predicted on time to reach Pakenham \(as of/)
   })
 
-  it('reports minutes late for a positive prediction outside the on-time band', () => {
+  it('reports minutes late for a positive prediction outside the on-time band, with the terminus', () => {
     const state: DelayPredictionState = {
       status: 'ok', predictedDelaySeconds: 360, predictedAt: '2026-08-18T10:00:00Z',
     }
-    expect(delayPredictionLabel(state)).toMatch(/^Predicted ~6 min late \(as of/)
+    expect(delayPredictionLabel(state, 'Pakenham')).toMatch(/^Predicted ~6 min late to reach Pakenham \(as of/)
   })
 
-  it('reports minutes early for a negative prediction outside the on-time band', () => {
+  it('reports minutes early for a negative prediction outside the on-time band, with the terminus', () => {
     const state: DelayPredictionState = {
       status: 'ok', predictedDelaySeconds: -180, predictedAt: '2026-08-18T10:00:00Z',
     }
-    expect(delayPredictionLabel(state)).toMatch(/^Predicted ~3 min early \(as of/)
+    expect(delayPredictionLabel(state, 'Pakenham')).toMatch(/^Predicted ~3 min early to reach Pakenham \(as of/)
+  })
+
+  it('omits the "to reach X" clause when the terminus is not yet resolved', () => {
+    const state: DelayPredictionState = {
+      status: 'ok', predictedDelaySeconds: 360, predictedAt: '2026-08-18T10:00:00Z',
+    }
+    expect(delayPredictionLabel(state, null)).toMatch(/^Predicted ~6 min late \(as of/)
   })
 })
