@@ -16,6 +16,7 @@ import { routesById } from '../../geometry'
 import { LEGEND_ORDER } from '../Legend/Legend'
 import type { InsightsLineStat, InsightsRangeName } from '../../api-types'
 import { relativeTime } from '../../lib/relativeTime'
+import { formatDateTime } from '../../lib/formatTime'
 import { trackEvent } from '../../lib/analytics'
 import styles from './InsightsPage.module.css'
 
@@ -218,7 +219,7 @@ export function InsightsPage() {
           </p>
         </div>
         {isTodayIncluded && todayGeneratedAt && (
-          <div className={styles.stalenessBadge} title={`Refreshed periodically, not live -- last updated ${new Date(todayGeneratedAt).toLocaleString()}`}>
+          <div className={styles.stalenessBadge} title={`Refreshed periodically, not live -- last updated ${formatDateTime(todayGeneratedAt)}`}>
             <span className={styles.stalenessDot} />
             Today's data fresh as of {relativeTime(todayGeneratedAt)}
           </div>
