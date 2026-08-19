@@ -45,6 +45,7 @@ from ..insights.store import InsightsStore
 from ..metrics import Metrics
 from ..redaction import configure_logging
 from ..state.completion import TripCompletionTracker
+from ..state.delay_model import load_delay_model
 from ..state.delay_observation import DelayObservationTracker
 from ..state.headway import HeadwayTracker
 from ..state.eventhub import InProcessEventHub
@@ -313,6 +314,16 @@ async def main() -> int:
     insights_store = InsightsStore(insights_dir / "insights.db")
     insights_trigger = InsightsTrigger(insights_dir / "insights_trigger_state.json")
 
+    # Delay/ETA prediction ("Am I late?"): loaded once at startup, same
+    # "None = feature not configured, honest 503" convention as every
+    # other optional create_app() param. Retraining is a separate
+    # scheduled script (scripts/train_delay_model.py, run via cron, NOT
+    # from inside this loop -- training is CPU-heavy, inference is cheap)
+    # that overwrites this same file; picking up a freshly retrained
+    # model needs a poller restart, same as picking up new code does --
+    # not auto-reloaded mid-process.
+    delay_model = load_delay_model(DATA_DIR / "ai" / "delay_model.json")
+
     # Producer side of the EventHub interface, consumed by the SSE route
     # below -- one hub instance, shared between the poll loop (publishes)
     # and the API (subscribes).
@@ -326,6 +337,7 @@ async def main() -> int:
         metrics=metrics, digest_store=digest_store, insights_store=insights_store,
         briefing_token=os.environ.get(BRIEFING_TOKEN_ENV) or None,
         archive_status_path=ARCHIVE_STATE_DIR / "public_status.json",
+        delay_model=delay_model,
     )
     server = uvicorn.Server(uvicorn.Config(api, host="0.0.0.0", port=API_PORT, log_level="info"))
 
