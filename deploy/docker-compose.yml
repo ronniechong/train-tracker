@@ -177,6 +177,32 @@ services:
     networks:
       - internal
 
+  # M5's delay/ETA model retrain job. A third dedicated one-shot service,
+  # same reasoning as `archiver` above: neither `poller` nor `archiver`'s
+  # existing volume declarations fit this job. It needs BOTH `/data`
+  # writable (writes the trained model to /data/ai/delay_model.json, which
+  # `poller` reads at its own next startup) AND `/archive-state` writable
+  # (writes its node_exporter textfile-collector metrics file next to
+  # `archiver`'s own, the only host path node-exporter is configured to
+  # watch) — `poller` has the former but not the latter, `archiver` has
+  # the reverse. No network access needed (reads local SQLite history,
+  # writes local files only, no egress) — still joins `internal` rather
+  # than an unscoped default network, matching this stack's default-deny
+  # posture.
+  delay-model-trainer:
+    build:
+      context: ../service
+      dockerfile: Dockerfile
+    entrypoint: ["python", "scripts/train_delay_model.py", "--history-dir", "/data/history"]
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - ${TT_DATA_DIR:-./data}:/data
+      - ${TT_ARCHIVE_STATE_DIR:-./archive-state}:/archive-state
+    networks:
+      - internal
+
   # Sole reverse-proxy ingress into the FastAPI/SSE app. Joins `ingress` to
   # reach `poller` and `public` for its own outbound route — the latter
   # exists only because the `tailscale` sidecar below shares this

@@ -47,7 +47,11 @@ from traintracker.state.delay_model import (  # noqa: E402
     DelayModel,
     predict_delay_seconds,
 )
-from traintracker.state.delay_observation import DelayFeatures, DelayObservationEvent  # noqa: E402
+from traintracker.state.delay_observation import DelayFeatures, DelayObservationEvent
+from traintracker.state.delay_model_metrics import (  # noqa: E402
+    DelayModelRunResult,
+    write_textfile_metrics,
+)  # noqa: E402
 
 EXCLUDED_STATUSES = {"cancelled", "undetermined_gap"}
 # Tiny ridge term on the normal-equations diagonal -- guards against a
@@ -217,6 +221,7 @@ def main() -> int:
     parser.add_argument("--days", type=int, default=19, help="Trailing days to read, ending yesterday")
     parser.add_argument("--test-days", type=int, default=4, help="Most recent N days held out for eval")
     parser.add_argument("--model-out", type=Path, default=Path("/data/ai/delay_model.json"))
+    parser.add_argument("--metrics-out", type=Path, default=Path("/archive-state/metrics/delay_model.prom"))
     args = parser.parse_args()
 
     # Excludes today: today's partition is still open for writes by the
@@ -252,6 +257,17 @@ def main() -> int:
     print(
         f"[{'PASS' if passed else 'FAIL'}] model MAE={model_mae:.1f}s "
         f"baseline MAE={baseline_mae:.1f}s"
+    )
+    write_textfile_metrics(
+        args.metrics_out,
+        DelayModelRunResult(
+            passed=passed,
+            model_mae=model_mae,
+            baseline_mae=baseline_mae,
+            train_examples=len(train),
+            test_examples=len(test),
+        ),
+        datetime.now(timezone.utc),
     )
     if not passed:
         print("Model does not beat the naive baseline -- no model file written")
