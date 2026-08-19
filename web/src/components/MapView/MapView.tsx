@@ -16,6 +16,7 @@ import { createTrainPopupManager, type TrainPopupManager } from '../../map/train
 import { LoadingOverlay } from '../LoadingOverlay'
 import type { Train } from '../../api-types'
 import type { StationScheduleState } from '../../hooks/useStationSchedule'
+import type { DelayPredictionState } from '../../hooks/useDelayPredictions'
 import type { Theme } from '../../hooks/useTheme'
 import styles from './MapView.module.css'
 
@@ -56,6 +57,11 @@ interface MapViewProps {
   onToggleTrack: (tripId: string) => void
   onUserMapInteraction: () => void
   onResumeTracking: () => void
+  // "Am I late?" (M5): per-trip prediction state, keyed by trip_id.
+  // onRequestDelayPrediction fires the on-demand fetch for one trip --
+  // see hooks/useDelayPredictions.ts.
+  delayPredictions: ReadonlyMap<string, DelayPredictionState>
+  onRequestDelayPrediction: (tripId: string) => void
 }
 
 /** Owns the MapLibre instance imperatively -- trains/routes update via
@@ -81,6 +87,8 @@ export function MapView({
   onToggleTrack,
   onUserMapInteraction,
   onResumeTracking,
+  delayPredictions,
+  onRequestDelayPrediction,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
@@ -161,8 +169,8 @@ export function MapView({
   useEffect(() => {
     if (!loaded || !mapRef.current) return
     applyHiddenRoutes(mapRef.current, hiddenRouteIds)
-    markerManagerRef.current?.sync(trains, hiddenRouteIds, hideGhosts, trackedTripId)
-  }, [loaded, hiddenRouteIds, trains, hideGhosts, trackedTripId])
+    markerManagerRef.current?.sync(trains, hiddenRouteIds, hideGhosts, trackedTripId, delayPredictions)
+  }, [loaded, hiddenRouteIds, trains, hideGhosts, trackedTripId, delayPredictions])
 
   // Track/untrack click popup -- same open/close-in-lockstep pattern as
   // the station popup above, driven by App.tsx's clickedTrainId rather
@@ -170,10 +178,16 @@ export function MapView({
   useEffect(() => {
     if (!loaded) return
     const train = clickedTrainId ? (trains.get(clickedTrainId) ?? null) : null
-    trainPopupManagerRef.current?.sync(clickedTrainId, train, clickedTrainId === trackedTripId, () => {
-      if (clickedTrainId) onToggleTrack(clickedTrainId)
-    })
-  }, [loaded, clickedTrainId, trains, trackedTripId, onToggleTrack])
+    trainPopupManagerRef.current?.sync(
+      clickedTrainId, train, clickedTrainId === trackedTripId,
+      () => {
+        if (clickedTrainId) onToggleTrack(clickedTrainId)
+      },
+      () => {
+        if (clickedTrainId) onRequestDelayPrediction(clickedTrainId)
+      },
+    )
+  }, [loaded, clickedTrainId, trains, trackedTripId, onToggleTrack, onRequestDelayPrediction])
 
   // Sat-nav-style camera follow: re-centers on the tracked train every time
   // its position updates, as long as isFollowing hasn't been paused by a

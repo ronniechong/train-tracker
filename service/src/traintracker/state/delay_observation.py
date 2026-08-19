@@ -56,6 +56,61 @@ class DelayObservationEvent:
     active_alert_flag: bool
 
 
+@dataclass(frozen=True)
+class DelayFeatures:
+    """The three model inputs, without the logging-specific envelope
+    (trip_id/service_date/observed_at) `DelayObservationEvent` carries --
+    shared by the periodic logger below AND the on-demand "Am I late?"
+    prediction endpoint (`api/app.py`), so both derive a trip's current
+    delay/stops-remaining/alert-flag through the exact same logic."""
+
+    current_delay_s: int
+    stops_remaining: int
+    active_alert_flag: bool
+
+
+def compute_delay_features(
+    snapshot: TrainSnapshot,
+    terminus: TripTerminus,
+    cycle_time: datetime,
+    latest_alerts: dict[str, Alert],
+) -> DelayFeatures | None:
+    """`None` when this trip has no derivable feature set right now (no
+    live stop_time_updates, no delay signal on its nearest stop, or a
+    rolling-window/terminus mismatch) -- an honest "can't compute this,"
+    never a fabricated value."""
+    if not snapshot.stop_time_updates:
+        return None
+
+    # The rolling window trims departed stops off the front (see
+    # CLAUDE.md's documented stop_time_update behaviour) -- its lowest
+    # stop_sequence is the nearest stop not yet complete, the natural
+    # anchor for "current delay" and "stops remaining."
+    nearest_stu = min(snapshot.stop_time_updates, key=lambda stu: stu.stop_sequence)
+    delay = (
+        nearest_stu.arrival_delay
+        if nearest_stu.arrival_delay is not None
+        else nearest_stu.departure_delay
+    )
+    if delay is None:
+        return None
+
+    stops_remaining = terminus.stop_sequence - nearest_stu.stop_sequence
+    if stops_remaining < 0:
+        # Rolling-window/terminus mismatch edge case (shouldn't happen in
+        # practice) -- an honest "unknown" rather than a negative feature
+        # a caller would have to special-case.
+        return None
+
+    active_alert_flag = bool(
+        alerts_matching(latest_alerts, cycle_time, route_id=snapshot.route_id)
+    ) if snapshot.route_id is not None else False
+
+    return DelayFeatures(
+        current_delay_s=delay, stops_remaining=stops_remaining, active_alert_flag=active_alert_flag,
+    )
+
+
 def _parse_start_date(value: str) -> date:
     """Mirrors completion.py's own tiny local parser for TU's `trip.
     start_date` -- same one-line-format, no cross-module coupling
@@ -108,38 +163,18 @@ class DelayObservationTracker:
                 # against, so this trip is simply never observed.
                 continue
 
-            # The rolling window trims departed stops off the front (see
-            # CLAUDE.md's documented stop_time_update behaviour) -- its
-            # lowest stop_sequence is the nearest stop not yet complete,
-            # the natural anchor for "current delay" and "stops remaining."
-            nearest_stu = min(snapshot.stop_time_updates, key=lambda stu: stu.stop_sequence)
-            delay = (
-                nearest_stu.arrival_delay
-                if nearest_stu.arrival_delay is not None
-                else nearest_stu.departure_delay
-            )
-            if delay is None:
-                continue  # no delay signal on the nearest stop -- skip rather than fabricate
-
-            stops_remaining = terminus.stop_sequence - nearest_stu.stop_sequence
-            if stops_remaining < 0:
-                # Rolling-window/terminus mismatch edge case (shouldn't
-                # happen in practice) -- skip rather than record a
-                # negative feature a future model would have to special-case.
+            features = compute_delay_features(snapshot, terminus, cycle_time, latest_alerts)
+            if features is None:
                 continue
-
-            active_alert_flag = bool(
-                alerts_matching(latest_alerts, cycle_time, route_id=snapshot.route_id)
-            ) if snapshot.route_id is not None else False
 
             self._event_log.record(DelayObservationEvent(
                 trip_id=trip_id,
                 route_id=snapshot.route_id,
                 service_date=service_date.isoformat(),
                 observed_at=cycle_time,
-                current_delay_s=delay,
-                stops_remaining=stops_remaining,
-                active_alert_flag=active_alert_flag,
+                current_delay_s=features.current_delay_s,
+                stops_remaining=features.stops_remaining,
+                active_alert_flag=features.active_alert_flag,
             ))
             self._last_observed[trip_id] = cycle_time
 

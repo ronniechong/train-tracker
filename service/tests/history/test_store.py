@@ -406,3 +406,51 @@ def test_read_completion_events_treats_a_partition_predating_the_table_as_missin
     assert window.days_covered == ()
     assert window.days_missing == (date(2026, 7, 20),)
     assert window.events == ()
+
+
+def test_read_delay_observations_spans_multiple_partitions(tmp_path):
+    store = HistoryStore(tmp_path)
+    store.rotate(_at(2026, 7, 20))
+    store.delay_observation_log.record(
+        DelayObservationEvent(
+            trip_id="t1", route_id="2-BEG", service_date="2026-07-20",
+            observed_at=_at(2026, 7, 20, 9, 0), current_delay_s=60,
+            stops_remaining=5, active_alert_flag=False,
+        )
+    )
+    store.rotate(_at(2026, 7, 21))
+    store.delay_observation_log.record(
+        DelayObservationEvent(
+            trip_id="t2", route_id="2-CRB", service_date="2026-07-21",
+            observed_at=_at(2026, 7, 21, 9, 0), current_delay_s=120,
+            stops_remaining=2, active_alert_flag=True,
+        )
+    )
+
+    window = store.read_delay_observations([date(2026, 7, 20), date(2026, 7, 21)])
+
+    assert {e.trip_id for e in window.events} == {"t1", "t2"}
+    assert window.days_covered == (date(2026, 7, 20), date(2026, 7, 21))
+    assert window.days_missing == ()
+    t2 = next(e for e in window.events if e.trip_id == "t2")
+    assert t2.current_delay_s == 120
+    assert t2.stops_remaining == 2
+    assert t2.active_alert_flag is True
+
+
+def test_read_delay_observations_reports_a_missing_partition_honestly(tmp_path):
+    store = HistoryStore(tmp_path)
+    store.rotate(_at(2026, 7, 20))
+    store.delay_observation_log.record(
+        DelayObservationEvent(
+            trip_id="t1", route_id="2-BEG", service_date="2026-07-20",
+            observed_at=_at(2026, 7, 20, 9, 0), current_delay_s=60,
+            stops_remaining=5, active_alert_flag=False,
+        )
+    )
+
+    window = store.read_delay_observations([date(2026, 7, 20), date(2026, 7, 21)])
+
+    assert window.days_covered == (date(2026, 7, 20),)
+    assert window.days_missing == (date(2026, 7, 21),)
+    assert [e.trip_id for e in window.events] == ["t1"]

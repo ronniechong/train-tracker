@@ -4,6 +4,7 @@ import { MapView, type FlyToRequest } from './components/MapView/MapView'
 import { DrawerToggle } from './components/DrawerToggle/DrawerToggle'
 import { useLiveFeed } from './hooks/useLiveFeed'
 import { useStationSchedule } from './hooks/useStationSchedule'
+import { useDelayPredictions } from './hooks/useDelayPredictions'
 import { useTheme } from './hooks/useTheme'
 import { routesByStationId, stationsById, type Station } from './geometry'
 import { trackEvent, trackStationSelect } from './lib/analytics'
@@ -46,6 +47,9 @@ export function App() {
   const [trackedTripId, setTrackedTripId] = useState<string | null>(null)
   const [isFollowing, setIsFollowing] = useState(false)
   const [clickedTrainId, setClickedTrainId] = useState<string | null>(null)
+  // "Am I late?" (M5 delay/ETA prediction) -- on-demand, per-trip, no
+  // polling. See hooks/useDelayPredictions.ts.
+  const delayPredictions = useDelayPredictions()
 
   function handleToggleRoute(routeId: string, visible: boolean): void {
     setHiddenRouteIds((prev) => {
@@ -192,6 +196,8 @@ export function App() {
         onToggleTrack={handleToggleTrack}
         onUserMapInteraction={handleUserMapInteraction}
         onResumeTracking={handleResumeTracking}
+        delayPredictions={delayPredictions.byTripId}
+        onRequestDelayPrediction={delayPredictions.request}
       />
     </div>
   )

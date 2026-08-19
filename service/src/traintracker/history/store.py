@@ -278,6 +278,30 @@ def _row_to_completion_event(row: tuple) -> TripCompletionEvent:
     )
 
 
+def _row_to_delay_observation(row: tuple) -> DelayObservationEvent:
+    trip_id, route_id, service_date, observed_at, current_delay_s, stops_remaining, active_alert_flag = row
+    return DelayObservationEvent(
+        trip_id=trip_id,
+        route_id=route_id,
+        service_date=service_date,
+        observed_at=_parse_iso(observed_at),
+        current_delay_s=current_delay_s,
+        stops_remaining=stops_remaining,
+        active_alert_flag=bool(active_alert_flag),
+    )
+
+
+@dataclass(frozen=True)
+class DelayObservationsWindow:
+    """Same shape as `CompletionEventsWindow`, for `delay_observation_events`
+    -- the delay-model training script's read path (M5's delay/ETA
+    prediction feature)."""
+
+    events: tuple[DelayObservationEvent, ...]
+    days_covered: tuple[date, ...]
+    days_missing: tuple[date, ...]
+
+
 @dataclass(frozen=True)
 class CompletionEventsWindow:
     """The result of reading `trip_completion_events` across multiple
@@ -429,6 +453,39 @@ class HistoryStore:
             events.extend(_row_to_completion_event(row) for row in rows)
 
         return CompletionEventsWindow(
+            events=tuple(events), days_covered=tuple(covered), days_missing=tuple(missing),
+        )
+
+    def read_delay_observations(self, service_dates: Sequence[date]) -> DelayObservationsWindow:
+        """Same read pattern as `read_completion_events` (read-only,
+        per-partition connections, missing-file/missing-table both count
+        as `days_missing`), for `delay_observation_events` -- the delay-
+        model training script's cross-day read path."""
+        events: list[DelayObservationEvent] = []
+        covered: list[date] = []
+        missing: list[date] = []
+
+        for service_date in service_dates:
+            path = self.partition_path(service_date)
+            try:
+                conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+            except sqlite3.OperationalError:
+                missing.append(service_date)
+                continue
+            try:
+                rows = conn.execute(
+                    "SELECT trip_id, route_id, service_date, observed_at, current_delay_s, "
+                    "stops_remaining, active_alert_flag FROM delay_observation_events"
+                ).fetchall()
+            except sqlite3.OperationalError:
+                missing.append(service_date)
+                continue
+            finally:
+                conn.close()
+            covered.append(service_date)
+            events.extend(_row_to_delay_observation(row) for row in rows)
+
+        return DelayObservationsWindow(
             events=tuple(events), days_covered=tuple(covered), days_missing=tuple(missing),
         )
 

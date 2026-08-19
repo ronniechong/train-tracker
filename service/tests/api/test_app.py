@@ -23,6 +23,7 @@ from traintracker.metrics import Metrics
 from traintracker.poller.breaker import CircuitBreaker
 from traintracker.poller.loop import PollerLoop
 from traintracker.state.alerts import ActivePeriod, Alert, InformedEntity
+from traintracker.state.delay_model import DelayModel
 from traintracker.state.eventhub import InProcessEventHub
 from traintracker.state.eventlog import InMemoryEventLog
 from traintracker.state.ghost import TrackedTrainView
@@ -147,6 +148,7 @@ async def _client_for(
     digest_store=None,
     briefing_token=None,
     archive_status_path=None,
+    delay_model=None,
 ) -> httpx.AsyncClient:
     app = create_app(
         loop=loop,
@@ -163,6 +165,7 @@ async def _client_for(
         digest_store=digest_store,
         briefing_token=briefing_token,
         archive_status_path=archive_status_path,
+        delay_model=delay_model,
     )
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
 
@@ -908,6 +911,156 @@ def test_train_progress_is_none_without_a_schedule_cache():
     assert train.progress_stop_sequence is None
     assert train.progress_total_stops is None
     assert train.skipped_stop_count is None
+
+
+def _delay_prediction_schedule_cache(tmp_path) -> PinnedScheduleCache:
+    # WEEKDAY_TRIP_1: PLAT_A1 stop_sequence 1 -> PLAT_B1 stop_sequence 2
+    # (terminus), same 2-stop fixture shape `test_train_reports_trip_
+    # progress_against_the_static_terminus` above uses, pinned to the
+    # trip's own fixed service_date (2026-07-20) rather than "today" --
+    # `terminus_for`'s lookup key.
+    digest = "delaypredictiontestdigest"
+    files = {
+        "routes.txt": "route_id,route_short_name,route_long_name\n2-PKM,Pakenham,Pakenham - City\n",
+        "trips.txt": (
+            "route_id,service_id,trip_id,trip_headsign,direction_id\n"
+            "2-PKM,WEEKDAY,WEEKDAY_TRIP_1,City,0\n"
+        ),
+        "stop_times.txt": (
+            "trip_id,stop_sequence,stop_id,arrival_time,departure_time\n"
+            "WEEKDAY_TRIP_1,1,PLAT_A1,08:00:00,08:00:00\n"
+            "WEEKDAY_TRIP_1,2,PLAT_B1,08:10:00,\n"
+        ),
+        "stops.txt": (
+            "stop_id,stop_name,stop_lat,stop_lon,location_type,parent_station\n"
+            "PLAT_A1,Platform A1,-37.8,144.9,0,\n"
+            "PLAT_B1,Platform B1,-37.8,144.9,0,\n"
+        ),
+        "calendar.txt": (
+            "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,"
+            "start_date,end_date\nWEEKDAY,1,1,1,1,1,0,0,20260101,20261231\n"
+        ),
+        "calendar_dates.txt": "service_id,date,exception_type\n",
+    }
+    import io
+    import zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        for name, content in files.items():
+            zf.writestr(name, content)
+    data = buf.getvalue()
+    (tmp_path / f"{digest}.zip").write_bytes(data)
+    manifest = PinManifest(tmp_path / "pin_manifest.json")
+    manifest.pin_digest(date(2026, 7, 20), digest)
+    return PinnedScheduleCache(tmp_path, manifest)
+
+
+def _delay_prediction_snapshot(arrival_delay: int | None = 90) -> TrainSnapshot:
+    now = datetime.fromtimestamp(1000, tz=timezone.utc)
+    return TrainSnapshot(
+        trip_id="WEEKDAY_TRIP_1", route_id="2-PKM", start_time="08:00:00", start_date="20260720",
+        schedule_relationship="SCHEDULED",
+        stop_time_updates=(
+            StopTimeUpdate(
+                stop_sequence=1, stop_id="PLAT_A1", arrival_delay=arrival_delay, arrival_time=None,
+                departure_delay=None, departure_time=None, schedule_relationship="SCHEDULED",
+            ),
+        ),
+        schedule_updated_at=now, latitude=None, longitude=None, bearing=None, position_updated_at=None,
+    )
+
+
+async def test_delay_prediction_returns_503_when_not_configured(tmp_path):
+    loop, store = await _running_loop()
+    schedule_cache = _delay_prediction_schedule_cache(tmp_path)
+    store.latest_snapshots["WEEKDAY_TRIP_1"] = _delay_prediction_snapshot()
+    async with await _client_for(loop, store, schedule_cache=schedule_cache, delay_model=None) as client:
+        response = await client.get("/trains/WEEKDAY_TRIP_1/delay-prediction")
+
+    assert response.status_code == 503
+
+
+async def test_delay_prediction_returns_404_for_an_unknown_trip(tmp_path):
+    loop, store = await _running_loop()
+    schedule_cache = _delay_prediction_schedule_cache(tmp_path)
+    model = DelayModel(intercept=10.0, weights=(0.5, 1.0, -5.0), trained_at="")
+    async with await _client_for(loop, store, schedule_cache=schedule_cache, delay_model=model) as client:
+        response = await client.get("/trains/NOT_A_REAL_TRIP/delay-prediction")
+
+    assert response.status_code == 404
+
+
+async def test_delay_prediction_returns_422_when_no_static_schedule_for_the_trip(tmp_path):
+    loop, store = await _running_loop()
+    schedule_cache = _delay_prediction_schedule_cache(tmp_path)
+    model = DelayModel(intercept=10.0, weights=(0.5, 1.0, -5.0), trained_at="")
+    store.latest_snapshots["NO_STATIC_ROW"] = TrainSnapshot(
+        trip_id="NO_STATIC_ROW", route_id="2-PKM", start_time="08:00:00", start_date="20260720",
+        schedule_relationship="ADDED",
+        stop_time_updates=(
+            StopTimeUpdate(
+                stop_sequence=1, stop_id="PLAT_A1", arrival_delay=90, arrival_time=None,
+                departure_delay=None, departure_time=None, schedule_relationship="SCHEDULED",
+            ),
+        ),
+        schedule_updated_at=datetime.fromtimestamp(1000, tz=timezone.utc),
+        latitude=None, longitude=None, bearing=None, position_updated_at=None,
+    )
+    async with await _client_for(loop, store, schedule_cache=schedule_cache, delay_model=model) as client:
+        response = await client.get("/trains/NO_STATIC_ROW/delay-prediction")
+
+    assert response.status_code == 422
+
+
+async def test_delay_prediction_returns_422_when_no_live_delay_signal(tmp_path):
+    loop, store = await _running_loop()
+    schedule_cache = _delay_prediction_schedule_cache(tmp_path)
+    model = DelayModel(intercept=10.0, weights=(0.5, 1.0, -5.0), trained_at="")
+    store.latest_snapshots["WEEKDAY_TRIP_1"] = _delay_prediction_snapshot(arrival_delay=None)
+    async with await _client_for(loop, store, schedule_cache=schedule_cache, delay_model=model) as client:
+        response = await client.get("/trains/WEEKDAY_TRIP_1/delay-prediction")
+
+    assert response.status_code == 422
+
+
+async def test_delay_prediction_returns_a_predicted_delay_for_a_live_trip(tmp_path):
+    loop, store = await _running_loop()
+    schedule_cache = _delay_prediction_schedule_cache(tmp_path)
+    model = DelayModel(intercept=10.0, weights=(0.5, 1.0, -5.0), trained_at="")
+    store.latest_snapshots["WEEKDAY_TRIP_1"] = _delay_prediction_snapshot(arrival_delay=90)
+    async with await _client_for(loop, store, schedule_cache=schedule_cache, delay_model=model) as client:
+        response = await client.get("/trains/WEEKDAY_TRIP_1/delay-prediction")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["trip_id"] == "WEEKDAY_TRIP_1"
+    assert body["current_delay_s"] == 90
+    assert body["stops_remaining"] == 1  # terminus seq 2 minus nearest seq 1
+    assert body["active_alert_flag"] is False
+    # 10.0 + 0.5*90 + 1.0*1 + (-5.0)*0 = 56
+    assert body["predicted_delay_seconds"] == 56
+    assert "predicted_at" in body
+
+
+async def test_delay_prediction_reflects_an_active_alert(tmp_path):
+    loop, store = await _running_loop()
+    schedule_cache = _delay_prediction_schedule_cache(tmp_path)
+    model = DelayModel(intercept=10.0, weights=(0.5, 1.0, -5.0), trained_at="")
+    store.latest_snapshots["WEEKDAY_TRIP_1"] = _delay_prediction_snapshot(arrival_delay=90)
+    store.latest_alerts["alert1"] = Alert(
+        id="alert1", cause="MAINTENANCE", effect="SIGNIFICANT_DELAYS", header_text="Delays",
+        description_text=None, url=None,
+        active_periods=(ActivePeriod(start=None, end=None),),
+        informed_entities=(InformedEntity(route_id="2-PKM", stop_id=None, direction_id=None),),
+    )
+    async with await _client_for(loop, store, schedule_cache=schedule_cache, delay_model=model) as client:
+        response = await client.get("/trains/WEEKDAY_TRIP_1/delay-prediction")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["active_alert_flag"] is True
+    # 10.0 + 0.5*90 + 1.0*1 + (-5.0)*1 = 51
+    assert body["predicted_delay_seconds"] == 51
 
 
 def test_scheduled_train_is_added_for_a_real_time_only_trip():

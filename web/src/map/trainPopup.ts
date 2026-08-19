@@ -30,7 +30,9 @@ function createSwatch(color: string): SVGSVGElement {
  * a separate element tree from the hover tooltip rather than reusing it,
  * since this one needs to stay open (click, not `:hover`) and carry an
  * interactive button, which the pure-CSS hover tooltip never needs to. */
-function buildTrainPopupContent(train: Train, isTracked: boolean, onToggleTrack: () => void): HTMLElement {
+function buildTrainPopupContent(
+  train: Train, isTracked: boolean, onToggleTrack: () => void, onRequestDelayPrediction: () => void,
+): HTMLElement {
   const content = document.createElement('div')
   content.className = 'train-popup-content'
 
@@ -75,6 +77,21 @@ function buildTrainPopupContent(train: Train, isTracked: boolean, onToggleTrack:
   })
   content.append(button)
 
+  // "Am I late?" (M5 delay/ETA prediction) -- a plain regression lookup
+  // against already-tracked live state, no LLM call, so there's no per-
+  // click cost to worry about; the result (with an "as of <time>" stamp)
+  // shows in the hover tooltip (trainMarkers.ts), not here, since this
+  // popup closes as soon as the user clicks elsewhere on the map.
+  const delayButton = document.createElement('button')
+  delayButton.type = 'button'
+  delayButton.className = 'train-popup-button train-popup-button--secondary'
+  delayButton.textContent = 'Am I late?'
+  delayButton.addEventListener('click', (event) => {
+    event.stopPropagation()
+    onRequestDelayPrediction()
+  })
+  content.append(delayButton)
+
   return content
 }
 
@@ -84,8 +101,12 @@ export interface TrainPopupManager {
    * trains map) and passed in rather than looked up here, same shape as
    * stationPopup.ts's `schedule` param. `isTracked` drives the button
    * label/action; `onToggleTrack` is called with no further args since the
-   * caller already knows which trip this popup is for. */
-  sync(tripId: string | null, train: Train | null, isTracked: boolean, onToggleTrack: () => void): void
+   * caller already knows which trip this popup is for. Same for
+   * `onRequestDelayPrediction` -- the "Am I late?" CTA. */
+  sync(
+    tripId: string | null, train: Train | null, isTracked: boolean,
+    onToggleTrack: () => void, onRequestDelayPrediction: () => void,
+  ): void
   /** Removes the popup from the map. Call on MapView unmount. */
   destroy(): void
 }
@@ -99,12 +120,12 @@ export function createTrainPopupManager(map: maplibregl.Map): TrainPopupManager 
   })
 
   return {
-    sync(tripId, train, isTracked, onToggleTrack) {
+    sync(tripId, train, isTracked, onToggleTrack, onRequestDelayPrediction) {
       if (!tripId || !train || train.latitude === null || train.longitude === null) {
         popup.remove()
         return
       }
-      const content = buildTrainPopupContent(train, isTracked, onToggleTrack)
+      const content = buildTrainPopupContent(train, isTracked, onToggleTrack, onRequestDelayPrediction)
       popup.setLngLat([train.longitude, train.latitude]).setDOMContent(content).addTo(map)
     },
     destroy() {

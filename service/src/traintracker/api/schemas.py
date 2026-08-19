@@ -64,6 +64,21 @@ class Train(BaseModel):
     last_seen_at: datetime | None
 
 
+class DelayPredictionResponse(BaseModel):
+    """The "Am I late?" on-demand prediction (M5 delay/ETA feature) --
+    a plain regression output, math only, no LLM call. `predicted_at`
+    is when THIS prediction was computed, not a live value -- the
+    frontend labels it "as of <predicted_at>" and the user re-clicks
+    the CTA for a fresh one rather than this auto-refreshing."""
+
+    trip_id: str
+    predicted_delay_seconds: int
+    current_delay_s: int
+    stops_remaining: int
+    active_alert_flag: bool
+    predicted_at: datetime
+
+
 class StateResponse(BaseModel):
     generated_at: datetime
     backoff_active: bool

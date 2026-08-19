@@ -42,6 +42,8 @@ from ..poller.loop import ALL_FEEDS, PollerLoop
 from ..poller.slack import post_message
 from ..state.alerts import Alert as AlertRecord
 from ..state.alerts import alerts_matching
+from ..state.delay_model import DelayModel, predict_delay_seconds
+from ..state.delay_observation import compute_delay_features
 from ..state.eventhub import EventHub
 from ..state.ghost import MAX_GHOST_AGE_S, TrackedTrainView
 from ..state.station import current_stop_sequence, next_stop_and_delay
@@ -62,6 +64,7 @@ from .schemas import (
     ArchiveStatusResponse,
     AttributionResponse,
     BriefingTriggerResponse,
+    DelayPredictionResponse,
     DeltaResponse,
     FeedStatus,
     HealthResponse,
@@ -552,6 +555,11 @@ def create_app(
     # lets tests/dev construct an app without the archiver's read-only
     # mount wired up.
     archive_status_path: Path | None = None,
+    # The "Am I late?" on-demand delay prediction (M5). None by default,
+    # same "feature not configured" 503 convention as the other optional
+    # params above -- lets tests/dev construct an app before
+    # `scripts/train_delay_model.py` has ever produced a model file.
+    delay_model: DelayModel | None = None,
 ) -> FastAPI:
     connections = connections or ConnectionTracker()
     rate_limiter = rate_limiter or RateLimiter()
@@ -851,6 +859,45 @@ def create_app(
                 LineSummary(route_id=r.route_id, short_name=r.short_name, long_name=r.long_name)
                 for r in no_service_today
             ],
+        )
+
+    @app.get(
+        "/trains/{trip_id}/delay-prediction",
+        response_model=DelayPredictionResponse,
+        dependencies=[Depends(_rate_limit_dependency(rate_limiter, "delay_prediction"))],
+    )
+    async def delay_prediction(trip_id: str) -> DelayPredictionResponse:
+        # Math only against already-tracked live state + the serialized
+        # model file -- no path to the upstream API or to an LLM from
+        # this request (invariant #1; also why this is a plain GET
+        # endpoint, not routed through ai/tools.py at all).
+        if delay_model is None:
+            raise HTTPException(status_code=503, detail="delay prediction feature not configured")
+        if schedule_cache is None:
+            raise HTTPException(status_code=503, detail="schedule feature not configured")
+        snapshot = store.latest_snapshots.get(trip_id)
+        if snapshot is None:
+            raise HTTPException(status_code=404, detail=f"unknown or untracked trip_id: {trip_id}")
+        now = datetime.now(timezone.utc)
+        service_date = _resolve_service_date(snapshot.start_date, now)
+        terminus = schedule_cache.terminus_for(trip_id, service_date)
+        if terminus is None:
+            raise HTTPException(
+                status_code=422, detail="no static schedule available for this trip"
+            )
+        features = compute_delay_features(snapshot, terminus, now, store.latest_alerts)
+        if features is None:
+            raise HTTPException(
+                status_code=422, detail="not enough live data to predict this trip right now"
+            )
+        predicted = predict_delay_seconds(delay_model, features)
+        return DelayPredictionResponse(
+            trip_id=trip_id,
+            predicted_delay_seconds=round(predicted),
+            current_delay_s=features.current_delay_s,
+            stops_remaining=features.stops_remaining,
+            active_alert_flag=features.active_alert_flag,
+            predicted_at=now,
         )
 
     @app.get("/api/stream")

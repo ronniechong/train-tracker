@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { nextStopLabel, progressLabel, skipStopLabel } from './trainMarkers'
+import { delayPredictionLabel, nextStopLabel, progressLabel, skipStopLabel } from './trainMarkers'
 import type { Train } from '../api-types'
+import type { DelayPredictionState } from '../hooks/useDelayPredictions'
 
 function makeTrain(overrides: Partial<Train> = {}): Train {
   return {
@@ -94,5 +95,42 @@ describe('skipStopLabel', () => {
 
   it('does not pluralize for exactly one skipped stop', () => {
     expect(skipStopLabel(makeTrain({ skipped_stop_count: 1 }))).toBe('Skips 1 stop')
+  })
+})
+
+describe('delayPredictionLabel', () => {
+  it('is null when no prediction has ever been requested', () => {
+    expect(delayPredictionLabel(undefined)).toBeNull()
+  })
+
+  it('shows a checking message while loading', () => {
+    const state: DelayPredictionState = { status: 'loading' }
+    expect(delayPredictionLabel(state)).toContain('Checking')
+  })
+
+  it('shows an error message on failure', () => {
+    const state: DelayPredictionState = { status: 'error' }
+    expect(delayPredictionLabel(state)).toContain('try again')
+  })
+
+  it('reports "on time" within the on-time band', () => {
+    const state: DelayPredictionState = {
+      status: 'ok', predictedDelaySeconds: 30, predictedAt: '2026-08-18T10:00:00Z',
+    }
+    expect(delayPredictionLabel(state)).toMatch(/^Predicted on time \(as of/)
+  })
+
+  it('reports minutes late for a positive prediction outside the on-time band', () => {
+    const state: DelayPredictionState = {
+      status: 'ok', predictedDelaySeconds: 360, predictedAt: '2026-08-18T10:00:00Z',
+    }
+    expect(delayPredictionLabel(state)).toMatch(/^Predicted ~6 min late \(as of/)
+  })
+
+  it('reports minutes early for a negative prediction outside the on-time band', () => {
+    const state: DelayPredictionState = {
+      status: 'ok', predictedDelaySeconds: -180, predictedAt: '2026-08-18T10:00:00Z',
+    }
+    expect(delayPredictionLabel(state)).toMatch(/^Predicted ~3 min early \(as of/)
   })
 })

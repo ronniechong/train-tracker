@@ -39,6 +39,18 @@ export interface Train {
   skipped_stop_count: number | null
 }
 
+// The "Am I late?" on-demand prediction (M5). `predicted_at` is when this
+// specific prediction was computed, not a live value -- the UI labels it
+// "as of <predicted_at>" and the user re-clicks the CTA for a fresh one.
+export interface DelayPredictionResponse {
+  trip_id: string
+  predicted_delay_seconds: number
+  current_delay_s: number
+  stops_remaining: number
+  active_alert_flag: boolean
+  predicted_at: string
+}
+
 export interface StateResponse {
   generated_at: string
   backoff_active: boolean
