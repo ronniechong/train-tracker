@@ -115,29 +115,36 @@ describe('delayPredictionLabel', () => {
 
   it('reports "on time" within the on-time band, with the terminus', () => {
     const state: DelayPredictionState = {
-      status: 'ok', predictedDelaySeconds: 30, predictedAt: '2026-08-18T10:00:00Z',
+      status: 'ok', predictedDelaySeconds: 30, predictedAt: '2026-08-18T10:00:00Z', stale: false,
     }
     expect(delayPredictionLabel(state, 'Pakenham')).toMatch(/^Predicted on time to reach Pakenham \(as of/)
   })
 
   it('reports minutes late for a positive prediction outside the on-time band, with the terminus', () => {
     const state: DelayPredictionState = {
-      status: 'ok', predictedDelaySeconds: 360, predictedAt: '2026-08-18T10:00:00Z',
+      status: 'ok', predictedDelaySeconds: 360, predictedAt: '2026-08-18T10:00:00Z', stale: false,
     }
     expect(delayPredictionLabel(state, 'Pakenham')).toMatch(/^Predicted ~6 min late to reach Pakenham \(as of/)
   })
 
   it('reports minutes early for a negative prediction outside the on-time band, with the terminus', () => {
     const state: DelayPredictionState = {
-      status: 'ok', predictedDelaySeconds: -180, predictedAt: '2026-08-18T10:00:00Z',
+      status: 'ok', predictedDelaySeconds: -180, predictedAt: '2026-08-18T10:00:00Z', stale: false,
     }
     expect(delayPredictionLabel(state, 'Pakenham')).toMatch(/^Predicted ~3 min early to reach Pakenham \(as of/)
   })
 
   it('omits the "to reach X" clause when the terminus is not yet resolved', () => {
     const state: DelayPredictionState = {
-      status: 'ok', predictedDelaySeconds: 360, predictedAt: '2026-08-18T10:00:00Z',
+      status: 'ok', predictedDelaySeconds: 360, predictedAt: '2026-08-18T10:00:00Z', stale: false,
     }
     expect(delayPredictionLabel(state, null)).toMatch(/^Predicted ~6 min late \(as of/)
+  })
+
+  it('notes when the prediction used last known data', () => {
+    const state: DelayPredictionState = {
+      status: 'ok', predictedDelaySeconds: 360, predictedAt: '2026-08-18T10:00:00Z', stale: true,
+    }
+    expect(delayPredictionLabel(state, null)).toMatch(/last known data\)$/)
   })
 })

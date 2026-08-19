@@ -77,6 +77,11 @@ class DelayPredictionResponse(BaseModel):
     stops_remaining: int
     active_alert_flag: bool
     predicted_at: datetime
+    # True when the underlying features came from the last cycle that had
+    # them, not this one (a single-cycle TU miss -- see
+    # `state.delay_observation`'s `vp_without_tu` note) -- honesty over
+    # silently serving momentarily-stale numbers.
+    stale: bool = False
 
 
 class StateResponse(BaseModel):

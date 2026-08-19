@@ -74,7 +74,10 @@ function buildTrainPopupContent(
   const delayText = delayPredictionLabel(delayPrediction, train.trip_headsign)
   if (delayText) {
     const delayRow = document.createElement('div')
-    delayRow.className = 'train-popup-identity train-popup-identity--wrap'
+    const isStale = delayPrediction?.status === 'ok' && delayPrediction.stale
+    delayRow.className = isStale
+      ? 'train-popup-identity train-popup-identity--wrap train-popup-identity--stale'
+      : 'train-popup-identity train-popup-identity--wrap'
     delayRow.textContent = delayText
     content.append(delayRow)
   }

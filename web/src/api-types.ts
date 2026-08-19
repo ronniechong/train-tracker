@@ -49,6 +49,9 @@ export interface DelayPredictionResponse {
   stops_remaining: number
   active_alert_flag: boolean
   predicted_at: string
+  // True when the backend fell back to the last cycle's features because
+  // this cycle's live data was momentarily missing (single-cycle TU miss).
+  stale: boolean
 }
 
 export interface StateResponse {

@@ -115,7 +115,7 @@ export function delayPredictionLabel(
   if (!state) return null
   if (state.status === 'loading') return 'Checking if you’re late…'
   if (state.status === 'error') return 'Couldn’t get a prediction — try again'
-  const asOf = `as of ${formatTime(state.predictedAt)}`
+  const asOf = `as of ${formatTime(state.predictedAt)}${state.stale ? ', last known data' : ''}`
   const destination = terminusName ? ` to reach ${terminusName}` : ''
   const minutes = Math.round(state.predictedDelaySeconds / 60)
   if (Math.abs(state.predictedDelaySeconds) <= ON_TIME_BAND_S) {

@@ -5,7 +5,7 @@ import type { DelayPredictionResponse } from '../api-types'
 export type DelayPredictionState =
   | { status: 'loading' }
   | { status: 'error' }
-  | { status: 'ok'; predictedDelaySeconds: number; predictedAt: string }
+  | { status: 'ok'; predictedDelaySeconds: number; predictedAt: string; stale: boolean }
 
 export interface DelayPredictions {
   byTripId: ReadonlyMap<string, DelayPredictionState>
@@ -34,6 +34,7 @@ export function useDelayPredictions(): DelayPredictions {
           status: 'ok',
           predictedDelaySeconds: data.predicted_delay_seconds,
           predictedAt: data.predicted_at,
+          stale: data.stale,
         }))
       })
       .catch(() => {

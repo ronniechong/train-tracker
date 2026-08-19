@@ -52,6 +52,10 @@
   overflow-wrap: break-word;
 }
 
+.train-popup-identity--stale {
+  color: var(--color-warning);
+}
+
 .train-popup-meta {
   color: var(--color-text-dim);
 }

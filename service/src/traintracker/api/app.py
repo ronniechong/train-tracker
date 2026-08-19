@@ -43,7 +43,7 @@ from ..poller.slack import post_message
 from ..state.alerts import Alert as AlertRecord
 from ..state.alerts import alerts_matching
 from ..state.delay_model import DelayModel, predict_delay_seconds
-from ..state.delay_observation import compute_delay_features
+from ..state.delay_observation import DelayFeatures, compute_delay_features
 from ..state.eventhub import EventHub
 from ..state.ghost import MAX_GHOST_AGE_S, TrackedTrainView
 from ..state.station import current_stop_sequence, next_stop_and_delay
@@ -116,6 +116,13 @@ BRIEFING_TOKEN_ENV = "TT_BRIEFING_TOKEN"
 # if that ever changes -- exposure/ingress specifics live in ops docs, not
 # this repo).
 SSE_HEARTBEAT_INTERVAL_S = 20.0
+
+# How long a delay-prediction fallback (last cycle's features, used when
+# the current cycle's TU data is momentarily missing) stays usable --
+# comfortably more than one poll cycle (10s + jitter) so a single-cycle
+# `vp_without_tu` transient doesn't 422, but short enough a genuinely
+# stale trip still falls through to the honest 422 below.
+_DELAY_FEATURES_CACHE_MAX_AGE = timedelta(seconds=60)
 
 
 def _cors_origins() -> list[str]:
@@ -861,6 +868,14 @@ def create_app(
             ],
         )
 
+    # Last-known-good delay features per trip_id, kept only to smooth a
+    # single-cycle TU miss (the `vp_without_tu` transient documented in
+    # state/delay_observation.py -- TU drops a trip for one poll cycle
+    # while VP still has it, zeroing `stop_time_updates` for that cycle
+    # only). Bounded by _DELAY_FEATURES_CACHE_MAX_AGE_S below, not by
+    # trip lifetime, so a genuinely gone trip ages out on its own.
+    _last_good_features: dict[str, tuple[datetime, DelayFeatures]] = {}
+
     @app.get(
         "/trains/{trip_id}/delay-prediction",
         response_model=DelayPredictionResponse,
@@ -886,6 +901,14 @@ def create_app(
                 status_code=422, detail="no static schedule available for this trip"
             )
         features = compute_delay_features(snapshot, terminus, now, store.latest_alerts)
+        stale = False
+        if features is not None:
+            _last_good_features[trip_id] = (now, features)
+        else:
+            cached = _last_good_features.get(trip_id)
+            if cached is not None and (now - cached[0]) <= _DELAY_FEATURES_CACHE_MAX_AGE:
+                _, features = cached
+                stale = True
         if features is None:
             raise HTTPException(
                 status_code=422, detail="not enough live data to predict this trip right now"
@@ -898,6 +921,7 @@ def create_app(
             stops_remaining=features.stops_remaining,
             active_alert_flag=features.active_alert_flag,
             predicted_at=now,
+            stale=stale,
         )
 
     @app.get("/api/stream")
