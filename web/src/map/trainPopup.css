@@ -42,6 +42,16 @@
   color: var(--color-text);
 }
 
+/* Overrides the popup's default single-line `white-space: nowrap` --
+   for rows whose text length isn't bounded (e.g. the delay-prediction
+   line, which includes a variable-length terminus name), so long text
+   wraps inside the popup's own width instead of overflowing past its
+   edge. */
+.train-popup-identity--wrap {
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
 .train-popup-meta {
   color: var(--color-text-dim);
 }

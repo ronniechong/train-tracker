@@ -65,6 +65,20 @@ function buildTrainPopupContent(
     content.append(nextStopRow)
   }
 
+  // "Am I late?" (M5 delay/ETA prediction) result -- placed right under
+  // "Next: <station>" rather than after the buttons, grouping it with
+  // the other per-trip schedule facts instead of the actions. Long
+  // terminus names (e.g. "Cranbourne via Metro Tunnel") need to wrap,
+  // not overflow the popup -- `train-popup-identity--wrap` overrides the
+  // rest of the popup's deliberate single-line `white-space: nowrap`.
+  const delayText = delayPredictionLabel(delayPrediction, train.trip_headsign)
+  if (delayText) {
+    const delayRow = document.createElement('div')
+    delayRow.className = 'train-popup-identity train-popup-identity--wrap'
+    delayRow.textContent = delayText
+    content.append(delayRow)
+  }
+
   const meta = document.createElement('div')
   meta.className = 'train-popup-meta'
   const trackedPrefix = isTracked ? 'Tracked · ' : ''
@@ -81,13 +95,6 @@ function buildTrainPopupContent(
   })
   content.append(button)
 
-  // "Am I late?" (M5 delay/ETA prediction) -- a plain regression lookup
-  // against already-tracked live state, no LLM call, so there's no per-
-  // click cost to worry about. Result renders right here, below the CTA
-  // (not the hover tooltip -- moved out of it since this popup is what's
-  // actually open when the user clicks the button, and the tooltip only
-  // shows on `:hover`, which isn't guaranteed right after a click,
-  // especially on touch where hover never fires at all).
   const delayButton = document.createElement('button')
   delayButton.type = 'button'
   delayButton.className = 'train-popup-button train-popup-button--secondary'
@@ -97,14 +104,6 @@ function buildTrainPopupContent(
     onRequestDelayPrediction()
   })
   content.append(delayButton)
-
-  const delayText = delayPredictionLabel(delayPrediction, train.trip_headsign)
-  if (delayText) {
-    const delayRow = document.createElement('div')
-    delayRow.className = 'train-popup-identity'
-    delayRow.textContent = delayText
-    content.append(delayRow)
-  }
 
   return content
 }
