@@ -129,7 +129,6 @@ export function Sidebar({
     <aside className={cx(styles.sidebar, open && styles.open)}>
       <Header theme={theme} onThemeChange={onThemeChange} />
       <Legend hiddenRouteIds={hiddenRouteIds} onToggle={onToggleRoute} />
-      <Search onSelect={onSearchSelect} />
       <Section>
         <button
           type="button"
@@ -163,6 +162,7 @@ export function Sidebar({
           </Link>
         )}
       </Section>
+      <Search onSelect={onSearchSelect} />
       {announcementsOpen && (
         <Modal title="Announcements" onClose={() => setAnnouncementsOpen(false)}>
           <AnnouncementsBody />
