@@ -258,14 +258,13 @@ function styleMarkerElements(
   if (!live) {
     elements.pulse.style.display = 'none'
     elements.pulse.classList.remove('train-pulse--flash')
-  } else if (isTracked) {
-    elements.pulse.style.display = 'block'
-    elements.pulse.classList.remove('train-pulse--flash')
   } else if (positionChanged) {
     elements.pulse.style.display = 'block'
     elements.pulse.classList.remove('train-pulse--flash')
     void elements.pulse.offsetWidth
     elements.pulse.classList.add('train-pulse--flash')
+  } else if (isTracked) {
+    elements.pulse.style.display = 'block'
   }
   elements.pulse.style.backgroundColor = dotColor
 

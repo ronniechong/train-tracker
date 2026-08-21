@@ -104,7 +104,6 @@ div.train-marker:hover {
 
 .train-marker--tracked .train-pulse {
   background-color: #b026ff !important;
-  animation: train-pulse 1.6s ease-out infinite;
 }
 
 .train-pulse {
