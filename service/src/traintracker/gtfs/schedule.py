@@ -18,6 +18,22 @@ from .stops import Stop
 
 
 @dataclass(frozen=True)
+class NextServiceLeg:
+    """One same-line leg of a next-service lookup (M13) -- a same-trip
+    departure/arrival pair, unlike `ScheduledDeparture` which only carries
+    a single stop/time (that shape is "what departs here next", this one
+    is "does this specific trip also reach my destination, and when")."""
+
+    trip_id: str
+    route_id: str
+    headsign: str
+    departure_time: datetime
+    from_stop_id: str
+    arrival_time: datetime
+    to_stop_id: str
+
+
+@dataclass(frozen=True)
 class ScheduledDeparture:
     trip_id: str
     route_id: str
@@ -142,3 +158,71 @@ def added_departures(
 
     candidates.sort(key=lambda d: d.scheduled_time)
     return candidates[:limit_per_direction]
+
+
+def next_service_same_line(
+    trips: list[TripRecord],
+    stop_times: list[StopTimeRecord],
+    from_platform_ids: frozenset[str],
+    to_platform_ids: frozenset[str],
+    service_date: date,
+    after: datetime,
+) -> NextServiceLeg | None:
+    """Soonest single trip that departs `from_platform_ids` after `after`
+    AND later calls at one of `to_platform_ids` on the SAME trip (a real
+    same-line service, not just "these two stations happen to share a
+    line" -- direction and stopping pattern are what actually decide
+    reachability, and only a shared trip_id proves both).
+
+    `trips` must already be scoped to `service_date` (same convention as
+    `next_departures`, no calendar filtering here). Returns `None` when no
+    such trip exists today after `after` -- ambiguous with "no more
+    services today" vs. "this line never connects these two stations";
+    the caller (M13's `find_next_service`) distinguishes those via
+    `lines_no_service_today`/a same-line existence check, not this
+    function.
+    """
+    trips_by_id = {t.trip_id: t for t in trips}
+    by_trip: dict[str, list[StopTimeRecord]] = {}
+    for st in stop_times:
+        if st.trip_id in trips_by_id:
+            by_trip.setdefault(st.trip_id, []).append(st)
+
+    best: NextServiceLeg | None = None
+    for trip_id, records in by_trip.items():
+        trip = trips_by_id[trip_id]
+        records.sort(key=lambda r: r.stop_sequence)
+        from_record = next((r for r in records if r.stop_id in from_platform_ids), None)
+        if from_record is None:
+            continue
+        departure_str = from_record.departure_time or from_record.arrival_time
+        if not departure_str:
+            continue
+        departure_time = gtfs_time_to_utc(service_date, departure_str)
+        if departure_time <= after:
+            continue
+        to_record = next(
+            (
+                r
+                for r in records
+                if r.stop_id in to_platform_ids and r.stop_sequence > from_record.stop_sequence
+            ),
+            None,
+        )
+        if to_record is None:
+            continue
+        arrival_str = to_record.arrival_time or to_record.departure_time
+        if not arrival_str:
+            continue
+        arrival_time = gtfs_time_to_utc(service_date, arrival_str)
+        if best is None or departure_time < best.departure_time:
+            best = NextServiceLeg(
+                trip_id=trip_id,
+                route_id=trip.route_id,
+                headsign=trip.trip_headsign,
+                departure_time=departure_time,
+                from_stop_id=from_record.stop_id,
+                arrival_time=arrival_time,
+                to_stop_id=to_record.stop_id,
+            )
+    return best

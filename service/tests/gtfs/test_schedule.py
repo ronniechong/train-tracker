@@ -1,7 +1,12 @@
 from datetime import date, datetime, timezone
 
 from traintracker.gtfs.gtfstime import gtfs_time_to_utc
-from traintracker.gtfs.schedule import added_departures, next_departures, platforms_for_station
+from traintracker.gtfs.schedule import (
+    added_departures,
+    next_departures,
+    next_service_same_line,
+    platforms_for_station,
+)
 from traintracker.gtfs.stops import Stop
 from traintracker.state.merge import StopTimeUpdate, TrainSnapshot
 
@@ -206,3 +211,55 @@ def test_added_departures_respects_limit_per_direction(sample_stops):
     deps = added_departures(snapshots, sample_stops, frozenset({"PLAT_A1"}), after, limit_per_direction=2)
 
     assert len(deps) == 2
+
+
+def test_next_service_same_line_finds_soonest_connecting_trip(sample_snapshot, sample_stop_times):
+    weekday = date(2026, 7, 20)  # Monday
+    trips = _active_trips(sample_snapshot, weekday)
+    after = datetime(2026, 7, 19, 0, 0, tzinfo=timezone.utc)
+
+    leg = next_service_same_line(
+        trips, sample_stop_times, frozenset({"PLAT_A1"}), frozenset({"PLAT_B1"}), weekday, after
+    )
+
+    assert leg is not None
+    assert leg.trip_id == "WEEKDAY_TRIP_1"
+    assert leg.from_stop_id == "PLAT_A1"
+    assert leg.to_stop_id == "PLAT_B1"
+    assert leg.departure_time == gtfs_time_to_utc(weekday, "08:00:00")
+    assert leg.arrival_time == gtfs_time_to_utc(weekday, "08:10:00")
+
+
+def test_next_service_same_line_respects_after(sample_snapshot, sample_stop_times):
+    weekday = date(2026, 7, 20)
+    trips = _active_trips(sample_snapshot, weekday)
+    after = gtfs_time_to_utc(weekday, "08:05:00")
+
+    leg = next_service_same_line(
+        trips, sample_stop_times, frozenset({"PLAT_A1"}), frozenset({"PLAT_B1"}), weekday, after
+    )
+
+    assert leg is None
+
+
+def test_next_service_same_line_ignores_wrong_direction(sample_snapshot, sample_stop_times):
+    # WEEKDAY_TRIP_2 stops at PLAT_B1 then PLAT_A1 -- the reverse order --
+    # so a B->A style trip must never satisfy an A->B query even though
+    # both platforms appear somewhere in its stop sequence.
+    weekday = date(2026, 7, 20)
+    trips = _active_trips(sample_snapshot, weekday)
+    after = datetime(2026, 7, 19, 0, 0, tzinfo=timezone.utc)
+
+    leg = next_service_same_line(
+        trips, sample_stop_times, frozenset({"PLAT_A1"}), frozenset({"PLAT_B1"}), weekday, after
+    )
+
+    assert leg.trip_id != "WEEKDAY_TRIP_2"
+
+
+def test_next_service_same_line_no_connecting_trip_returns_none():
+    leg = next_service_same_line(
+        [], [], frozenset({"PLAT_A1"}), frozenset({"PLAT_B1"}), date(2026, 7, 20),
+        datetime(2026, 7, 19, 0, 0, tzinfo=timezone.utc),
+    )
+    assert leg is None
