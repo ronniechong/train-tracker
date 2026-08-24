@@ -350,3 +350,47 @@ class InsightsResponse(BaseModel):
     # existing behavior).
     daily_line_stats: dict[date, list[InsightsLineStat]]
     histogram_stats: InsightsHistogramStat
+
+
+class StationSummary(BaseModel):
+    station_id: str
+    name: str
+
+
+class NextServiceLegResponse(BaseModel):
+    trip_id: str
+    route_id: str
+    headsign: str
+    from_station: StationSummary
+    departure_time: datetime
+    to_station: StationSummary
+    arrival_time: datetime
+
+
+class NextServiceResponse(BaseModel):
+    """M13's public next-service lookup. `reason` is the three-case
+    failure contract resolved at spec-review (Finding 3): `unknown_station`
+    never reaches this model at all (it's a 404 before resolution even
+    starts, since it's an input error, not a query outcome) -- only
+    `no_service_today` and `no_route_found` land here, alongside the two
+    valid stations that DID resolve, so a caller can still show "next
+    trains from X" context even when no route was found today.
+    `legs` has one entry for a same-line result, two for a single-transfer
+    result, zero when `reason` is set."""
+
+    from_station: StationSummary
+    to_station: StationSummary
+    generated_at: datetime
+    legs: list[NextServiceLegResponse]
+    reason: str | None  # "no_service_today" | "no_route_found" | None (found)
+
+
+class StationListEntry(BaseModel):
+    station_id: str
+    name: str
+    routes: list[LineSummary]
+
+
+class StationsResponse(BaseModel):
+    generated_at: datetime
+    stations: list[StationListEntry]

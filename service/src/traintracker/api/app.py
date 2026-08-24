@@ -19,7 +19,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
@@ -73,9 +73,14 @@ from .schemas import (
     InsightsLineStat,
     InsightsResponse,
     LineSummary,
+    NextServiceLegResponse,
+    NextServiceResponse,
     ScheduledTrain,
     StateResponse,
+    StationListEntry,
     StationScheduleResponse,
+    StationsResponse,
+    StationSummary,
     Train,
     WeeklyDigest,
     WeeklyDigestListResponse,
@@ -865,6 +870,90 @@ def create_app(
             lines_no_service_today=[
                 LineSummary(route_id=r.route_id, short_name=r.short_name, long_name=r.long_name)
                 for r in no_service_today
+            ],
+        )
+
+    @app.get(
+        "/api/next-service",
+        response_model=NextServiceResponse,
+        dependencies=[Depends(_rate_limit_dependency(rate_limiter, "next_service"))],
+    )
+    async def api_next_service(
+        from_: str = Query(alias="from"), to: str = Query(...), route: str | None = None
+    ) -> NextServiceResponse:
+        # Same "reads only the pinned static snapshot" invariant as every
+        # other schedule-backed route -- station/route names are resolved
+        # entirely against the fixed, in-memory canonical lists (never
+        # interpolated into any query/eval), per M13's security review.
+        if schedule_cache is None:
+            raise HTTPException(status_code=503, detail="schedule feature not configured")
+        now = datetime.now(timezone.utc)
+        try:
+            result = schedule_cache.find_next_service(from_, to, now, route=route)
+        except NoPinnedSnapshotError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        if result is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"reason": "unknown_station", "message": "from/to name didn't resolve to exactly one station"},
+            )
+        # Legs carry PLATFORM stop_ids (schedule.py's precision, needed to
+        # match a specific stop_time row) -- resolve each back to its
+        # parent station's display name for the response, rather than
+        # exposing raw platform ids to callers who only asked about
+        # stations by name in the first place.
+        stops = schedule_cache.stops_for(now)
+
+        def _leg_station(stop_id: str) -> StationSummary:
+            stop = stops.get(stop_id)
+            parent_id = stop.parent_station if stop and stop.parent_station else stop_id
+            parent = stops.get(parent_id)
+            return StationSummary(station_id=parent_id, name=parent.name if parent else stop_id)
+
+        return NextServiceResponse(
+            from_station=StationSummary(station_id=result.from_station.station_id, name=result.from_station.name),
+            to_station=StationSummary(station_id=result.to_station.station_id, name=result.to_station.name),
+            generated_at=now,
+            reason=result.reason,
+            legs=[
+                NextServiceLegResponse(
+                    trip_id=leg.trip_id,
+                    route_id=leg.route_id,
+                    headsign=leg.headsign,
+                    from_station=_leg_station(leg.from_stop_id),
+                    departure_time=leg.departure_time,
+                    to_station=_leg_station(leg.to_stop_id),
+                    arrival_time=leg.arrival_time,
+                )
+                for leg in result.legs
+            ],
+        )
+
+    @app.get(
+        "/api/stations",
+        response_model=StationsResponse,
+        dependencies=[Depends(_rate_limit_dependency(rate_limiter, "stations"))],
+    )
+    async def api_stations() -> StationsResponse:
+        if schedule_cache is None:
+            raise HTTPException(status_code=503, detail="schedule feature not configured")
+        now = datetime.now(timezone.utc)
+        try:
+            stations = schedule_cache.stations_for(now)
+        except NoPinnedSnapshotError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        return StationsResponse(
+            generated_at=now,
+            stations=[
+                StationListEntry(
+                    station_id=s.station_id,
+                    name=s.name,
+                    routes=[
+                        LineSummary(route_id=r.route_id, short_name=r.short_name, long_name=r.long_name)
+                        for r in s.routes
+                    ],
+                )
+                for s in stations
             ],
         )
 

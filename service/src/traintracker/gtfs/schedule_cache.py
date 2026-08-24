@@ -13,16 +13,20 @@ from pathlib import Path
 
 from ..state.merge import TrainSnapshot
 from .gtfstime import gtfs_time_to_utc, service_date_for_instant
+from .next_service import SingleTransferService, find_next_service_single_transfer
 from .pinning import PinManifest
-from .routes import Route, routes_from_zip_bytes
+from .routes import Route, find_routes_by_name, routes_from_zip_bytes
 from .schedule import (
+    NextServiceLeg,
     ScheduledDeparture,
     added_departures,
     next_departures,
+    next_service_same_line,
     platforms_for_station,
 )
 from .skip_pattern import compute_skip_stop_counts
 from .snapshot import StaticSnapshot, TripRecord
+from .station_lookup import StationMatch, canonical_stations, find_stations_by_name, narrow_by_route
 from .stop_times import StopTimeRecord, stop_times_from_zip_bytes
 from .stops import Stop, stops_from_zip_bytes
 
@@ -49,6 +53,29 @@ class TripTerminus:
     stop_id: str
     scheduled_arrival: datetime  # absolute UTC
     stop_sequence: int
+
+
+@dataclass(frozen=True)
+class NextServiceResult:
+    """M13's public next-service lookup result. `reason` distinguishes the
+    two failure cases that still need the resolved station context
+    (`no_service_today`, `no_route_found`) from `unknown_station`, which
+    never reaches this type at all -- `find_next_service` returns `None`
+    for that case instead, since it's an input-resolution failure, not a
+    query outcome (the API route treats it as a 404 before this object
+    would ever exist)."""
+
+    from_station: StationMatch
+    to_station: StationMatch
+    reason: str | None  # "no_service_today" | "no_route_found" | None (found)
+    legs: list[NextServiceLeg]  # 0 (a reason is set), 1 (same-line), or 2 (single-transfer)
+
+
+@dataclass(frozen=True)
+class StationListing:
+    station_id: str
+    name: str
+    routes: list[Route]
 
 
 @dataclass(frozen=True)
@@ -331,3 +358,98 @@ class PinnedScheduleCache:
             )
             departures = sorted(departures + extra, key=lambda d: d.scheduled_time)
         return departures
+
+    def _resolve_station(
+        self, parsed: _ParsedSchedule, name: str, route: str | None
+    ) -> StationMatch | None:
+        """A single unambiguous station match, or `None` -- deliberately
+        collapsing "no match" and "still ambiguous after route narrowing"
+        into the same outcome, per M13's resolved Finding 3 (`from`/`to`
+        "didn't resolve, ambiguous or not found" are one failure case,
+        `unknown_station`, not three)."""
+        matches = find_stations_by_name(parsed.stops, name)
+        if not matches:
+            return None
+        if len(matches) > 1 and route:
+            route_ids = {r.route_id for r in find_routes_by_name(parsed.routes, route)}
+            if route_ids:
+                matches = narrow_by_route(matches, route_ids, parsed.stop_routes)
+        if len(matches) != 1:
+            return None
+        return matches[0]
+
+    def find_next_service(
+        self, from_name: str, to_name: str, now: datetime, route: str | None = None
+    ) -> NextServiceResult | None:
+        """Resolves `from_name`/`to_name` (station names, optionally
+        narrowed by `route`) and finds the soonest same-line or
+        single-transfer service between them. Returns `None` only for
+        `unknown_station` (see `_resolve_station`) -- the caller (API
+        route) treats that as a 404, distinct from `no_service_today`/
+        `no_route_found`, which are valid outcomes carried in the returned
+        result's `reason` field."""
+        parsed = self._load_for(now)
+        from_match = self._resolve_station(parsed, from_name, route)
+        to_match = self._resolve_station(parsed, to_name, route)
+        if from_match is None or to_match is None:
+            return None
+
+        service_date = service_date_for_instant(now)
+        from_platform_ids = platforms_for_station(parsed.stops, from_match.station_id)
+        to_platform_ids = platforms_for_station(parsed.stops, to_match.station_id)
+
+        # `no_service_today` only applies when `route` unambiguously
+        # resolved AND that line is suspended network-wide today -- with
+        # no `route` given there's no single line to check against yet,
+        # so a suspended line just falls through to `no_route_found` below
+        # once no same-line/transfer trip can be found for it either.
+        if route:
+            route_ids = {r.route_id for r in find_routes_by_name(parsed.routes, route)}
+            if route_ids:
+                suspended = self.lines_no_service_today(from_match.station_id, now) or []
+                if any(r.route_id in route_ids for r in suspended):
+                    return NextServiceResult(
+                        from_station=from_match, to_station=to_match, reason="no_service_today", legs=[]
+                    )
+
+        active_trip_ids = parsed.snapshot.trip_ids_for_service_date(service_date)
+        active_trips = [t for t in parsed.snapshot.trips if t.trip_id in active_trip_ids]
+
+        same_line = next_service_same_line(
+            active_trips, parsed.stop_times, from_platform_ids, to_platform_ids, service_date, now
+        )
+        if same_line is not None:
+            return NextServiceResult(from_station=from_match, to_station=to_match, reason=None, legs=[same_line])
+
+        transfer = find_next_service_single_transfer(
+            active_trips, parsed.stop_times, parsed.stops, from_platform_ids, to_platform_ids, service_date, now
+        )
+        if transfer is not None:
+            return NextServiceResult(
+                from_station=from_match,
+                to_station=to_match,
+                reason=None,
+                legs=[transfer.first_leg, transfer.second_leg],
+            )
+
+        return NextServiceResult(from_station=from_match, to_station=to_match, reason="no_route_found", legs=[])
+
+    def stations_for(self, now: datetime) -> list[StationListing]:
+        """Every station (name + the lines that call there), for M13's
+        `GET /api/stations` -- reference/display use by train-tracker-
+        query-web, not required for its own resolution since this project
+        resolves names itself (`find_next_service` above)."""
+        parsed = self._load_for(now)
+        stations = canonical_stations(parsed.stops)
+        listings = [
+            StationListing(
+                station_id=sid,
+                name=name,
+                routes=sorted(
+                    (parsed.routes[rid] for rid in parsed.stop_routes.get(sid, frozenset()) if rid in parsed.routes),
+                    key=lambda r: r.long_name,
+                ),
+            )
+            for sid, name in stations.items()
+        ]
+        return sorted(listings, key=lambda s: s.name)

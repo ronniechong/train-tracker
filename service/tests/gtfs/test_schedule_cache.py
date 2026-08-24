@@ -280,3 +280,53 @@ def test_skip_stop_count_for_returns_none_when_no_snapshot_pinned(tmp_path):
     cache = _pinned_cache_from_files(tmp_path, _SKIP_STOP_FILES)
 
     assert cache.skip_stop_count_for("ALL_STOPS", date(2099, 1, 1)) is None
+
+
+def test_find_next_service_same_line(tmp_path, sample_static_zip_bytes):
+    weekday = date(2026, 7, 20)  # Monday, matches the WEEKDAY calendar
+    cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes, pin_date=weekday)
+    now = gtfs_time_to_utc(weekday, "07:00:00")
+
+    result = cache.find_next_service("A Station", "B Station", now)
+
+    assert result is not None
+    assert result.reason is None
+    assert result.from_station.station_id == "STATION_A"
+    assert result.to_station.station_id == "STATION_B"
+    assert len(result.legs) == 1
+    assert result.legs[0].trip_id == "WEEKDAY_TRIP_1"
+
+
+def test_find_next_service_unknown_station_returns_none(tmp_path, sample_static_zip_bytes):
+    weekday = date(2026, 7, 20)
+    cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes, pin_date=weekday)
+    now = gtfs_time_to_utc(weekday, "07:00:00")
+
+    assert cache.find_next_service("Not A Real Station", "B Station", now) is None
+
+
+def test_find_next_service_no_route_found_when_no_connecting_trip(tmp_path, sample_static_zip_bytes):
+    # Saturday: only WEEKEND service is active, but WEEKEND trips run the
+    # same A<->B pattern as WEEKDAY -- instead prove the no_route_found
+    # path by asking well after every scheduled trip today.
+    weekday = date(2026, 7, 20)
+    cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes, pin_date=weekday)
+    now = gtfs_time_to_utc(weekday, "23:00:00")
+
+    result = cache.find_next_service("A Station", "B Station", now)
+
+    assert result is not None
+    assert result.reason == "no_route_found"
+    assert result.legs == []
+
+
+def test_stations_for_lists_every_station_with_its_routes(tmp_path, sample_static_zip_bytes):
+    weekday = date(2026, 7, 20)
+    cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes, pin_date=weekday)
+    now = gtfs_time_to_utc(weekday, "07:00:00")
+
+    stations = cache.stations_for(now)
+
+    assert {s.station_id for s in stations} == {"STATION_A", "STATION_B"}
+    station_a = next(s for s in stations if s.station_id == "STATION_A")
+    assert "2-PKM" in {r.route_id for r in station_a.routes}

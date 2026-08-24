@@ -1650,3 +1650,72 @@ async def test_http_metrics_is_a_noop_without_a_metrics_instance():
 # test hung indefinitely). `tests/api/test_http_metrics.py` verifies the
 # middleware's no-buffering behavior directly against a scripted ASGI
 # send sequence instead, without needing a real streaming transport.
+
+
+async def test_next_service_returns_503_when_not_configured():
+    loop, store = await _running_loop()
+    async with await _client_for(loop, store) as client:
+        response = await client.get("/api/next-service", params={"from": "A Station", "to": "B Station"})
+
+    assert response.status_code == 503
+
+
+async def test_next_service_returns_404_for_unknown_station(tmp_path, sample_static_zip_bytes):
+    loop, store = await _running_loop()
+    schedule_cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+
+    async with await _client_for(loop, store, schedule_cache=schedule_cache) as client:
+        response = await client.get(
+            "/api/next-service", params={"from": "Not A Real Station", "to": "B Station"}
+        )
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["reason"] == "unknown_station"
+
+
+async def test_next_service_returns_well_formed_response_for_known_stations(
+    tmp_path, sample_static_zip_bytes
+):
+    loop, store = await _running_loop()
+    schedule_cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+
+    async with await _client_for(loop, store, schedule_cache=schedule_cache) as client:
+        response = await client.get(
+            "/api/next-service", params={"from": "A Station", "to": "B Station"}
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["from_station"]["station_id"] == "STATION_A"
+    assert body["to_station"]["station_id"] == "STATION_B"
+    assert "reason" in body
+    assert isinstance(body["legs"], list)
+    # Whether a same-line/transfer trip actually exists right now depends
+    # on real time-of-day/day-of-week vs. the fixture's fixed schedule --
+    # see gtfs/test_schedule_cache.py's find_next_service tests (fixed
+    # `now` values) for that coverage. This only verifies the route wires
+    # names -> cache -> response correctly for every possible outcome.
+    assert body["reason"] in (None, "no_service_today", "no_route_found")
+
+
+async def test_stations_returns_503_when_not_configured():
+    loop, store = await _running_loop()
+    async with await _client_for(loop, store) as client:
+        response = await client.get("/api/stations")
+
+    assert response.status_code == 503
+
+
+async def test_stations_returns_every_station_with_routes(tmp_path, sample_static_zip_bytes):
+    loop, store = await _running_loop()
+    schedule_cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+
+    async with await _client_for(loop, store, schedule_cache=schedule_cache) as client:
+        response = await client.get("/api/stations")
+
+    assert response.status_code == 200
+    body = response.json()
+    station_ids = {s["station_id"] for s in body["stations"]}
+    assert station_ids == {"STATION_A", "STATION_B"}
+    station_a = next(s for s in body["stations"] if s["station_id"] == "STATION_A")
+    assert "2-PKM" in {r["route_id"] for r in station_a["routes"]}
