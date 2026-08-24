@@ -8,6 +8,10 @@
 # `egress` (a normal bridge network with a route out) and further restricts
 # *which* outside host it will forward to, via tinyproxy.filter — two
 # independent layers, not one.
+#
+# Pinned to avoid collision with another project's identically-named
+# deploy/ directory (both default to project "deploy" otherwise).
+name: train-tracker
 services:
   egress-proxy:
     # Pinned by digest (image only ships a `latest` tag) so an upstream
