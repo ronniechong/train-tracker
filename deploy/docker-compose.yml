@@ -96,21 +96,26 @@ services:
     depends_on:
       - egress-proxy
     networks:
-      - internal
+      internal: {}
       # Joins the host's already-existing general monitoring stack's
-      # network so ITS Prometheus can scrape `poller:9109` by service name —
-      # no second Prometheus/Grafana/cAdvisor/node_exporter run by this repo
-      # (see the `monitoring` network definition below). Purely additive:
+      # network so its Prometheus can scrape this container — no second
+      # Prometheus/Grafana/cAdvisor/node_exporter run by this repo (see
+      # the `monitoring` network definition below). Purely additive:
       # `poller` keeps its existing `internal` egress-restricted network
       # exactly as before, this only adds a second, separate network for
-      # inbound scraping.
-      - monitoring
+      # inbound scraping. Explicit project-qualified alias — another
+      # project on this same shared network also runs a service
+      # literally named `poller`, and Compose's default bare-service-
+      # name alias would collide between the two.
+      monitoring:
+        aliases:
+          - train-tracker-poller
       # A second, separate network carrying the FastAPI/SSE app's inbound
       # traffic only, shared with nothing but `caddy`. Distinct from
       # `internal` (which stays purely for the poller's own outbound calls
       # via `egress-proxy`) — this container has two independent network
       # purposes, not one network doing double duty.
-      - ingress
+      ingress: {}
 
   # The Hugging Face archive pipeline. A dedicated service, NOT a
   # `docker compose run --entrypoint ... poller` override like `history`'s
