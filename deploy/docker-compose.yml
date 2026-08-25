@@ -32,6 +32,12 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     read_only: true
+    # The image's built-in `app` user is uid 999, which can't write to
+    # TT_DATA_DIR on the host -- that directory is owned by whichever
+    # host user runs `docker compose`, not a fixed uid the image can
+    # know in advance. Matches the same override `caddy` below already
+    # uses for its own volumes.
+    user: "1000:1000"
     tmpfs:
       - /tmp
     environment:
