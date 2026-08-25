@@ -46,11 +46,11 @@ function copyMaplibreWorker(): Plugin {
 
 export default defineConfig(({ command }) => ({
   plugins: [react(), copyMaplibreWorker()],
-  // GitHub Pages serves a project site (no custom domain, per CLAUDE.md's
-  // decision table) from https://<user>.github.io/train-tracker/, not the
-  // origin root -- asset URLs need this prefix or they 404 once deployed.
-  // Only applied at build time so `vite`/`vite preview` (dev/local) keep
-  // serving from `/`.
+  // GitHub Pages serves this as a project site under /train-tracker/, not
+  // the origin root, whether reached via the default *.github.io domain or
+  // the custom domain fronting it -- asset URLs need this prefix either way
+  // or they 404 once deployed. Only applied at build time so
+  // `vite`/`vite preview` (dev/local) keep serving from `/`.
   base: command === 'build' ? '/train-tracker/' : '/',
   // maplibre-gl ships its own web worker bundle; letting Vite's dev-time
   // dependency pre-bundler rewrite it hangs the worker's script request

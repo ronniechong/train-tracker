@@ -64,6 +64,7 @@ gaps are recorded, staleness is displayed, inferences are labelled as inferences
 | Eventing | In-process asyncio hub behind a swappable interface | Multi-process consumers appear |
 | Metrics | prometheus-client `/metrics`; every design gate has a metric | — |
 | Historical archive | PRIVATE Hugging Face dataset, Parquet, per-service-day, append-only; local retention UNCHANGED at 30–60d (a new decoupled layer, not a retention change); static snapshots stored inline per day, not deduplicated; daily Parquet files, not monthly-compacted | Public flip is a separate future decision (legal gate deferred); revisit dedup if per-day static-snapshot duplication exceeds 20% of daily Parquet size; revisit monthly compaction if daily file count exceeds ~730 |
+| Frontend hosting | GitHub Pages project site (`/train-tracker/` path), fronted by a custom domain rather than the bare `*.github.io` URL; API's CORS allowlist must include the custom domain, not just `*.github.io` | Domain changes |
 
 ## Security invariants (standing rules — a violation is never a refactor)
 
