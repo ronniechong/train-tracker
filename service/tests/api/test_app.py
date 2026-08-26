@@ -1701,6 +1701,34 @@ async def test_next_service_returns_well_formed_response_for_known_stations(
         assert "to_platform_code" in leg
 
 
+async def test_next_service_accepts_after_param(tmp_path, sample_static_zip_bytes):
+    loop, store = await _running_loop()
+    schedule_cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+
+    async with await _client_for(loop, store, schedule_cache=schedule_cache) as client:
+        response = await client.get(
+            "/api/next-service",
+            params={"from": "A Station", "to": "B Station", "after": "2026-08-26T07:30:00Z"},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["reason"] in (None, "no_service_today", "no_route_found")
+
+
+async def test_next_service_rejects_malformed_after_param(tmp_path, sample_static_zip_bytes):
+    loop, store = await _running_loop()
+    schedule_cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+
+    async with await _client_for(loop, store, schedule_cache=schedule_cache) as client:
+        response = await client.get(
+            "/api/next-service",
+            params={"from": "A Station", "to": "B Station", "after": "not a timestamp"},
+        )
+
+    assert response.status_code == 400
+
+
 async def test_stations_returns_503_when_not_configured():
     loop, store = await _running_loop()
     async with await _client_for(loop, store) as client:

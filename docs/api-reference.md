@@ -23,6 +23,7 @@ Finds the soonest train from one station to another, either directly
 | `from` | yes | Origin station name (e.g. `"Richmond"`). Matched exactly first, then by substring. |
 | `to` | yes | Destination station name, same matching rules. |
 | `route` | no | Line name (e.g. `"Pakenham"`), used only as a disambiguation signal when `from`/`to` matches more than one station. Ignored (falls through to the ambiguous result) if it doesn't resolve to a real line. |
+| `after` | no | ISO 8601 UTC timestamp (e.g. `"2026-08-26T07:30:00Z"`) — finds the soonest service departing at or after this instant instead of the real current time. Naive timestamps (no offset) are treated as UTC. `400` if not a valid ISO 8601 timestamp. Omit for "right now" (the default, unchanged). |
 
 ### Response — `200 OK`
 

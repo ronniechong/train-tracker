@@ -879,7 +879,10 @@ def create_app(
         dependencies=[Depends(_rate_limit_dependency(rate_limiter, "next_service"))],
     )
     async def api_next_service(
-        from_: str = Query(alias="from"), to: str = Query(...), route: str | None = None
+        from_: str = Query(alias="from"),
+        to: str = Query(...),
+        route: str | None = None,
+        after: str | None = None,
     ) -> NextServiceResponse:
         # Same "reads only the pinned static snapshot" invariant as every
         # other schedule-backed route -- station/route names are resolved
@@ -887,7 +890,17 @@ def create_app(
         # interpolated into any query/eval), per M13's security review.
         if schedule_cache is None:
             raise HTTPException(status_code=503, detail="schedule feature not configured")
-        now = datetime.now(timezone.utc)
+        if after is not None:
+            try:
+                now = datetime.fromisoformat(after.replace("Z", "+00:00"))
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=400, detail=f"'after' must be an ISO 8601 timestamp: {exc}"
+                ) from exc
+            if now.tzinfo is None:
+                now = now.replace(tzinfo=timezone.utc)
+        else:
+            now = datetime.now(timezone.utc)
         try:
             result = schedule_cache.find_next_service(from_, to, now, route=route)
         except NoPinnedSnapshotError as exc:
