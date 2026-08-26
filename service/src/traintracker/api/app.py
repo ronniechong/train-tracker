@@ -910,6 +910,10 @@ def create_app(
             parent = stops.get(parent_id)
             return StationSummary(station_id=parent_id, name=parent.name if parent else stop_id)
 
+        def _platform_code(stop_id: str) -> str | None:
+            stop = stops.get(stop_id)
+            return stop.platform_code if stop else None
+
         return NextServiceResponse(
             from_station=StationSummary(station_id=result.from_station.station_id, name=result.from_station.name),
             to_station=StationSummary(station_id=result.to_station.station_id, name=result.to_station.name),
@@ -921,8 +925,10 @@ def create_app(
                     route_id=leg.route_id,
                     headsign=leg.headsign,
                     from_station=_leg_station(leg.from_stop_id),
+                    from_platform_code=_platform_code(leg.from_stop_id),
                     departure_time=leg.departure_time,
                     to_station=_leg_station(leg.to_stop_id),
+                    to_platform_code=_platform_code(leg.to_stop_id),
                     arrival_time=leg.arrival_time,
                 )
                 for leg in result.legs

@@ -1,5 +1,5 @@
-stop_id,stop_name,stop_lat,stop_lon,location_type,parent_station
-STATION_A,A Station,-37.800,144.900,1,
-PLAT_A1,A Station Platform 1,-37.800,144.900,0,STATION_A
-STATION_B,B Station,-37.810,144.950,1,
-PLAT_B1,B Station Platform 1,-37.810,144.950,0,STATION_B
+stop_id,stop_name,stop_lat,stop_lon,location_type,parent_station,platform_code
+STATION_A,A Station,-37.800,144.900,1,,
+PLAT_A1,A Station Platform 1,-37.800,144.900,0,STATION_A,1
+STATION_B,B Station,-37.810,144.950,1,,
+PLAT_B1,B Station Platform 1,-37.810,144.950,0,STATION_B,1

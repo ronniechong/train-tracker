@@ -38,8 +38,10 @@ Finds the soonest train from one station to another, either directly
       "route_id": "...",
       "headsign": "City",
       "from_station": {"station_id": "...", "name": "Richmond Railway Station"},
+      "from_platform_code": "2",
       "departure_time": "2026-08-25T08:05:00Z",
       "to_station": {"station_id": "...", "name": "Flinders Street Railway Station"},
+      "to_platform_code": "5",
       "arrival_time": "2026-08-25T08:15:00Z"
     }
   ]
@@ -53,6 +55,11 @@ Finds the soonest train from one station to another, either directly
 - **0 entries** when `reason` is set (see below) — `from_station`/
   `to_station` at the top level are still populated so a caller can show
   "next trains from X" context even when nothing was found.
+
+`from_platform_code`/`to_platform_code` are `null` whenever the static
+feed doesn't carry a `platform_code` for that stop — not every station's
+GTFS data has one, so callers must handle the null case rather than
+assuming every leg names a platform.
 
 ### Failure contract
 

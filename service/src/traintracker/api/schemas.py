@@ -362,8 +362,10 @@ class NextServiceLegResponse(BaseModel):
     route_id: str
     headsign: str
     from_station: StationSummary
+    from_platform_code: str | None
     departure_time: datetime
     to_station: StationSummary
+    to_platform_code: str | None
     arrival_time: datetime
 
 

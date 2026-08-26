@@ -1696,6 +1696,9 @@ async def test_next_service_returns_well_formed_response_for_known_stations(
     # `now` values) for that coverage. This only verifies the route wires
     # names -> cache -> response correctly for every possible outcome.
     assert body["reason"] in (None, "no_service_today", "no_route_found")
+    for leg in body["legs"]:
+        assert "from_platform_code" in leg
+        assert "to_platform_code" in leg
 
 
 async def test_stations_returns_503_when_not_configured():
