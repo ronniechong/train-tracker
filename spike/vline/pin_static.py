@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -31,13 +32,17 @@ from pathlib import Path
 import requests
 
 DATASET_URL = (
-    "https://opendata.transport.vic.gov.au/dataset/gtfs-schedule/resource/"
+    "https://opendata.transport.vic.gov.au/dataset/gtfs-schedule"
 )
-# The stable download URL for the "GTFS Schedule" zip-of-zips. Confirmed
-# reachable unauthenticated; if the portal moves it, update here.
-DOWNLOAD_URL = (
-    "https://opendata.transport.vic.gov.au/dataset/gtfs-schedule/download/gtfs.zip"
+# The "GTFS Schedule" zip-of-zips (resource-id form the portal actually
+# serves). Unauthenticated. Override via TT_GTFS_STATIC_URL if the portal
+# moves the resource id.
+DEFAULT_DOWNLOAD_URL = (
+    "https://opendata.transport.vic.gov.au/dataset/3f4e292e-7f8a-4ffe-831f-"
+    "1953be0fe448/resource/fb152201-859f-4882-9206-b768060b50ad/download/"
+    "gtfs.zip"
 )
+DOWNLOAD_URL = os.environ.get("TT_GTFS_STATIC_URL", DEFAULT_DOWNLOAD_URL)
 
 MODE_1_MEMBER = "1/google_transit.zip"
 
