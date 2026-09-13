@@ -336,12 +336,15 @@ def analyze_thresholds(tu_records, zf: zipfile.ZipFile, trips, routes) -> dict:
 
     by_category: dict[str, list[int]] = {"short": [], "long": []}
     per_route: dict[str, list[int]] = defaultdict(list)
+    route_category: dict[str, str] = {}
     for tid, delay in terminus_delay.items():
         rid = route_of_trip.get(tid, "")
         name = route_name.get(rid, rid).lower()
         cat = "long" if any(h in name for h in LONG_DISTANCE_HINTS) else "short"
         by_category[cat].append(delay)
-        per_route[route_name.get(rid, rid) or rid].append(delay)
+        route_label = route_name.get(rid, rid) or rid
+        per_route[route_label].append(delay)
+        route_category[route_label] = cat
 
     def summarize(delays: list[int], threshold_s: int) -> dict:
         if not delays:
@@ -362,7 +365,7 @@ def analyze_thresholds(tu_records, zf: zipfile.ZipFile, trips, routes) -> dict:
         "short_distance": summarize(by_category["short"], SHORT_LONG_THRESHOLDS_S["short"]),
         "long_distance": summarize(by_category["long"], SHORT_LONG_THRESHOLDS_S["long"]),
         "per_route": {
-            name: summarize(delays, SHORT_LONG_THRESHOLDS_S["short"])
+            name: summarize(delays, SHORT_LONG_THRESHOLDS_S[route_category[name]])
             for name, delays in sorted(per_route.items())
         },
         "note": (
