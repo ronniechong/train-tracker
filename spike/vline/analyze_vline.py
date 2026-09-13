@@ -59,16 +59,17 @@ SHORT_LONG_THRESHOLDS_S = {"short": 359, "long": 659}  # 5:59 / 10:59
 # loading
 
 
-def load_ndjson(path: Path) -> list[dict]:
+def load_ndjson(path: Path):
+    """Streams parsed records one at a time — a multi-day capture's full
+    ndjson does not fit comfortably in memory alongside itself, so callers
+    that need more than one pass re-invoke this rather than holding a list."""
     if not path.exists():
-        return []
-    out = []
+        return
     with path.open() as f:
         for line in f:
             line = line.strip()
             if line:
-                out.append(json.loads(line))
-    return out
+                yield json.loads(line)
 
 
 def read_static_table(zf: zipfile.ZipFile, name: str) -> list[dict]:
@@ -83,7 +84,7 @@ def read_static_table(zf: zipfile.ZipFile, name: str) -> list[dict]:
 # feed iteration helpers
 
 
-def vp_entities(records: list[dict]):
+def vp_entities(records):
     for rec in records:
         ts = rec["fetch_timestamp"]
         for ent in rec.get("feed", {}).get("entity", []):
@@ -92,7 +93,7 @@ def vp_entities(records: list[dict]):
                 yield ts, vp
 
 
-def tu_entities(records: list[dict]):
+def tu_entities(records):
     for rec in records:
         ts = rec["fetch_timestamp"]
         for ent in rec.get("feed", {}).get("entity", []):
@@ -105,7 +106,7 @@ def tu_entities(records: list[dict]):
 # 1. field population
 
 
-def analyze_field_population(vp_records: list[dict]) -> dict:
+def analyze_field_population(vp_records) -> dict:
     total = 0
     present = Counter()
     for _ts, vp in vp_entities(vp_records):
@@ -381,27 +382,29 @@ def analyze_coverage(vp_records, tu_records, zf: zipfile.ZipFile, trips) -> dict
     for t in trips:
         trips_by_service[t.get("service_id", "")].append(t["trip_id"])
 
-    # capture service dates = distinct dates in fetch timestamps (Melb local)
     dates_seen: set[date] = set()
-    for rec in vp_records + tu_records:
-        dt = datetime.fromisoformat(rec["fetch_timestamp"]).astimezone(MELB_TZ)
-        dates_seen.add(dt.date())
+    seen: set[str] = set()
+    seen_hour: dict[int, set[str]] = defaultdict(set)
+
+    def scan(records, sub_key: str) -> None:
+        for rec in records:
+            dt = datetime.fromisoformat(rec["fetch_timestamp"]).astimezone(MELB_TZ)
+            dates_seen.add(dt.date())
+            for ent in rec.get("feed", {}).get("entity", []):
+                sub = ent.get(sub_key)
+                tid = sub.get("trip", {}).get("trip_id") if sub else None
+                if not tid:
+                    continue
+                seen.add(tid)
+                seen_hour[dt.hour].add(tid)
+
+    scan(vp_records, "vehicle")
+    scan(tu_records, "trip_update")
 
     scheduled: set[str] = set()
     for d in dates_seen:
         for sid in resolver(d):
             scheduled.update(trips_by_service.get(sid, []))
-
-    seen: set[str] = set()
-    seen_hour: dict[int, set[str]] = defaultdict(set)
-    for gen in (vp_entities(vp_records), tu_entities(tu_records)):
-        for ts, ent in gen:
-            tid = ent.get("trip", {}).get("trip_id")
-            if not tid:
-                continue
-            seen.add(tid)
-            hour = datetime.fromisoformat(ts).astimezone(MELB_TZ).hour
-            seen_hour[hour].add(tid)
 
     return {
         "capture_dates": sorted(d.isoformat() for d in dates_seen),
@@ -453,10 +456,15 @@ def analyze_ghosting(vp_records, gap_threshold_s: int = 120) -> dict:
 # cadence recap (cheap, and lets the report stand alone)
 
 
-def analyze_cadence(records: list[dict]) -> dict:
-    etags = [r["response_headers"].get("etag") for r in records if r.get("response_headers")]
+def analyze_cadence(records) -> dict:
+    etags = []
+    fetches = 0
+    for r in records:
+        fetches += 1
+        headers = r.get("response_headers")
+        if headers:
+            etags.append(headers.get("etag"))
     changes = sum(1 for a, b in zip(etags, etags[1:]) if a != b and a and b)
-    fetches = len(records)
     return {
         "fetches": fetches,
         "etag_present_pct": round(100 * sum(1 for e in etags if e) / fetches, 1) if fetches else 0.0,
@@ -484,29 +492,42 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=Path("../captures/vline/report.md"))
     args = parser.parse_args()
 
-    vp_records = load_ndjson(args.capture_dir / "vehicle_positions.ndjson")
-    tu_records = load_ndjson(args.capture_dir / "trip_updates.ndjson")
-    if not vp_records and not tu_records:
+    vp_path = args.capture_dir / "vehicle_positions.ndjson"
+    tu_path = args.capture_dir / "trip_updates.ndjson"
+    if not (vp_path.exists() and vp_path.stat().st_size) and not (
+        tu_path.exists() and tu_path.stat().st_size
+    ):
         raise SystemExit(f"no capture data under {args.capture_dir}")
+
+    # Each call below re-reads its file from disk rather than sharing one
+    # in-memory list — a multi-day capture parsed once already approaches
+    # the host's RAM; parsed several times over (as the 8 analyses each
+    # need their own pass) it doesn't fit. Re-reads hit the OS page cache.
+    def vp_records():
+        return load_ndjson(vp_path)
+
+    def tu_records():
+        return load_ndjson(tu_path)
 
     with zipfile.ZipFile(args.snapshot) as zf:
         routes = read_static_table(zf, "routes.txt")
         trips = read_static_table(zf, "trips.txt")
+        cadence_recap = {
+            "vp": analyze_cadence(vp_records()),
+            "tu": analyze_cadence(tu_records()),
+        }
         results = {
             "capture": {
-                "vp_fetches": len(vp_records),
-                "tu_fetches": len(tu_records),
+                "vp_fetches": cadence_recap["vp"]["fetches"],
+                "tu_fetches": cadence_recap["tu"]["fetches"],
             },
-            "cadence_recap": {
-                "vp": analyze_cadence(vp_records),
-                "tu": analyze_cadence(tu_records),
-            },
-            "1_field_population": analyze_field_population(vp_records),
-            "2_3_4_routes": analyze_routes(vp_records, tu_records, routes, trips),
+            "cadence_recap": cadence_recap,
+            "1_field_population": analyze_field_population(vp_records()),
+            "2_3_4_routes": analyze_routes(vp_records(), tu_records(), routes, trips),
             "5_distance_data": analyze_distance_data(zf, trips, routes),
-            "6_thresholds": analyze_thresholds(tu_records, zf, trips, routes),
-            "7_coverage": analyze_coverage(vp_records, tu_records, zf, trips),
-            "8_ghosting": analyze_ghosting(vp_records),
+            "6_thresholds": analyze_thresholds(tu_records(), zf, trips, routes),
+            "7_coverage": analyze_coverage(vp_records(), tu_records(), zf, trips),
+            "8_ghosting": analyze_ghosting(vp_records()),
         }
 
     args.out.write_text(render(results))
