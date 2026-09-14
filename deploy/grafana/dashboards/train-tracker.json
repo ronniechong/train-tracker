@@ -2,7 +2,7 @@
   "title": "train-tracker",
   "uid": "train-tracker",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 13,
   "editable": true,
   "timezone": "browser",
   "time": {
@@ -742,6 +742,171 @@
     },
     {
       "id": 21,
+      "type": "timeseries",
+      "title": "Delay model: time since last retrain attempt",
+      "description": "Fed by node_exporter's textfile collector, written on every retrain attempt (pass or fail) -- not a live scrape. No dedicated alert (old model keeps serving predictions if a retrain is skipped); watch alongside panel 22's eval gate result.",
+      "gridPos": {
+        "x": 0,
+        "y": 100,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "time() - delay_model_last_run_timestamp_seconds",
+          "legendFormat": "time since last run",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Delay model: eval gate result (last attempt)",
+      "description": "1=passed baseline gate, wrote new model. 0=failed gate, old model kept serving.",
+      "gridPos": {
+        "x": 12,
+        "y": 100,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "delay_model_eval_gate_result",
+          "legendFormat": "eval gate passed",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Delay model: MAE vs baseline",
+      "description": "Model MAE vs. baseline MAE from the same eval run. Model should track meaningfully below baseline; converging toward it is a signal the model's stopped adding value.",
+      "gridPos": {
+        "x": 0,
+        "y": 108,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "delay_model_mae_seconds",
+          "legendFormat": "model MAE",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "delay_model_baseline_mae_seconds",
+          "legendFormat": "baseline MAE",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "type": "timeseries",
+      "title": "Delay model: train/test example counts",
+      "description": "Train/test split size for the last retrain attempt, whether or not it passed the eval gate.",
+      "gridPos": {
+        "x": 12,
+        "y": 108,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "delay_model_train_examples",
+          "legendFormat": "train examples",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "delay_model_test_examples",
+          "legendFormat": "test examples",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 25,
       "type": "timeseries",
       "title": "vline-poller scrape target up",
       "description": "Alert (vline-poller-down): fires when this reads 0 for >2m -- same pattern as panel 13, for the V/Line process.",
