@@ -130,10 +130,10 @@ services:
   # topology decision, private repo). Same image/build context as
   # `poller` though -- one codebase, no second image to build/maintain.
   #
-  # First slice only: polls + serves state/SSE, no persistence yet (no
-  # /data mount -- HistoryStore wiring is a separate follow-up task, see
-  # the M10 Phase B task list). read_only-safe as-is because nothing
-  # writes anywhere outside /tmp yet.
+  # Day-partitioned SQLite persistence (own /data volume, below) landed
+  # this session. Still not yet wired: static-GTFS join, trip-completion
+  # tracking, and the archiver's second instance -- see the M10 Phase B
+  # task list for what's left.
   vline-poller:
     build:
       context: ../service
@@ -158,6 +158,12 @@ services:
       NO_PROXY: "localhost,127.0.0.1"
       # Same origin list as the Metro API -- one frontend app calls both.
       TT_CORS_ORIGINS: ${TT_CORS_ORIGINS:-}
+    volumes:
+      # Own bind mount, own host directory -- day-partitioned SQLite,
+      # same mechanism as `poller`'s /data, but never the same files.
+      # No /backup mount yet: the nightly backup/retention job (M10
+      # follow-up) hasn't been wired for V/Line's partitions.
+      - ${TT_VLINE_DATA_DIR:-./vline-data}:/data
     depends_on:
       - egress-proxy
     networks:

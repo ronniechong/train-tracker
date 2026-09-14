@@ -2,12 +2,13 @@
 
 A separate process from `traintracker.poller` (M10 R1 — blast-radius
 isolation, not shared-process-with-a-mode-flag) with its own smaller API
-app (M10 R2, `vline_poller.app`). Deliberately minimal for this first
-slice: no history/archive persistence, no static-GTFS join, no trip-
-completion tracking yet — those are separate, explicitly follow-up tasks
-(see `milestones/10-vline-regional-trains.md`'s Phase B section in the
-private repo), not silently skipped. What this DOES do — poll, decode,
-merge, ghost/coasting, serve state + SSE — is exactly what Phase A
+app (M10 R2, `vline_poller.app`) and its own day-partitioned history
+(own `/data` volume, own SQLite partitions — never Metro's). Deliberately
+still minimal: no static-GTFS join, no trip-completion tracking yet —
+those are separate, explicitly follow-up tasks (see
+`milestones/10-vline-regional-trains.md`'s Phase B section in the private
+repo), not silently skipped. What this DOES do — poll, decode, merge,
+ghost/coasting, persist, serve state + SSE — is exactly what Phase A
 validated works identically to Metro's already-solved feeds.
 """
 
@@ -18,20 +19,26 @@ import logging
 import os
 import signal
 from datetime import datetime, timezone
+from pathlib import Path
 
 import httpx
 import uvicorn
 from prometheus_client import start_http_server
 
 from ..gateway.client import API_KEY_ENV, Feed, GatewayClient
+from ..history.store import HistoryStore
 from ..metrics import Metrics
 from ..poller import healthcheck
 from ..poller.loop import PollerLoop
 from ..redaction import configure_logging
 from ..state.eventhub import InProcessEventHub
-from ..state.eventlog import InMemoryEventLog
 from ..state.store import StateStore
 from .app import create_vline_app
+
+# Fixed container-internal mount point, own volume from Metro's poller's
+# /data (see deploy/docker-compose.yml's vline-poller service) -- distinct
+# host-side directory, never the same partition files.
+DATA_DIR = Path("/data")
 
 logger = logging.getLogger("traintracker.vline_poller")
 
@@ -78,20 +85,27 @@ async def main() -> int:
     metrics = Metrics()
     start_http_server(METRICS_PORT)
 
-    # In-memory only for this first slice -- no HistoryStore/persistence
-    # yet (needed before the archiver, R7, can pick this data up; tracked
-    # as a separate follow-up task, not forgotten).
+    # Day-partitioned SQLite persistence, own /data volume -- same
+    # mechanism as Metro's, no pin_manifest yet (None is fully supported:
+    # the meta row's static_snapshot_digest just stays null until the
+    # static-GTFS-join follow-up task wires one in).
+    history = HistoryStore(history_dir=DATA_DIR / "history")
+    discrepancy_log, ghost_log, gap_log, _completion_log, _delay_observation_log = metrics.event_logs(
+        history.discrepancy_log, history.ghost_log, history.gap_log,
+        history.completion_log, history.delay_observation_log,
+    )
     store = StateStore(
-        discrepancy_log=InMemoryEventLog(),
-        ghost_log=InMemoryEventLog(),
+        discrepancy_log=discrepancy_log,
+        ghost_log=ghost_log,
         on_tick=metrics.record_tracked_trips,
         # completion_tracker intentionally None: TripCompletionTracker's
         # (mode, distance_category) threshold refactor (Gate 4) hasn't
         # landed yet -- V/Line trips simply aren't completion-tracked
         # until it does, same "optional feature, honest absence" pattern
-        # StateStore already supports for Metro's own tests.
+        # StateStore already supports for Metro's own tests. history's own
+        # completion_log/delay_observation_log tables exist but stay
+        # empty until that refactor wires a tracker in.
     )
-    gap_log = InMemoryEventLog()
 
     gateway = GatewayClient(
         base_url_override=os.environ.get(VLINE_BASE_URL_ENV, DEFAULT_VLINE_BASE_URL)
@@ -117,6 +131,7 @@ async def main() -> int:
         logger.info("vline poller starting")
         while not loop.stopped:
             cycle_start = datetime.now(timezone.utc)
+            history.rotate(cycle_start)
             result = await loop.run_cycle(cycle_start)
             metrics.record_cycle(result, loop.breaker)
             metrics.record_feed_ages(VLINE_FEEDS, loop.last_changed_at)
@@ -143,6 +158,7 @@ async def main() -> int:
 
     await gateway.aclose()
     await healthcheck_client.aclose()
+    history.close()
     logger.info("vline poller stopped")
     return 0
 
