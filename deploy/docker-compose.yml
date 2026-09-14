@@ -153,6 +153,11 @@ services:
       # Own bind mount, own host directory -- day-partitioned SQLite,
       # same mechanism as `poller`'s /data, never the same files.
       - ${TT_VLINE_DATA_DIR:-./vline-data}:/data
+      # Nightly maintenance (`python -m traintracker.history`, same
+      # entrypoint override pattern as `poller`'s own) reads/writes closed
+      # history partitions here. `vline-archiver` mounts this same host
+      # directory read-only to self-heal from; this is the only writer.
+      - ${TT_VLINE_BACKUP_DIR:-./vline-backup}:/backup
     depends_on:
       - egress-proxy
     networks:
