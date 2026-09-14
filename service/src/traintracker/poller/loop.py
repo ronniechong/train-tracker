@@ -55,6 +55,7 @@ class PollerLoop:
         gap_log: EventLog,
         breaker: CircuitBreaker | None = None,
         healthcheck_client: httpx.AsyncClient | None = None,
+        feeds: tuple[Feed, ...] = ALL_FEEDS,
     ):
         self._gateway = gateway
         self._store = store
@@ -63,6 +64,10 @@ class PollerLoop:
         self._healthcheck_client = healthcheck_client or httpx.AsyncClient()
         self._cache = _FeedCache()
         self._stop = False
+        # V/Line has no Service Alerts (M10 R5) -- its poller constructs
+        # this with feeds=(TRIP_UPDATES, VEHICLE_POSITIONS). Metro's own
+        # construction sites never pass this, so they're unaffected.
+        self._feeds = feeds
 
     @property
     def breaker(self) -> CircuitBreaker:
@@ -87,7 +92,7 @@ class PollerLoop:
         lowest_remaining: int | None = None
         ok = True
 
-        for feed in ALL_FEEDS:
+        for feed in self._feeds:
             try:
                 response = await self._gateway.fetch(feed)
             except GatewayAuthError:

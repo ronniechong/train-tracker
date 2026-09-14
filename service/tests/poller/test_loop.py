@@ -4,7 +4,7 @@ import httpx
 import pytest
 from google.transit import gtfs_realtime_pb2
 
-from traintracker.gateway.client import GatewayClient
+from traintracker.gateway.client import Feed, GatewayClient
 from traintracker.poller.breaker import CircuitBreaker
 from traintracker.poller.loop import ALL_FEEDS, PollerLoop
 from traintracker.state.eventlog import InMemoryEventLog
@@ -245,3 +245,27 @@ def test_next_interval_uses_service_hours_schedule_when_healthy():
     interval = loop.next_interval(T0)  # T0 is daytime AEST
 
     assert 5 <= interval <= 15
+
+
+async def test_restricted_feeds_only_fetches_and_ingests_those():
+    """M10 (V/Line): constructed with feeds=(TRIP_UPDATES, VEHICLE_POSITIONS)
+    (no Service Alerts), the loop must never request service-alerts at all,
+    and must still ingest cleanly on just the two feeds."""
+    scripted = ScriptedGateway()
+    store = StateStore(discrepancy_log=InMemoryEventLog(), ghost_log=InMemoryEventLog())
+    gap_log = InMemoryEventLog()
+    healthcheck_client = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200)))
+    loop = PollerLoop(
+        gateway=scripted.client,
+        store=store,
+        gap_log=gap_log,
+        breaker=CircuitBreaker(),
+        healthcheck_client=healthcheck_client,
+        feeds=(Feed.TRIP_UPDATES, Feed.VEHICLE_POSITIONS),
+    )
+
+    result = await loop.run_cycle(T0)
+
+    assert result.ok is True
+    assert result.changed_feeds == frozenset({Feed.TRIP_UPDATES, Feed.VEHICLE_POSITIONS})
+    assert "T1" in store.latest_snapshots
