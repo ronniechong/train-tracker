@@ -267,6 +267,20 @@ def parse_gtfs_time(value: str) -> timedelta:
     return timedelta(hours=h, minutes=m, seconds=s)
 
 
+SERVICE_DAY_CUTOVER_HOUR = 3  # a trip observed before 3am local belongs to the prior service day
+
+
+def service_date(dt: datetime) -> date:
+    """GTFS service-day, not calendar-day: post-midnight trips (the 24:xx
+    convention) belong to the prior day's service, same rule this project
+    already applies to Metro."""
+    local = dt.astimezone(MELB_TZ)
+    d = local.date()
+    if local.hour < SERVICE_DAY_CUTOVER_HOUR:
+        d -= timedelta(days=1)
+    return d
+
+
 def build_calendar(zf: zipfile.ZipFile) -> Callable[[date], set[str]]:
     """Returns resolve(service_date) -> set of active service_ids, memoized."""
     calendar = read_static_table(zf, "calendar.txt")
@@ -382,10 +396,13 @@ def analyze_thresholds(tu_records, zf: zipfile.ZipFile, trips, routes) -> dict:
 def analyze_coverage(vp_records, tu_records, zf: zipfile.ZipFile, trips) -> dict:
     resolver = build_calendar(zf)
     trips_by_service: dict[str, list[str]] = defaultdict(list)
+    service_of_trip: dict[str, str] = {}
     for t in trips:
         trips_by_service[t.get("service_id", "")].append(t["trip_id"])
+        service_of_trip[t["trip_id"]] = t.get("service_id", "")
+    static_trip_ids = set(service_of_trip)
 
-    dates_seen: set[date] = set()
+    dates_seen: set[date] = set()  # calendar dates, used only to bound the resolver scan below
     seen: set[str] = set()
     seen_hour: dict[int, set[str]] = defaultdict(set)
 
@@ -404,17 +421,49 @@ def analyze_coverage(vp_records, tu_records, zf: zipfile.ZipFile, trips) -> dict
     scan(vp_records, "vehicle")
     scan(tu_records, "trip_update")
 
+    # Union across every calendar date touched by the capture (not
+    # per-poll date matching) — a trip is "scheduled" if its service_id is
+    # active on ANY day the capture spans, sidestepping midnight-boundary
+    # attribution for this specific check.
     scheduled: set[str] = set()
     for d in dates_seen:
         for sid in resolver(d):
             scheduled.update(trips_by_service.get(sid, []))
+
+    # Diagnostic: of the observed trip_ids NOT in `scheduled`, how many are
+    # unknown to the static file entirely (real-time-only, e.g. ADDED — not
+    # a join problem, per the M1 precedent) vs. present in trips.txt but
+    # whose service_id just never resolved active on any captured date
+    # (a genuine calendar/window mismatch worth investigating)?
+    observed_not_scheduled = seen - scheduled
+    unknown_to_static = observed_not_scheduled - static_trip_ids
+    known_but_calendar_inactive = observed_not_scheduled & static_trip_ids
+
+    calendar_rows = read_static_table(zf, "calendar.txt")
+    calendar_by_service = {r["service_id"]: r for r in calendar_rows}
+    weekday_cols = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    sample = []
+    for tid in sorted(known_but_calendar_inactive)[:5]:
+        sid = service_of_trip.get(tid, "")
+        row = calendar_by_service.get(sid)
+        sample.append({
+            "trip_id": tid,
+            "service_id": sid,
+            "calendar_row_found": row is not None,
+            "start_date": row.get("start_date") if row else None,
+            "end_date": row.get("end_date") if row else None,
+            "active_weekdays": [d for d in weekday_cols if row and row.get(d) == "1"] if row else None,
+        })
 
     return {
         "capture_dates": sorted(d.isoformat() for d in dates_seen),
         "scheduled_trips": len(scheduled),
         "observed_trips": len(seen & scheduled),
         "coverage_pct": round(100 * len(seen & scheduled) / len(scheduled), 1) if scheduled else None,
-        "observed_not_in_schedule": len(seen - scheduled),
+        "observed_not_in_schedule": len(observed_not_scheduled),
+        "observed_not_in_schedule_unknown_to_static": len(unknown_to_static),
+        "observed_not_in_schedule_known_but_calendar_inactive": len(known_but_calendar_inactive),
+        "calendar_inactive_sample": sample,
         "observed_by_hour": {h: len(seen_hour[h]) for h in sorted(seen_hour)},
     }
 
@@ -424,15 +473,20 @@ def analyze_coverage(vp_records, tu_records, zf: zipfile.ZipFile, trips) -> dict
 
 
 def analyze_ghosting(vp_records, gap_threshold_s: int = 120) -> dict:
-    timeline: dict[str, list[datetime]] = defaultdict(list)
+    # Keyed by (trip_id, service_date), not trip_id alone: V/Line trip_ids
+    # recur daily, so a bare trip_id timeline treats "seen again tomorrow"
+    # as a single multi-day mid-journey gap. Segmenting by service_date
+    # caps every gap at within one service day.
+    timeline: dict[tuple[str, date], list[datetime]] = defaultdict(list)
     for ts, vp in vp_entities(vp_records):
         tid = vp.get("trip", {}).get("trip_id")
         if tid:
-            timeline[tid].append(datetime.fromisoformat(ts))
+            dt = datetime.fromisoformat(ts)
+            timeline[(tid, service_date(dt))].append(dt)
 
     gap_durations: list[float] = []
     trips_with_gap = 0
-    for tid, stamps in timeline.items():
+    for _key, stamps in timeline.items():
         stamps.sort()
         had_gap = False
         for a, b in zip(stamps, stamps[1:]):
@@ -445,8 +499,8 @@ def analyze_ghosting(vp_records, gap_threshold_s: int = 120) -> dict:
 
     return {
         "gap_threshold_s": gap_threshold_s,
-        "trips_tracked": len(timeline),
-        "trips_with_midjourney_gap": trips_with_gap,
+        "trip_instances_tracked": len(timeline),  # (trip_id, service_date) pairs, not distinct trip_ids
+        "trip_instances_with_midjourney_gap": trips_with_gap,
         "gap_count": len(gap_durations),
         "gap_duration_median_s": round(statistics.median(gap_durations), 1) if gap_durations else None,
         "gap_duration_p90_s": round(sorted(gap_durations)[int(0.9 * (len(gap_durations) - 1))], 1)
