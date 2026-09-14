@@ -231,6 +231,39 @@ services:
     networks:
       - internal
 
+  # Same archiver image/entrypoint as `archiver` above, run against
+  # V/Line's own data instead of Metro's -- a second config, not a second
+  # codebase. Own repo_id, own volumes, own metrics filename (in case
+  # node_exporter is ever pointed at one shared textfile directory for
+  # both instances -- distinct filenames keep them from overwriting each
+  # other regardless of how that's configured).
+  vline-archiver:
+    build:
+      context: ../service
+      dockerfile: Dockerfile
+    entrypoint: ["python", "-m", "traintracker.archive"]
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /staging
+    environment:
+      HF_TOKEN: ${HF_TOKEN:?HF_TOKEN must be set in deploy/.env}
+      HF_DATASET_REPO: ${HF_VLINE_DATASET_REPO:?HF_VLINE_DATASET_REPO must be set in deploy/.env}
+      TT_ARCHIVE_DEADMAN_PING_URL: ${TT_VLINE_ARCHIVE_DEADMAN_PING_URL:-}
+      TT_ARCHIVE_METRICS_FILENAME: archiver_vline.prom
+      HOME: /tmp
+      HTTP_PROXY: http://egress-proxy:8888
+      HTTPS_PROXY: http://egress-proxy:8888
+      NO_PROXY: "localhost,127.0.0.1"
+    volumes:
+      - ${TT_VLINE_DATA_DIR:-./vline-data}:/data:ro
+      - ${TT_VLINE_BACKUP_DIR:-./vline-backup}:/backup:ro
+      - ${TT_VLINE_ARCHIVE_STATE_DIR:-./vline-archive-state}:/archive-state
+    depends_on:
+      - egress-proxy
+    networks:
+      - internal
+
   # M5's delay/ETA model retrain job. A third dedicated one-shot service,
   # same reasoning as `archiver` above: neither `poller` nor `archiver`'s
   # existing volume declarations fit this job. It needs BOTH `/data`

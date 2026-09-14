@@ -42,8 +42,13 @@ DATA_DIR = Path("/data")
 BACKUP_DIR = Path("/backup")
 STAGING_DIR = Path("/staging")
 ARCHIVE_STATE_DIR = Path("/archive-state")
-METRICS_PATH = ARCHIVE_STATE_DIR / "metrics" / "archiver.prom"
 PUBLIC_STATUS_PATH = ARCHIVE_STATE_DIR / "public_status.json"
+
+# Filename only, not a full path -- if two archiver instances ever share
+# one node_exporter textfile-collector directory, distinct filenames keep
+# their metrics from overwriting each other.
+METRICS_FILENAME_ENV = "TT_ARCHIVE_METRICS_FILENAME"
+DEFAULT_METRICS_FILENAME = "archiver.prom"
 
 HF_TOKEN_ENV = "HF_TOKEN"
 HF_DATASET_REPO_ENV = "HF_DATASET_REPO"
@@ -97,7 +102,8 @@ def main() -> int:
     if pruned:
         logger.info("pruned %d gap report entries older than 6 months", pruned)
 
-    write_textfile_metrics(METRICS_PATH, result, now)
+    metrics_filename = os.environ.get(METRICS_FILENAME_ENV, DEFAULT_METRICS_FILENAME)
+    write_textfile_metrics(ARCHIVE_STATE_DIR / "metrics" / metrics_filename, result, now)
     _write_public_status_safely(PUBLIC_STATUS_PATH, result.latest_archived_date, now)
 
     # Pings on every completed pass, including ones that left some days
