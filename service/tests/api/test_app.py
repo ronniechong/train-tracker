@@ -1705,10 +1705,15 @@ async def test_next_service_accepts_after_param(tmp_path, sample_static_zip_byte
     loop, store = await _running_loop()
     schedule_cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
 
+    # Relative to real "now", not a fixed literal -- `_pinned_schedule_cache`
+    # pins whatever service_date wall-clock now resolves to, so a fixed
+    # past date here would eventually predate the pin and 503 as time passes.
+    after = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
     async with await _client_for(loop, store, schedule_cache=schedule_cache) as client:
         response = await client.get(
             "/api/next-service",
-            params={"from": "A Station", "to": "B Station", "after": "2026-08-26T07:30:00Z"},
+            params={"from": "A Station", "to": "B Station", "after": after},
         )
 
     assert response.status_code == 200
