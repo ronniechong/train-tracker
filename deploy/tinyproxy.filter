@@ -1,6 +1,10 @@
 # Allowlist ONLY these hosts. One host per line, matched as an FQDN
 # (see tinyproxy.conf: FilterExtended On).
-# 1. The upstream Metro Train GTFS-Realtime gateway.
+# 1. The upstream GTFS-Realtime gateway. Consumed by both `poller`
+# (Metro Train) and `vline-poller` (M10, V/Line Regional) -- same host,
+# same auth family, a distinct dataset resource per feed client. Not a
+# widening: both were already separately reviewed against this one entry
+# rather than each getting a redundant identical regex line.
 ^api\.opendata\.transport\.vic\.gov\.au$
 # 2. The external dead-man's-switch ping target — deliberate, narrow
 # widening, not the default upstream host.
