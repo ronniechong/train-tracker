@@ -213,6 +213,19 @@ class PinnedScheduleCache:
             return None
         return self._load(pin.digest).trips_by_id.get(trip_id)
 
+    def route_for(self, trip_id: str, service_date: date) -> Route | None:
+        """The trip's route (short/long name), resolved against whichever
+        snapshot is pinned to `service_date` -- same None-not-error
+        convention as `terminus_for`/`trip_for`."""
+        pin = self._pin_manifest.get(service_date)
+        if pin is None:
+            return None
+        parsed = self._load(pin.digest)
+        trip = parsed.trips_by_id.get(trip_id)
+        if trip is None:
+            return None
+        return parsed.routes.get(trip.route_id)
+
     def skip_stop_count_for(self, trip_id: str, service_date: date) -> int | None:
         """Stops this trip skips relative to the most common static
         pattern among trips sharing its route, direction, via-Loop-ness,

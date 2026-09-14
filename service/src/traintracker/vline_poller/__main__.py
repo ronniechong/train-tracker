@@ -2,8 +2,7 @@
 
 A separate process from `traintracker.poller`, with its own API/SSE app,
 own day-partitioned history, and own static-GTFS join -- isolates V/Line
-ingestion from Metro's so a fault in one can't affect the other. No
-trip-completion tracking yet.
+ingestion from Metro's so a fault in one can't affect the other.
 """
 
 from __future__ import annotations
@@ -12,7 +11,7 @@ import asyncio
 import logging
 import os
 import signal
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -27,9 +26,16 @@ from ..metrics import Metrics
 from ..poller import healthcheck
 from ..poller.loop import PollerLoop
 from ..redaction import configure_logging
+from ..state.completion import DistanceCategory, TripCompletionTracker
 from ..state.eventhub import InProcessEventHub
 from ..state.store import StateStore
 from .app import create_vline_app
+
+# PTV's official V/Line long-distance corridors -- everything else is
+# "short" for punctuality purposes.
+LONG_DISTANCE_ROUTE_NAME_HINTS = (
+    "warrnambool", "albury", "shepparton", "swan hill", "echuca", "bairnsdale",
+)
 
 DATA_DIR = Path("/data")
 
@@ -74,17 +80,27 @@ async def main() -> int:
     pin_manifest = PinManifest(gtfs_dir / "pin_manifest.json")
     schedule_cache = PinnedScheduleCache(gtfs_dir, pin_manifest)
 
+    def _distance_category(trip_id: str, service_date: date) -> DistanceCategory | None:
+        route = schedule_cache.route_for(trip_id, service_date)
+        if route is None:
+            return None
+        name = route.long_name.lower()
+        return "long" if any(h in name for h in LONG_DISTANCE_ROUTE_NAME_HINTS) else "short"
+
     history = HistoryStore(history_dir=DATA_DIR / "history", pin_manifest=pin_manifest)
-    discrepancy_log, ghost_log, gap_log, _completion_log, _delay_observation_log = metrics.event_logs(
+    discrepancy_log, ghost_log, gap_log, completion_log, _delay_observation_log = metrics.event_logs(
         history.discrepancy_log, history.ghost_log, history.gap_log,
         history.completion_log, history.delay_observation_log,
+    )
+    completion_tracker = TripCompletionTracker(
+        completion_log, schedule_cache.terminus_for,
+        mode="vline", distance_category_lookup=_distance_category,
     )
     store = StateStore(
         discrepancy_log=discrepancy_log,
         ghost_log=ghost_log,
         on_tick=metrics.record_tracked_trips,
-        # No completion_tracker yet -- trip-completion tracking isn't
-        # wired for V/Line.
+        completion_tracker=completion_tracker,
     )
 
     gateway = GatewayClient(

@@ -57,6 +57,18 @@ from .merge import TrainSnapshot
 # with that word.
 ON_TIME_THRESHOLD_S = 299  # 4 minutes 59 seconds
 
+Mode = Literal["metro", "vline"]
+DistanceCategory = Literal["short", "long"]
+DistanceCategoryLookup = Callable[[str, date], "DistanceCategory | None"]
+
+# PTV's published punctuality thresholds by mode + distance category.
+# (mode, None) covers modes with no distance split (Metro).
+THRESHOLDS_S: dict[tuple[Mode, DistanceCategory | None], int] = {
+    ("metro", None): ON_TIME_THRESHOLD_S,
+    ("vline", "short"): 359,  # 5:59
+    ("vline", "long"): 659,  # 10:59
+}
+
 # A pending trip untouched by a fresh TU schedule for longer than this is
 # presumed lost to a coverage gap rather than still in progress. Generous
 # relative to any real Metro trip's run time (mirrors ghost.py's
@@ -114,9 +126,17 @@ def _parse_start_date(value: str) -> date:
 
 
 class TripCompletionTracker:
-    def __init__(self, event_log: EventLog, terminus_lookup: TerminusLookup):
+    def __init__(
+        self,
+        event_log: EventLog,
+        terminus_lookup: TerminusLookup,
+        mode: Mode = "metro",
+        distance_category_lookup: DistanceCategoryLookup | None = None,
+    ):
         self._event_log = event_log
         self._terminus_lookup = terminus_lookup
+        self._mode = mode
+        self._distance_category_lookup = distance_category_lookup
         self._pending: dict[str, _PendingTrip] = {}
         # Trip_ids finalized (completed or gapped) recently -- guards
         # against a re-registration double-emitting if a trip_id somehow
@@ -212,9 +232,15 @@ class TripCompletionTracker:
                     if terminus_stu.arrival_delay is not None
                     else int((actual_arrival - pending.scheduled_arrival).total_seconds())
                 )
+                category = (
+                    self._distance_category_lookup(trip_id, pending.service_date)
+                    if self._distance_category_lookup
+                    else None
+                )
+                threshold = THRESHOLDS_S.get((self._mode, category), ON_TIME_THRESHOLD_S)
                 finalized_this_tick.append(self._finalize(
                     trip_id, pending, cycle_time,
-                    status="on_time" if delay <= ON_TIME_THRESHOLD_S else "late",
+                    status="on_time" if delay <= threshold else "late",
                     actual_arrival=actual_arrival, delay_seconds=delay,
                 ))
 

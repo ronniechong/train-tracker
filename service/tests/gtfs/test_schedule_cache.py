@@ -330,3 +330,21 @@ def test_stations_for_lists_every_station_with_its_routes(tmp_path, sample_stati
     assert {s.station_id for s in stations} == {"STATION_A", "STATION_B"}
     station_a = next(s for s in stations if s.station_id == "STATION_A")
     assert "2-PKM" in {r.route_id for r in station_a.routes}
+
+
+def test_route_for_returns_the_trips_route(tmp_path, sample_static_zip_bytes):
+    monday = date(2026, 7, 20)
+    cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes, pin_date=monday)
+
+    route = cache.route_for("WEEKDAY_TRIP_1", monday)
+
+    assert route is not None
+    assert route.route_id == "2-PKM"
+    assert route.long_name == "Pakenham - City"
+
+
+def test_route_for_returns_none_when_trip_has_no_static_row(tmp_path, sample_static_zip_bytes):
+    monday = date(2026, 7, 20)
+    cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes, pin_date=monday)
+
+    assert cache.route_for("SOME_ADDED_TRIP_NOT_IN_STATIC_GTFS", monday) is None

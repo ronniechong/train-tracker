@@ -263,3 +263,57 @@ def test_a_cycle_with_no_fresh_tu_schedule_does_not_touch_pending_state():
     tracker.tick({"t1": vp_only}, _at(10))
 
     assert log.events == []
+
+
+def test_default_metro_mode_threshold_is_unchanged():
+    log = _FakeEventLog()
+    tracker = TripCompletionTracker(log, _terminus_lookup())
+
+    tracker.tick(
+        {"t1": _snapshot(stop_time_updates=(_terminus_arrived_stu(arrival_delay=ON_TIME_THRESHOLD_S),))},
+        _at(0),
+    )
+
+    assert log.events[0].status == "on_time"
+
+
+def test_vline_mode_with_no_distance_category_falls_back_to_metro_threshold():
+    log = _FakeEventLog()
+    tracker = TripCompletionTracker(log, _terminus_lookup(), mode="vline")
+
+    tracker.tick(
+        {"t1": _snapshot(stop_time_updates=(_terminus_arrived_stu(arrival_delay=ON_TIME_THRESHOLD_S + 60),))},
+        _at(0),
+    )
+
+    assert log.events[0].status == "late"
+
+
+def test_vline_short_distance_threshold():
+    log = _FakeEventLog()
+    tracker = TripCompletionTracker(
+        log, _terminus_lookup(), mode="vline",
+        distance_category_lookup=lambda trip_id, service_date: "short",
+    )
+
+    tracker.tick(
+        {"t1": _snapshot(stop_time_updates=(_terminus_arrived_stu(arrival_delay=359),))},
+        _at(0),
+    )
+
+    assert log.events[0].status == "on_time"
+
+
+def test_vline_long_distance_threshold_allows_a_delay_that_would_be_late_for_short():
+    log = _FakeEventLog()
+    tracker = TripCompletionTracker(
+        log, _terminus_lookup(), mode="vline",
+        distance_category_lookup=lambda trip_id, service_date: "long",
+    )
+
+    tracker.tick(
+        {"t1": _snapshot(stop_time_updates=(_terminus_arrived_stu(arrival_delay=600),))},
+        _at(0),
+    )
+
+    assert log.events[0].status == "on_time"
