@@ -50,6 +50,12 @@ PUBLIC_STATUS_PATH = ARCHIVE_STATE_DIR / "public_status.json"
 METRICS_FILENAME_ENV = "TT_ARCHIVE_METRICS_FILENAME"
 DEFAULT_METRICS_FILENAME = "archiver.prom"
 
+# Distinguishes this instance's metric series from any other archiver
+# instance's once both are scraped from the same node_exporter textfile
+# directory -- these metrics carry no other identifying label.
+MODE_ENV = "TT_ARCHIVE_MODE"
+DEFAULT_MODE = "metro"
+
 HF_TOKEN_ENV = "HF_TOKEN"
 HF_DATASET_REPO_ENV = "HF_DATASET_REPO"
 
@@ -103,7 +109,8 @@ def main() -> int:
         logger.info("pruned %d gap report entries older than 6 months", pruned)
 
     metrics_filename = os.environ.get(METRICS_FILENAME_ENV, DEFAULT_METRICS_FILENAME)
-    write_textfile_metrics(ARCHIVE_STATE_DIR / "metrics" / metrics_filename, result, now)
+    mode = os.environ.get(MODE_ENV, DEFAULT_MODE)
+    write_textfile_metrics(ARCHIVE_STATE_DIR / "metrics" / metrics_filename, result, now, mode)
     _write_public_status_safely(PUBLIC_STATUS_PATH, result.latest_archived_date, now)
 
     # Pings on every completed pass, including ones that left some days

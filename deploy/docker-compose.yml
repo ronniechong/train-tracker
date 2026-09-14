@@ -251,6 +251,10 @@ services:
       HF_DATASET_REPO: ${HF_VLINE_DATASET_REPO:?HF_VLINE_DATASET_REPO must be set in deploy/.env}
       TT_ARCHIVE_DEADMAN_PING_URL: ${TT_VLINE_ARCHIVE_DEADMAN_PING_URL:-}
       TT_ARCHIVE_METRICS_FILENAME: archiver_vline.prom
+      # Distinguishes this instance's metric series from the Metro
+      # archiver's once both files are scraped from the same node_exporter
+      # textfile directory -- see metrics.py.
+      TT_ARCHIVE_MODE: vline
       HOME: /tmp
       HTTP_PROXY: http://egress-proxy:8888
       HTTPS_PROXY: http://egress-proxy:8888

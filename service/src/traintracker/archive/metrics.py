@@ -30,7 +30,11 @@ _HELP = {
 }
 
 
-def render_textfile(result: ArchiveRunResult, now: datetime) -> str:
+def render_textfile(result: ArchiveRunResult, now: datetime, mode: str = "metro") -> str:
+    # `mode` distinguishes this instance's series from any other archiver
+    # instance's -- required as soon as more than one instance's .prom file
+    # can end up scraped from the same node_exporter textfile directory,
+    # since these metric names carry no other label.
     oldest_age = 0
     if result.failed:
         oldest_age = max((now.date() - d).days for d in result.failed)
@@ -40,17 +44,17 @@ def render_textfile(result: ArchiveRunResult, now: datetime) -> str:
         lines.append(f"# HELP {metric} {help_text}")
         lines.append(f"# TYPE {metric} gauge")
 
-    lines.append(f"archive_last_run_timestamp_seconds {now.timestamp()}")
-    lines.append(f"archive_days_pending {len(result.failed)}")
-    lines.append(f"archive_days_pending_oldest_age_days {oldest_age}")
-    lines.append(f"archive_upload_retry_failures_total {result.upload_retry_failures}")
+    lines.append(f'archive_last_run_timestamp_seconds{{mode="{mode}"}} {now.timestamp()}')
+    lines.append(f'archive_days_pending{{mode="{mode}"}} {len(result.failed)}')
+    lines.append(f'archive_days_pending_oldest_age_days{{mode="{mode}"}} {oldest_age}')
+    lines.append(f'archive_upload_retry_failures_total{{mode="{mode}"}} {result.upload_retry_failures}')
     return "\n".join(lines) + "\n"
 
 
-def write_textfile_metrics(path: Path, result: ArchiveRunResult, now: datetime) -> None:
+def write_textfile_metrics(path: Path, result: ArchiveRunResult, now: datetime, mode: str = "metro") -> None:
     """Atomic write: node_exporter's textfile collector can otherwise
     scrape a partially-written file mid-update."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_suffix(path.suffix + ".tmp")
-    tmp_path.write_text(render_textfile(result, now))
+    tmp_path.write_text(render_textfile(result, now, mode))
     os.replace(tmp_path, path)
