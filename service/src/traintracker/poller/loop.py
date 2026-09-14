@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 import httpx
+from google.protobuf.message import DecodeError
 
 from ..gateway.client import Feed, GatewayAuthError, GatewayClient, GatewayError
 from ..state.eventlog import EventLog
@@ -105,7 +106,12 @@ class PollerLoop:
                 if lowest_remaining is None or window.remaining < lowest_remaining:
                     lowest_remaining = window.remaining
 
-            decoded_feed = decode_feed(response.payload)
+            try:
+                decoded_feed = decode_feed(response.payload)
+            except DecodeError as exc:
+                logger.warning("malformed feed payload on %s: %s", feed.value, exc)
+                ok = False
+                continue
             ts = header_timestamp(decoded_feed)
             unchanged = ts is not None and self._cache.last_header_ts.get(feed) == ts
             if unchanged:

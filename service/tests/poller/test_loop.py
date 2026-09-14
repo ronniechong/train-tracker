@@ -269,3 +269,19 @@ async def test_restricted_feeds_only_fetches_and_ingests_those():
     assert result.ok is True
     assert result.changed_feeds == frozenset({Feed.TRIP_UPDATES, Feed.VEHICLE_POSITIONS})
     assert "T1" in store.latest_snapshots
+
+
+async def test_malformed_feed_payload_marks_cycle_not_ok_without_crashing():
+    scripted = ScriptedGateway()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=b"not a valid protobuf payload")
+
+    scripted.client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    loop, store = _new_loop(scripted)
+
+    result = await loop.run_cycle(T0)
+
+    assert result.ok is False
+    assert result.changed_feeds == frozenset()
+    assert store.latest_snapshots == {}
