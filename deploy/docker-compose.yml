@@ -123,17 +123,10 @@ services:
       # purposes, not one network doing double duty.
       ingress: {}
 
-  # V/Line regional trains (M10). A dedicated service, NOT a second
-  # feed-client instance under `poller` above -- a crash, leak, or stuck
-  # coroutine in this newer, less-proven ingestion path must not be able
-  # to degrade Metro's own soak-tested collection (see the M10 poller-
-  # topology decision, private repo). Same image/build context as
-  # `poller` though -- one codebase, no second image to build/maintain.
-  #
-  # Day-partitioned SQLite persistence (own /data volume, below) landed
-  # this session. Still not yet wired: static-GTFS join, trip-completion
-  # tracking, and the archiver's second instance -- see the M10 Phase B
-  # task list for what's left.
+  # V/Line regional trains. A dedicated service, not a second feed-client
+  # instance under `poller` above -- keeps a fault in this ingestion path
+  # from affecting Metro's collection. Same image/build context as
+  # `poller`, no second image to build/maintain.
   vline-poller:
     build:
       context: ../service
@@ -145,13 +138,11 @@ services:
     tmpfs:
       - /tmp
     environment:
-      # Same account/key family as Metro -- confirmed live, no new secret
-      # (M10 recon). A distinct dataset resource, not a distinct credential.
+      # Same account/key family as Metro -- a distinct dataset resource,
+      # not a distinct credential.
       VIC_TRANSPORT_API_KEY: ${VIC_TRANSPORT_API_KEY:?VIC_TRANSPORT_API_KEY must be set in deploy/.env}
-      # Own dedicated healthchecks.io check, deliberately separate from
-      # the Metro poller's TT_DEADMAN_PING_URL -- same reasoning as the
-      # archiver's own TT_ARCHIVE_DEADMAN_PING_URL below: a missed V/Line
-      # cycle and a genuine Metro outage must not look identical.
+      # Own dedicated healthchecks.io check, separate from the Metro
+      # poller's TT_DEADMAN_PING_URL.
       TT_VLINE_DEADMAN_PING_URL: ${TT_VLINE_DEADMAN_PING_URL:-}
       HTTP_PROXY: http://egress-proxy:8888
       HTTPS_PROXY: http://egress-proxy:8888
@@ -160,9 +151,7 @@ services:
       TT_CORS_ORIGINS: ${TT_CORS_ORIGINS:-}
     volumes:
       # Own bind mount, own host directory -- day-partitioned SQLite,
-      # same mechanism as `poller`'s /data, but never the same files.
-      # No /backup mount yet: the nightly backup/retention job (M10
-      # follow-up) hasn't been wired for V/Line's partitions.
+      # same mechanism as `poller`'s /data, never the same files.
       - ${TT_VLINE_DATA_DIR:-./vline-data}:/data
     depends_on:
       - egress-proxy

@@ -45,6 +45,8 @@ DEFAULT_GTFS_STATIC_URL = (
 )
 
 METRO_TRAIN_MODE = "2"
+# V/Line regional trains -- not mode "5", the separate V/Line coach product.
+VLINE_TRAIN_MODE = "1"
 
 
 def static_gtfs_url() -> str:

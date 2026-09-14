@@ -51,10 +51,8 @@
 		}
 	}
 
-	# V/Line (M10): a genuinely separate backend, not a route on `poller`
-	# above -- matches the separate-process poller topology (M10 R1/R2).
-	# Must come before the catch-all `handle` below, same ordering
-	# reasoning as @stream/@briefing_trigger.
+	# V/Line: a separate backend, not a route on `poller` above. Must come
+	# before the catch-all `handle` below, same ordering as @stream.
 	@vline_stream path /api/vline/stream
 	handle @vline_stream {
 		reverse_proxy vline-poller:8100 {

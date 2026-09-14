@@ -248,9 +248,9 @@ def test_next_interval_uses_service_hours_schedule_when_healthy():
 
 
 async def test_restricted_feeds_only_fetches_and_ingests_those():
-    """M10 (V/Line): constructed with feeds=(TRIP_UPDATES, VEHICLE_POSITIONS)
-    (no Service Alerts), the loop must never request service-alerts at all,
-    and must still ingest cleanly on just the two feeds."""
+    """Constructed with feeds=(TRIP_UPDATES, VEHICLE_POSITIONS), the loop
+    must never request service-alerts, and must still ingest cleanly on
+    just the two feeds."""
     scripted = ScriptedGateway()
     store = StateStore(discrepancy_log=InMemoryEventLog(), ghost_log=InMemoryEventLog())
     gap_log = InMemoryEventLog()

@@ -87,7 +87,7 @@ async def test_state_reports_only_the_two_vline_feeds_no_service_alerts():
 
 
 async def test_no_alerts_route_exists():
-    """M10 R5: V/Line ships without Service Alerts — there must be no
+    """V/Line has no Service Alerts feed -- there must be no
     /api/vline/alerts route at all, not an empty one."""
     loop, store = await _running_vline_loop()
     async with await _client_for(loop, store) as client:

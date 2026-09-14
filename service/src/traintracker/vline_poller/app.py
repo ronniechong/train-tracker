@@ -1,18 +1,13 @@
 """V/Line's own minimal API/SSE surface — state + stream + healthz only.
 
-Deliberately NOT `api.create_app` reused wholesale: that app also serves
-alerts, insights, weekly digests, delay prediction, and next-service —
-none of which apply to V/Line yet (no Service Alerts per M10 R5; the
-other features are Metro-specific product surface this milestone never
-scoped V/Line into). Building a separate, smaller app here — rather than
-threading a `mode` parameter through `create_app` — is what keeps this a
-genuinely separate process all the way to the edge (M10 R2): a bug in
-this module can't affect Metro's app, and vice versa.
+Deliberately not `api.create_app` reused wholesale: that app also serves
+alerts, insights, digests, delay prediction, and next-service, none of
+which apply here. A separate, smaller app keeps this process's serving
+surface independent of Metro's -- a bug in one can't affect the other.
 
 Generic pieces (rate limiting, connection caps, CORS, the SSE diff loop,
 train/state shaping) are imported directly from `api.app`/`api.limits`
-rather than duplicated — Phase A confirmed V/Line's VP/TU shape matches
-Metro's exactly, so this reuse is real, not a guess.
+rather than duplicated, since V/Line's VP/TU shape matches Metro's.
 """
 
 from __future__ import annotations
@@ -46,8 +41,7 @@ logger = logging.getLogger("traintracker.vline_poller.app")
 
 SSE_HEARTBEAT_INTERVAL_S = 20.0
 
-# V/Line has no Service Alerts (M10 R5) — only these two feeds are ever
-# fetched, so this is the only pair whose staleness this app reports.
+# No Service Alerts feed for V/Line.
 VLINE_FEEDS: tuple[Feed, ...] = (Feed.TRIP_UPDATES, Feed.VEHICLE_POSITIONS)
 
 
@@ -190,9 +184,7 @@ def create_vline_app(
     async def get_state() -> StateResponse:
         return _current_state(loop, store, schedule_cache)
 
-    # Known-gap: V/Line ships without Service Alerts (M10 R5) — there is
-    # deliberately no /api/vline/alerts route. The frontend (Phase C) must
-    # state this plainly, not silently omit an alerts panel.
+    # No /api/vline/alerts route -- V/Line has no Service Alerts feed.
 
     @app.get("/api/vline/stream")
     async def stream(request: Request):

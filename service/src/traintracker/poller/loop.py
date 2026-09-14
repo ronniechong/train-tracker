@@ -64,9 +64,6 @@ class PollerLoop:
         self._healthcheck_client = healthcheck_client or httpx.AsyncClient()
         self._cache = _FeedCache()
         self._stop = False
-        # V/Line has no Service Alerts (M10 R5) -- its poller constructs
-        # this with feeds=(TRIP_UPDATES, VEHICLE_POSITIONS). Metro's own
-        # construction sites never pass this, so they're unaffected.
         self._feeds = feeds
 
     @property
