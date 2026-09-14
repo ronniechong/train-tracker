@@ -263,6 +263,15 @@ services:
       - ${TT_VLINE_DATA_DIR:-./vline-data}:/data:ro
       - ${TT_VLINE_BACKUP_DIR:-./vline-backup}:/backup:ro
       - ${TT_VLINE_ARCHIVE_STATE_DIR:-./vline-archive-state}:/archive-state
+      # Shadow-mounts /archive-state/metrics onto the SAME host directory
+      # `archiver`'s own metrics live in (not a second `archiver_vline.prom`
+      # somewhere node_exporter never looks) -- node_exporter's textfile
+      # collector only watches one directory, and a single-file bind mount
+      # would go stale the moment metrics.py's atomic rename replaces the
+      # underlying inode. The rest of /archive-state (gap report, public
+      # status) stays on this instance's own directory above; only this
+      # more specific mount is shared.
+      - ${TT_ARCHIVE_STATE_DIR:-./archive-state}/metrics:/archive-state/metrics
     depends_on:
       - egress-proxy
     networks:
