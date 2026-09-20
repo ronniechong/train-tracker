@@ -31,13 +31,20 @@ const INITIAL_STATE: LiveState = {
 /** Opens the SSE stream on mount, keeps it open for the component's
  * lifetime, and closes it on unmount. `trainsRef` mirrors the latest
  * trains map outside React state so a `delta` event only needs to clone
- * once, not re-derive from the whole state object. */
-export function useLiveFeed(): LiveState {
+ * once, not re-derive from the whole state object.
+ *
+ * `enabled` (default true) lets a caller behind a feature gate -- e.g.
+ * VlinePage's `train-vline` flag -- skip opening the connection entirely
+ * while gated off, rather than opening and immediately tearing one down
+ * on every render before the gate's redirect takes effect. */
+export function useLiveFeed(basePath: string = '/api', enabled: boolean = true): LiveState {
   const [state, setState] = useState<LiveState>(INITIAL_STATE)
   const trainsRef = useRef(new Map<string, Train>())
 
   useEffect(() => {
-    const source = new EventSource(`${API_BASE_URL}/api/stream`)
+    if (!enabled) return
+
+    const source = new EventSource(`${API_BASE_URL}${basePath}/stream`)
 
     source.addEventListener('open', () => {
       setState((prev) => ({ ...prev, connection: 'live' }))
@@ -75,7 +82,7 @@ export function useLiveFeed(): LiveState {
 
     async function pollStatus(): Promise<void> {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/state`)
+        const response = await fetch(`${API_BASE_URL}${basePath}/state`)
         if (!response.ok) return
         const data: StateResponse = await response.json()
         setState((prev) => ({ ...prev, feeds: data.feeds, backoffActive: data.backoff_active }))
@@ -90,7 +97,7 @@ export function useLiveFeed(): LiveState {
       source.close()
       clearInterval(intervalId)
     }
-  }, [])
+  }, [enabled])
 
   return state
 }

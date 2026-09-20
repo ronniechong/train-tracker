@@ -1,4 +1,5 @@
 import { Toggle } from '../Toggle'
+import { Tabs, type TabDef } from '../Tabs'
 import { trackEvent } from '../../lib/analytics'
 import type { Theme } from '../../hooks/useTheme'
 import styles from './Header.module.css'
@@ -6,18 +7,28 @@ import styles from './Header.module.css'
 interface HeaderProps {
   theme: Theme
   onThemeChange: (theme: Theme) => void
+  /** Metro|V/Line nav switcher (gated behind the `train-vline` flag by
+   * both call sites, App.tsx and VlinePage.tsx) -- omitted entirely
+   * renders the header exactly as it did before this existed. */
+  tabs?: TabDef[]
+  activeTabId?: string
 }
 
 // Theme state itself lives in App.tsx, not a local useTheme() call here --
 // the map's own basemap needs the same value, and two independent hook
 // instances would each keep their own unsynced local state.
-export function Header({ theme, onThemeChange }: HeaderProps) {
+export function Header({ theme, onThemeChange, tabs, activeTabId }: HeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.titleRow}>
         <img src="./favicon.svg" alt="" width={28} height={28} />
         <h1 className={styles.title}>Melbourne Train Tracker</h1>
       </div>
+      {tabs && tabs.length > 0 && (
+        <div className={styles.navTabs}>
+          <Tabs tabs={tabs} activeId={activeTabId ?? ''} onChange={() => {}} variant="nav" />
+        </div>
+      )}
       <div className={styles.taglineRow}>
         <p className={styles.tagline}>Tracking trains, almost real-time 😅</p>
         {/* A plain wrapper doesn't make Toggle's checkbox clickable -- its

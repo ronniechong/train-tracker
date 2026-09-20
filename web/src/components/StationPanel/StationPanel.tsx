@@ -1,4 +1,4 @@
-import { stationsById } from '../../geometry'
+import { routesById, stationsById } from '../../geometry'
 import { lineNameForTrain, markerColor, STATUS_LABEL } from '../../map/trainMarkers'
 import { relativeTime } from '../../lib/relativeTime'
 import { formatTime } from '../../lib/formatTime'
@@ -221,8 +221,8 @@ export function StationPanel({ stationId, trains, hideGhosts, onClear, schedule 
             <ul className={styles.trainList}>
               {nearby.map(({ train, distanceM }) => (
                 <li key={train.trip_id} className={styles.trainRow}>
-                  <span className={styles.swatch} style={{ backgroundColor: markerColor(train) }} />
-                  <span className={styles.trainLine}>{lineNameForTrain(train)}</span>
+                  <span className={styles.swatch} style={{ backgroundColor: markerColor(train, routesById) }} />
+                  <span className={styles.trainLine}>{lineNameForTrain(train, routesById)}</span>
                   <span className={styles.trainMeta}>
                     {STATUS_LABEL[train.status]} · {relativeTime(train.last_seen_at)} · {Math.round(distanceM)}m
                   </span>

@@ -34,7 +34,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from traintracker.gtfs.fetch import download_static_zip, extract_mode_zip, static_gtfs_url  # noqa: E402
+from traintracker.gtfs.fetch import (  # noqa: E402
+    METRO_TRAIN_MODE,
+    VLINE_TRAIN_MODE,
+    download_static_zip,
+    extract_mode_zip,
+    static_gtfs_url,
+)
 
 REPLACEMENT_BUS_SUFFIX = "-R:"
 STATION_NAME_SUFFIX = " Railway Station"
@@ -57,12 +63,17 @@ ROUTE_COLOR_OVERRIDES = {
     "Pakenham": "#279FD5",
 }
 
+# V/Line's brand colour. Every V/Line route already comes through the feed
+# as one uniform color (`#8F1A95`), just not an exact match for the brand
+# hex -- one unconditional override per route, not a per-line lookup.
+VLINE_BRAND_COLOR = "#7F0D82"
 
-def load_metro_zip(cache_path: Path) -> bytes:
+
+def load_mode_zip(cache_path: Path, mode: str) -> bytes:
     if cache_path.exists():
         return cache_path.read_bytes()
     outer = download_static_zip(static_gtfs_url())
-    inner = extract_mode_zip(outer)
+    inner = extract_mode_zip(outer, mode=mode)
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     cache_path.write_bytes(inner)
     return inner
@@ -88,14 +99,14 @@ def _shape_points_for(zf: zipfile.ZipFile, target_shape_ids: set[str]) -> dict[s
     return points
 
 
-def build_geometry(inner_zip_bytes: bytes) -> dict:
+def build_geometry(inner_zip_bytes: bytes, mode: str = METRO_TRAIN_MODE) -> dict:
     with zipfile.ZipFile(io.BytesIO(inner_zip_bytes)) as zf:
         stop_rows = _read_csv(zf, "stops.txt")
         route_rows = _read_csv(zf, "routes.txt")
         trip_rows = _read_csv(zf, "trips.txt")
         stop_time_rows = _read_csv(zf, "stop_times.txt")
 
-        return _build_geometry_from_rows(zf, stop_rows, route_rows, trip_rows, stop_time_rows)
+        return _build_geometry_from_rows(zf, stop_rows, route_rows, trip_rows, stop_time_rows, mode)
 
 
 def _build_geometry_from_rows(
@@ -104,6 +115,7 @@ def _build_geometry_from_rows(
     route_rows: list[dict[str, str]],
     trip_rows: list[dict[str, str]],
     stop_time_rows: list[dict[str, str]],
+    mode: str = METRO_TRAIN_MODE,
 ) -> dict:
     stations: dict[str, dict] = {
         r["stop_id"]: {
@@ -122,14 +134,19 @@ def _build_geometry_from_rows(
         if r["location_type"] != "1" and r["parent_station"]
     }
 
+    def route_color(r: dict[str, str]) -> str:
+        if mode == VLINE_TRAIN_MODE:
+            return VLINE_BRAND_COLOR
+        return ROUTE_COLOR_OVERRIDES.get(
+            r["route_short_name"],
+            f"#{r['route_color']}" if r["route_color"] else "#888888",
+        )
+
     routes: dict[str, dict] = {
         r["route_id"]: {
             "id": r["route_id"],
             "name": r["route_short_name"] or r["route_long_name"],
-            "color": ROUTE_COLOR_OVERRIDES.get(
-                r["route_short_name"],
-                f"#{r['route_color']}" if r["route_color"] else "#888888",
-            ),
+            "color": route_color(r),
         }
         for r in route_rows
         if not r["route_id"].endswith(REPLACEMENT_BUS_SUFFIX)
@@ -227,25 +244,36 @@ def _build_geometry_from_rows(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--mode",
+        choices=[METRO_TRAIN_MODE, VLINE_TRAIN_MODE],
+        default=METRO_TRAIN_MODE,
+        help="GTFS mode to build geometry for: metro train (2, default) or V/Line train (1).",
+    )
+    parser.add_argument(
         "--cache",
         type=Path,
-        default=Path(__file__).resolve().parent / ".gtfs_cache" / "metro.zip",
-        help="Local cache of the extracted metro-mode zip, to avoid re-downloading the ~270MB outer archive on every run.",
+        default=None,
+        help="Local cache of the extracted mode zip, to avoid re-downloading the ~270MB outer archive on every run. Defaults to a mode-specific path.",
     )
     parser.add_argument(
         "--out",
         type=Path,
-        default=Path(__file__).resolve().parents[2] / "web" / "src" / "data" / "geometry.json",
+        default=None,
+        help="Defaults to web/src/data/geometry.json (metro) or vline-geometry.json (V/Line).",
     )
     args = parser.parse_args()
 
-    inner = load_metro_zip(args.cache)
-    geometry = build_geometry(inner)
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(geometry, indent=2) + "\n")
-    print(
-        f"wrote {len(geometry['stations'])} stations, {len(geometry['routes'])} routes -> {args.out}"
+    is_vline = args.mode == VLINE_TRAIN_MODE
+    cache = args.cache or Path(__file__).resolve().parent / ".gtfs_cache" / ("vline.zip" if is_vline else "metro.zip")
+    out = args.out or Path(__file__).resolve().parents[2] / "web" / "src" / "data" / (
+        "vline-geometry.json" if is_vline else "geometry.json"
     )
+
+    inner = load_mode_zip(cache, args.mode)
+    geometry = build_geometry(inner, args.mode)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(geometry, indent=2) + "\n")
+    print(f"wrote {len(geometry['stations'])} stations, {len(geometry['routes'])} routes -> {out}")
 
 
 if __name__ == "__main__":

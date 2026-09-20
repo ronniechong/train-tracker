@@ -1,6 +1,6 @@
 import * as maplibregl from 'maplibre-gl'
 import './trainMarkers.css'
-import { routesById } from '../geometry'
+import type { Route } from '../geometry'
 import { relativeTime } from '../lib/relativeTime'
 import { formatStartTime } from '../lib/formatStartTime'
 import { formatTime } from '../lib/formatTime'
@@ -33,14 +33,28 @@ export const STATUS_LABEL: Record<Train['status'], string> = {
   ghost: 'Ghost',
 }
 
-// Exported: same reuse reason as STATUS_LABEL above.
-export function markerColor(train: Train): string {
+// Exported: same reuse reason as STATUS_LABEL above. `routesById` is
+// injected (Metro's or V/Line's, see mapController.ts's MapDataConfig)
+// rather than imported at module scope, so this file works for either
+// mode's geometry without duplicating it.
+export function markerColor(train: Train, routesById: ReadonlyMap<string, Route>): string {
   if (train.status === 'ghost') return GHOST_COLOR
   return (train.route_id && routesById.get(train.route_id)?.color) || UNKNOWN_ROUTE_COLOR
 }
 
-export function lineNameForTrain(train: Train): string {
+export function lineNameForTrain(train: Train, routesById: ReadonlyMap<string, Route>): string {
   return (train.route_id && routesById.get(train.route_id)?.name) || 'Unknown line'
+}
+
+/** The legend/hide-ghosts half of "should this train currently be shown" --
+ * shared by the marker manager below and V/Line's `TrainList`, so a hidden
+ * line or a hidden ghost train disappears from both consistently. Doesn't
+ * cover "has no coordinates yet", which only matters for placing a map
+ * marker, not for listing a train by name. */
+export function isTrainFilteredOut(
+  train: Train, hiddenRouteIds: ReadonlySet<string>, hideGhosts: boolean,
+): boolean {
+  return isRouteHidden(train.route_id, hiddenRouteIds) || (hideGhosts && train.status === 'ghost')
 }
 
 // Distinguishes individual trains on the same line -- e.g. two Belgrave
@@ -236,7 +250,11 @@ function createMarkerElements(): MarkerElements {
 }
 
 function styleMarkerElements(
-  elements: MarkerElements, train: Train, isTracked: boolean, positionChanged: boolean,
+  elements: MarkerElements,
+  train: Train,
+  routesById: ReadonlyMap<string, Route>,
+  isTracked: boolean,
+  positionChanged: boolean,
 ): void {
   // Two distinct colors, deliberately not one: `lineColor` is the train's
   // actual line -- always what the tooltip swatch shows, tracked or not,
@@ -247,7 +265,7 @@ function styleMarkerElements(
   // overridden to the reserved tracked color, with the ring/glow in CSS
   // (.train-marker--tracked) doing the rest of the "this one's tracked"
   // signal.
-  const lineColor = markerColor(train)
+  const lineColor = markerColor(train, routesById)
   const dotColor = isTracked ? TRACKED_COLOR : lineColor
   elements.dot.style.backgroundColor = dotColor
   elements.dot.style.opacity = OPACITY_BY_STATUS[train.status]
@@ -282,7 +300,7 @@ function styleMarkerElements(
   // dark navy) are unreadable as text on the tooltip's dark background.
   // Same fix the legend already uses.
   elements.tooltipSwatch.setAttribute('fill', lineColor)
-  elements.tooltipTitle.textContent = lineNameForTrain(train)
+  elements.tooltipTitle.textContent = lineNameForTrain(train, routesById)
   const identity = trainIdentityLabel(train)
   elements.tooltipIdentity.textContent = identity
   elements.tooltipIdentity.style.display = identity ? 'block' : 'none'
@@ -332,6 +350,7 @@ export interface TrainMarkerManager {
  * train's marker is a no-op call. */
 export function createTrainMarkerManager(
   map: maplibregl.Map,
+  routesById: ReadonlyMap<string, Route>,
   onTrainClick: (tripId: string) => void,
   onTrainRemoved: (tripId: string) => void,
 ): TrainMarkerManager {
@@ -356,8 +375,7 @@ export function createTrainMarkerManager(
     if (
       train.latitude === null ||
       train.longitude === null ||
-      isRouteHidden(train.route_id, hiddenRouteIds) ||
-      (hideGhosts && train.status === 'ghost')
+      isTrainFilteredOut(train, hiddenRouteIds, hideGhosts)
     ) {
       removeTrain(train.trip_id)
       return
@@ -380,7 +398,7 @@ export function createTrainMarkerManager(
     }
     const positionChanged = lastPositionUpdatedAt.get(train.trip_id) !== train.position_updated_at
     lastPositionUpdatedAt.set(train.trip_id, train.position_updated_at)
-    styleMarkerElements(elements, train, train.trip_id === trackedTripId, positionChanged)
+    styleMarkerElements(elements, train, routesById, train.trip_id === trackedTripId, positionChanged)
   }
 
   return {

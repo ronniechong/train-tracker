@@ -15,6 +15,15 @@ const InsightsPage = lazy(() =>
   import('./components/Insights/InsightsPage').then((m) => ({ default: m.InsightsPage })),
 )
 
+// Lazy-loaded for the same reason as InsightsPage above -- MapLibre GL
+// would otherwise ship in the main bundle for every visitor, even one who
+// never looks at V/Line's map. VlinePage itself checks the `train-vline`
+// flag and redirects to `/` when it's off (see useVlineFeature.ts) --
+// route-level, not just a hidden nav entry.
+const VlinePage = lazy(() =>
+  import('./components/VlinePage/VlinePage').then((m) => ({ default: m.VlinePage })),
+)
+
 // GitHub Pages has no server-side rewrite for a client-side router: a direct
 // request or refresh against a deep route (e.g. /insights) hits 404.html,
 // which re-encodes the path into a `redirect` query param and sends the
@@ -44,6 +53,14 @@ createRoot(container).render(
               element={
                 <Suspense fallback={null}>
                   <InsightsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/vline"
+              element={
+                <Suspense fallback={null}>
+                  <VlinePage />
                 </Suspense>
               }
             />

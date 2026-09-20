@@ -1,6 +1,7 @@
 import * as maplibregl from 'maplibre-gl'
 import './trainPopup.css'
 import { relativeTime } from '../lib/relativeTime'
+import { routesById } from '../geometry'
 import {
   delayPredictionLabel, lineNameForTrain, markerColor, nextStopLabel, STATUS_LABEL, trainIdentityLabel,
 } from './trainMarkers'
@@ -42,10 +43,10 @@ function buildTrainPopupContent(
 
   const titleRow = document.createElement('div')
   titleRow.className = 'train-popup-title-row'
-  titleRow.append(createSwatch(markerColor(train)))
+  titleRow.append(createSwatch(markerColor(train, routesById)))
   const title = document.createElement('span')
   title.className = 'train-popup-title'
-  title.textContent = lineNameForTrain(train)
+  title.textContent = lineNameForTrain(train, routesById)
   titleRow.append(title)
   content.append(titleRow)
 

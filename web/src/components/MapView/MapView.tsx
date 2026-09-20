@@ -1,15 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type * as maplibregl from 'maplibre-gl'
-import {
-  addGeometryLayers,
-  applyHiddenRoutes,
-  flyToDefaultView,
-  flyToStation,
-  initMap,
-  registerStationInteractions,
-  resetInitialView,
-  setMapStyle,
-} from '../../map/mapController'
+import { createMapController } from '../../map/mapController'
+import { METRO_MAP_CONFIG } from '../../map/metroMapConfig'
+import { routesById } from '../../geometry'
 import { createTrainMarkerManager, type TrainMarkerManager } from '../../map/trainMarkers'
 import { createStationPopupManager, type StationPopupManager } from '../../map/stationPopup'
 import { createTrainPopupManager, type TrainPopupManager } from '../../map/trainPopup'
@@ -117,20 +110,23 @@ export function MapView({
   // already loads the right style first time) or on unrelated re-renders.
   const appliedThemeRef = useRef(theme)
   const [loaded, setLoaded] = useState(false)
+  const controllerRef = useRef(createMapController(METRO_MAP_CONFIG))
 
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
-    const map = initMap(container, appliedThemeRef.current)
+    const controller = controllerRef.current
+    const map = controller.initMap(container, appliedThemeRef.current)
     mapRef.current = map
 
     map.on('load', () => {
-      resetInitialView(map)
-      addGeometryLayers(map, hiddenRouteIdsRef.current)
-      registerStationInteractions(map, (stationId) => onStationClickRef.current(stationId))
+      controller.resetInitialView(map)
+      controller.addGeometryLayers(map, hiddenRouteIdsRef.current)
+      controller.registerStationInteractions(map, (stationId) => onStationClickRef.current(stationId))
       markerManagerRef.current = createTrainMarkerManager(
         map,
+        routesById,
         (tripId) => onTrainClickRef.current(tripId),
         (tripId) => onTrainRemovedRef.current(tripId),
       )
@@ -168,7 +164,7 @@ export function MapView({
 
   useEffect(() => {
     if (!loaded || !mapRef.current) return
-    applyHiddenRoutes(mapRef.current, hiddenRouteIds)
+    controllerRef.current.applyHiddenRoutes(mapRef.current, hiddenRouteIds)
     markerManagerRef.current?.sync(trains, hiddenRouteIds, hideGhosts, trackedTripId)
   }, [loaded, hiddenRouteIds, trains, hideGhosts, trackedTripId])
 
@@ -225,13 +221,13 @@ export function MapView({
   // the camera on itself, the user is already looking right at it.
   useEffect(() => {
     if (!loaded || !mapRef.current || !flyToRequest) return
-    flyToStation(mapRef.current, flyToRequest)
+    controllerRef.current.flyToStation(mapRef.current, flyToRequest)
   }, [loaded, flyToRequest])
 
   // Sidebar "recenter map" CTA.
   useEffect(() => {
     if (!loaded || !mapRef.current || recenterRequest === null) return
-    flyToDefaultView(mapRef.current)
+    controllerRef.current.flyToDefaultView(mapRef.current)
   }, [loaded, recenterRequest])
 
   // Basemap follows the app's light/dark theme (M4 Stage 5 follow-up,
@@ -243,9 +239,10 @@ export function MapView({
     if (!loaded || !mapRef.current || appliedThemeRef.current === theme) return
     appliedThemeRef.current = theme
     const map = mapRef.current
-    setMapStyle(map, theme, () => {
-      addGeometryLayers(map, hiddenRouteIdsRef.current)
-      applyHiddenRoutes(map, hiddenRouteIdsRef.current)
+    const controller = controllerRef.current
+    controller.setMapStyle(map, theme, () => {
+      controller.addGeometryLayers(map, hiddenRouteIdsRef.current)
+      controller.applyHiddenRoutes(map, hiddenRouteIdsRef.current)
     })
   }, [loaded, theme])
 

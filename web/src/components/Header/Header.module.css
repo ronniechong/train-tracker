@@ -18,6 +18,10 @@
   margin: 0;
 }
 
+.navTabs {
+  margin-top: 0.4rem;
+}
+
 .taglineRow {
   display: flex;
   align-items: center;

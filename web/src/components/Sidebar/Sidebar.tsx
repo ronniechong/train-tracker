@@ -14,6 +14,8 @@ import { Section } from '../Section'
 import { useAttribution } from '../../hooks/useAttribution'
 import { useArchiveStatus } from '../../hooks/useArchiveStatus'
 import { useAlerts } from '../../hooks/useAlerts'
+import { useVlineFeatureEnabled } from '../../hooks/useVlineFeature'
+import { METRO_VLINE_NAV_TABS } from '../../lib/vlineNavTabs'
 import { cx } from '../../lib/cx'
 import { trackEvent } from '../../lib/analytics'
 import { formatArchiveDate } from '../../lib/formatDigest'
@@ -124,10 +126,17 @@ export function Sidebar({
   const [announcementsOpen, setAnnouncementsOpen] = useState(false)
   // M8 Insights nav entry -- gated on the Flagsmith flag `train-insights`.
   const insightsFlag = useFlags(['train-insights'])
+  // M10 Phase C -- gated on `train-vline` (off in production, on in dev).
+  const vlineEnabled = useVlineFeatureEnabled()
 
   return (
     <aside className={cx(styles.sidebar, open && styles.open)}>
-      <Header theme={theme} onThemeChange={onThemeChange} />
+      <Header
+        theme={theme}
+        onThemeChange={onThemeChange}
+        tabs={vlineEnabled ? METRO_VLINE_NAV_TABS : undefined}
+        activeTabId="metro"
+      />
       <Legend hiddenRouteIds={hiddenRouteIds} onToggle={onToggleRoute} />
       <Section>
         <button

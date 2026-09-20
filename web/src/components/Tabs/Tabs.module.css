@@ -25,3 +25,34 @@
   color: var(--color-accent);
   border-bottom-color: var(--color-accent);
 }
+
+.navTablist {
+  display: inline-flex;
+  gap: 0;
+  padding: 3px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+}
+
+.navTab {
+  padding: 0.3rem 0.9rem;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-dim);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-pill);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.navTab:hover {
+  color: var(--color-text);
+}
+
+.navTab.active {
+  color: #fff;
+  background: var(--color-accent);
+}
