@@ -1,7 +1,7 @@
 import * as maplibregl from 'maplibre-gl'
 import './trainPopup.css'
 import { relativeTime } from '../lib/relativeTime'
-import { routesById } from '../geometry'
+import type { Route } from '../geometry'
 import {
   delayPredictionLabel, lineNameForTrain, markerColor, nextStopLabel, STATUS_LABEL, trainIdentityLabel,
 } from './trainMarkers'
@@ -30,12 +30,19 @@ function createSwatch(color: string): SVGSVGElement {
 }
 
 /** Click-triggered popup content: same underlying data as the hover
- * tooltip (trainMarkers.ts), plus the Track/Untrack action -- deliberately
- * a separate element tree from the hover tooltip rather than reusing it,
- * since this one needs to stay open (click, not `:hover`) and carry an
- * interactive button, which the pure-CSS hover tooltip never needs to. */
+ * tooltip (trainMarkers.ts), plus the Track/Untrack + "Am I late?" actions
+ * when the caller provides handlers for them -- deliberately a separate
+ * element tree from the hover tooltip rather than reusing it, since this
+ * one needs to stay open (click, not `:hover`) and can carry interactive
+ * buttons, which the pure-CSS hover tooltip never needs to. `routesById`
+ * is injected (Metro's or V/Line's) rather than imported at module scope,
+ * same reuse-for-either-mode reason as trainMarkers.ts. V/Line's call site
+ * omits `onToggleTrack`/`onRequestDelayPrediction` entirely -- tracking and
+ * delay predictions have no V/Line backend equivalent (Phase C design
+ * brief's out-of-scope list) -- rather than passing no-op handlers. */
 function buildTrainPopupContent(
-  train: Train, isTracked: boolean, onToggleTrack: () => void, onRequestDelayPrediction: () => void,
+  train: Train, routesById: ReadonlyMap<string, Route>, isTracked: boolean,
+  onToggleTrack: (() => void) | undefined, onRequestDelayPrediction: (() => void) | undefined,
   delayPrediction: DelayPredictionState | undefined,
 ): HTMLElement {
   const content = document.createElement('div')
@@ -89,50 +96,57 @@ function buildTrainPopupContent(
   meta.textContent = `${trackedPrefix}${STATUS_LABEL[train.status]} · confirmed ${relativeTime(train.last_seen_at)}`
   content.append(meta)
 
-  const button = document.createElement('button')
-  button.type = 'button'
-  button.className = isTracked ? 'train-popup-button train-popup-button--untrack' : 'train-popup-button'
-  button.textContent = isTracked ? 'Untrack this train' : 'Track this train'
-  button.addEventListener('click', (event) => {
-    event.stopPropagation()
-    onToggleTrack()
-  })
-  content.append(button)
+  if (onToggleTrack) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = isTracked ? 'train-popup-button train-popup-button--untrack' : 'train-popup-button'
+    button.textContent = isTracked ? 'Untrack this train' : 'Track this train'
+    button.addEventListener('click', (event) => {
+      event.stopPropagation()
+      onToggleTrack()
+    })
+    content.append(button)
+  }
 
-  const delayButton = document.createElement('button')
-  delayButton.type = 'button'
-  delayButton.className = 'train-popup-button train-popup-button--secondary'
-  delayButton.textContent = 'Am I late?'
-  delayButton.addEventListener('click', (event) => {
-    event.stopPropagation()
-    onRequestDelayPrediction()
-  })
-  content.append(delayButton)
+  if (onRequestDelayPrediction) {
+    const delayButton = document.createElement('button')
+    delayButton.type = 'button'
+    delayButton.className = 'train-popup-button train-popup-button--secondary'
+    delayButton.textContent = 'Am I late?'
+    delayButton.addEventListener('click', (event) => {
+      event.stopPropagation()
+      onRequestDelayPrediction()
+    })
+    content.append(delayButton)
+  }
 
   return content
 }
 
 export interface TrainPopupManager {
-  /** Shows the track/untrack popup for `tripId`, hides it for `null`.
-   * `train` is looked up by the caller (MapView already holds the full
-   * trains map) and passed in rather than looked up here, same shape as
-   * stationPopup.ts's `schedule` param. `isTracked` drives the button
-   * label/action; `onToggleTrack` is called with no further args since the
-   * caller already knows which trip this popup is for. Same for
-   * `onRequestDelayPrediction` -- the "Am I late?" CTA. `delayPrediction`
-   * is this trip's current prediction state (if any has been requested),
-   * rendered inline below the CTA -- passed in, not looked up here, same
-   * "caller already holds the map" shape as `train` above. */
+  /** Shows the click popup for `tripId`, hides it for `null`. `train` is
+   * looked up by the caller (MapView already holds the full trains map)
+   * and passed in rather than looked up here, same shape as
+   * stationPopup.ts's `schedule` param. `isTracked` drives the Track
+   * button's label/action when `onToggleTrack` is provided; V/Line's call
+   * site omits it (and `onRequestDelayPrediction`) entirely, since neither
+   * feature exists for V/Line -- the popup then renders as pure info, no
+   * buttons. `delayPrediction` is this trip's current prediction state (if
+   * any has been requested), rendered inline when present -- passed in,
+   * not looked up here, same "caller already holds the map" shape as
+   * `train` above. */
   sync(
     tripId: string | null, train: Train | null, isTracked: boolean,
-    onToggleTrack: () => void, onRequestDelayPrediction: () => void,
+    onToggleTrack: (() => void) | undefined, onRequestDelayPrediction: (() => void) | undefined,
     delayPrediction: DelayPredictionState | undefined,
   ): void
   /** Removes the popup from the map. Call on MapView unmount. */
   destroy(): void
 }
 
-export function createTrainPopupManager(map: maplibregl.Map): TrainPopupManager {
+export function createTrainPopupManager(
+  map: maplibregl.Map, routesById: ReadonlyMap<string, Route>,
+): TrainPopupManager {
   const popup = new maplibregl.Popup({
     className: 'train-popup',
     closeButton: false,
@@ -147,7 +161,7 @@ export function createTrainPopupManager(map: maplibregl.Map): TrainPopupManager 
         return
       }
       const content = buildTrainPopupContent(
-        train, isTracked, onToggleTrack, onRequestDelayPrediction, delayPrediction,
+        train, routesById, isTracked, onToggleTrack, onRequestDelayPrediction, delayPrediction,
       )
       popup.setLngLat([train.longitude, train.latitude]).setDOMContent(content).addTo(map)
     },

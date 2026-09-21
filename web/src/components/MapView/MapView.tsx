@@ -131,7 +131,7 @@ export function MapView({
         (tripId) => onTrainRemovedRef.current(tripId),
       )
       popupManagerRef.current = createStationPopupManager(map)
-      trainPopupManagerRef.current = createTrainPopupManager(map)
+      trainPopupManagerRef.current = createTrainPopupManager(map, routesById)
       // `dragstart` only ever fires from a real user drag gesture, never
       // programmatically -- safe from the follow-camera `easeTo` below
       // (pan-only, no zoom) canceling itself. `zoomstart` fires for BOTH

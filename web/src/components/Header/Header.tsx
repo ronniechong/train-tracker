@@ -24,11 +24,6 @@ export function Header({ theme, onThemeChange, tabs, activeTabId }: HeaderProps)
         <img src="./favicon.svg" alt="" width={28} height={28} />
         <h1 className={styles.title}>Melbourne Train Tracker</h1>
       </div>
-      {tabs && tabs.length > 0 && (
-        <div className={styles.navTabs}>
-          <Tabs tabs={tabs} activeId={activeTabId ?? ''} onChange={() => {}} variant="nav" />
-        </div>
-      )}
       <div className={styles.taglineRow}>
         <p className={styles.tagline}>Tracking trains, almost real-time 😅</p>
         {/* A plain wrapper doesn't make Toggle's checkbox clickable -- its
@@ -50,6 +45,11 @@ export function Header({ theme, onThemeChange, tabs, activeTabId }: HeaderProps)
           />
         </label>
       </div>
+      {tabs && tabs.length > 0 && (
+        <div className={styles.navTabs}>
+          <Tabs tabs={tabs} activeId={activeTabId ?? ''} onChange={() => {}} variant="nav" />
+        </div>
+      )}
     </header>
   )
 }

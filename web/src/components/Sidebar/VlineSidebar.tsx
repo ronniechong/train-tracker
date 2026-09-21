@@ -2,9 +2,11 @@ import { Header } from '../Header'
 import { VlineLegend } from '../Legend/VlineLegend'
 import { StatusPanel } from '../StatusPanel'
 import { TrainList } from '../TrainList'
+import { VlineStationPanel } from '../StationPanel/VlineStationPanel'
 import { Section } from '../Section'
 import { useAttribution } from '../../hooks/useAttribution'
 import { cx } from '../../lib/cx'
+import { trackEvent } from '../../lib/analytics'
 import { METRO_VLINE_NAV_TABS } from '../../lib/vlineNavTabs'
 import type { LiveState } from '../../hooks/useLiveFeed'
 import type { Theme } from '../../hooks/useTheme'
@@ -23,6 +25,9 @@ interface VlineSidebarProps {
   onToggleHideGhosts: (hide: boolean) => void
   highlightedTripId: string | null
   onSelectTrain: (tripId: string) => void
+  selectedStationId: string | null
+  onClearStation: () => void
+  onRecenter: () => void
   theme: Theme
   onThemeChange: (theme: Theme) => void
   /** Only meaningful below the mobile breakpoint -- see Sidebar.module.css.
@@ -32,14 +37,12 @@ interface VlineSidebarProps {
 
 /** V/Line's sidebar reuses Metro's existing shell rather than inventing a
  * new pattern (Phase C design decision, Session 91) -- Header/StatusPanel
- * as-is, a V/Line-specific line-style Legend, and a genuinely new
- * V/Line-only TrainList. Search/StationPanel/Announcements are omitted
- * entirely rather than shown as broken or empty: none of the features they
- * expose (station schedules, search, service alerts, weekly digest) exist
- * for V/Line, so there's nothing for a "not available" state to attach to
- * -- the persistent no-alerts notice below is the one exception, since
- * "V/Line has no live alerts feed" is itself a fact worth stating plainly
- * (R5 in the milestone doc), not a missing feature to hide. */
+ * as-is, a V/Line-specific line-style Legend, a genuinely new V/Line-only
+ * TrainList, and a trimmed StationPanel (nearby-live-trains only, no
+ * schedule -- see VlineStationPanel.tsx). Search/Announcements are omitted
+ * entirely rather than shown as broken or empty: neither feature (station
+ * search, service alerts, weekly digest) exists for V/Line, so there's
+ * nothing for a "not available" state to attach to. */
 export function VlineSidebar({
   liveState,
   hiddenRouteIds,
@@ -48,6 +51,9 @@ export function VlineSidebar({
   onToggleHideGhosts,
   highlightedTripId,
   onSelectTrain,
+  selectedStationId,
+  onClearStation,
+  onRecenter,
   theme,
   onThemeChange,
   open,
@@ -57,16 +63,31 @@ export function VlineSidebar({
   return (
     <aside className={cx(styles.sidebar, open && styles.open)}>
       <Header theme={theme} onThemeChange={onThemeChange} tabs={METRO_VLINE_NAV_TABS} activeTabId="vline" />
-      <Section>
-        <p>No live service alerts for V/Line yet -- this feed isn't wired up for the regional network.</p>
-      </Section>
       <VlineLegend hiddenRouteIds={hiddenRouteIds} onToggle={onToggleRoute} />
+      <Section>
+        <button
+          type="button"
+          className={styles.recenterButton}
+          onClick={() => {
+            trackEvent('click-vline-recenter-map')
+            onRecenter()
+          }}
+        >
+          Recenter map
+        </button>
+      </Section>
       <TrainList
         trains={liveState.trains}
         hiddenRouteIds={hiddenRouteIds}
         hideGhosts={hideGhosts}
         highlightedTripId={highlightedTripId}
         onSelectTrain={onSelectTrain}
+      />
+      <VlineStationPanel
+        stationId={selectedStationId}
+        trains={liveState.trains}
+        hideGhosts={hideGhosts}
+        onClear={onClearStation}
       />
       <StatusPanel liveState={liveState} hideGhosts={hideGhosts} onToggleHideGhosts={onToggleHideGhosts} grow />
       <Section as="footer" className={styles.footer}>

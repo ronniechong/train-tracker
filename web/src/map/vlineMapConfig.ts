@@ -5,6 +5,17 @@ const lineDashArrayByRouteId = new Map(
   vlineGeometry.routes.map((route) => [route.id, LINE_DASH_ARRAY[lineStyleForRouteName(route.name)]]),
 )
 
+// The generated bounds fit the real network exactly -- Warrnambool/Bairnsdale
+// sit right at the edge, hard to see/pan past. Padded (not regenerated data)
+// so the map can scroll a bit further east/west of the terminus stations
+// without moving the geometry itself.
+const BOUNDS_PADDING_DEG = 0.5
+const PADDED_BOUNDS = {
+  ...vlineGeometry.bounds,
+  west: vlineGeometry.bounds.west - BOUNDS_PADDING_DEG,
+  east: vlineGeometry.bounds.east + BOUNDS_PADDING_DEG,
+}
+
 // Melbourne end of the network -- a first-time user is most likely
 // oriented here, not somewhere else in regional Victoria.
 const SOUTHERN_CROSS = vlineStationsById.get('vic:rail:SSS')
@@ -23,7 +34,7 @@ const INITIAL_ZOOM = 8
 const MIN_ZOOM = 6
 
 export const VLINE_MAP_CONFIG: MapDataConfig = {
-  geometry: vlineGeometry,
+  geometry: { ...vlineGeometry, bounds: PADDED_BOUNDS },
   routesByStationId: vlineRoutesByStationId,
   center: DEFAULT_CENTER,
   initialZoom: INITIAL_ZOOM,

@@ -24,6 +24,8 @@ export function VlinePage() {
   const [hiddenRouteIds, setHiddenRouteIds] = useState<ReadonlySet<string>>(() => new Set())
   const [hideGhosts, setHideGhosts] = useState(true)
   const [highlightedTripId, setHighlightedTripId] = useState<string | null>(null)
+  const [selectedStationId, setSelectedStationId] = useState<string | null>(null)
+  const [recenterRequest, setRecenterRequest] = useState<number | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   // Route-level gate, not just a hidden nav entry -- see useVlineRouteGate.
@@ -46,6 +48,12 @@ export function VlinePage() {
     setHighlightedTripId((prev) => (prev === tripId ? null : tripId))
   }
 
+  // Same click-same-station-again / click-elsewhere toggle as Metro's own
+  // handleStationClick (App.tsx).
+  function handleStationClick(stationId: string | null): void {
+    setSelectedStationId((prev) => (stationId === null || stationId === prev ? null : stationId))
+  }
+
   return (
     <div className={styles.shell}>
       <DrawerToggle open={drawerOpen} onToggle={() => setDrawerOpen((prev) => !prev)} />
@@ -66,6 +74,9 @@ export function VlinePage() {
         onToggleHideGhosts={setHideGhosts}
         highlightedTripId={highlightedTripId}
         onSelectTrain={handleSelectTrain}
+        selectedStationId={selectedStationId}
+        onClearStation={() => setSelectedStationId(null)}
+        onRecenter={() => setRecenterRequest((n) => (n ?? 0) + 1)}
         theme={theme}
         onThemeChange={setTheme}
         open={drawerOpen}
@@ -77,6 +88,8 @@ export function VlinePage() {
         theme={theme}
         highlightedTripId={highlightedTripId}
         onSelectTrain={handleSelectTrain}
+        onStationClick={handleStationClick}
+        recenterRequest={recenterRequest}
       />
     </div>
   )
