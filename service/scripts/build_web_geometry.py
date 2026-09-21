@@ -68,6 +68,42 @@ ROUTE_COLOR_OVERRIDES = {
 # hex -- one unconditional override per route, not a per-line lookup.
 VLINE_BRAND_COLOR = "#7F0D82"
 
+# V/Line only renders at zoom 6-8, well below Metro's up-to-15 -- raw
+# shapes.txt density is wasted there. ~35m tolerance, imperceptible at
+# that zoom.
+VLINE_SIMPLIFY_TOLERANCE_DEG = 0.0003
+
+
+def _perpendicular_distance_deg(point: tuple[float, float], start: tuple[float, float], end: tuple[float, float]) -> float:
+    px, py = point
+    sx, sy = start
+    ex, ey = end
+    dx, dy = ex - sx, ey - sy
+    if dx == 0 and dy == 0:
+        return math.hypot(px - sx, py - sy)
+    t = max(0.0, min(1.0, ((px - sx) * dx + (py - sy) * dy) / (dx * dx + dy * dy)))
+    nx, ny = sx + t * dx, sy + t * dy
+    return math.hypot(px - nx, py - ny)
+
+
+def simplify_shape(points: list[list[float]], tolerance_deg: float) -> list[list[float]]:
+    """Ramer-Douglas-Peucker line simplification, in plain lon/lat degrees."""
+    if len(points) < 3:
+        return points
+    start, end = points[0], points[-1]
+    max_dist = -1.0
+    max_idx = 0
+    for i in range(1, len(points) - 1):
+        dist = _perpendicular_distance_deg(points[i], start, end)
+        if dist > max_dist:
+            max_dist = dist
+            max_idx = i
+    if max_dist > tolerance_deg:
+        left = simplify_shape(points[: max_idx + 1], tolerance_deg)
+        right = simplify_shape(points[max_idx:], tolerance_deg)
+        return left[:-1] + right
+    return [start, end]
+
 
 def load_mode_zip(cache_path: Path, mode: str) -> bytes:
     if cache_path.exists():
@@ -198,7 +234,10 @@ def _build_geometry_from_rows(
         shape_id = trip_shape.get(trip_id)
         points = shape_points.get(shape_id) if shape_id else None
         if points:
-            route["shape"] = [[lon, lat] for _, lat, lon in sorted(points)]
+            shape = [[lon, lat] for _, lat, lon in sorted(points)]
+            if mode == VLINE_TRAIN_MODE:
+                shape = simplify_shape(shape, VLINE_SIMPLIFY_TOLERANCE_DEG)
+            route["shape"] = shape
         else:
             # Fallback: straight lines between station coordinates, same as
             # before shapes.txt was wired up -- only hit if a route's
