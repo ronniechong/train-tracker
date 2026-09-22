@@ -37,7 +37,7 @@ interface MapViewProps {
   recenterRequest: number | null
   theme: Theme
   schedule: StationScheduleState
-  // Train tracking (M12 follow-up): trackedTripId is the currently
+  // Train tracking: trackedTripId is the currently
   // tracked trip, or null if nothing is tracked. isFollowing is whether
   // the camera should keep re-centering on it right now -- distinct from
   // "is a train tracked" because a manual pan/zoom keeps the train
@@ -50,7 +50,7 @@ interface MapViewProps {
   onToggleTrack: (tripId: string) => void
   onUserMapInteraction: () => void
   onResumeTracking: () => void
-  // "Am I late?" (M5): per-trip prediction state, keyed by trip_id.
+  // "Am I late?": per-trip prediction state, keyed by trip_id.
   // onRequestDelayPrediction fires the on-demand fetch for one trip --
   // see hooks/useDelayPredictions.ts.
   delayPredictions: ReadonlyMap<string, DelayPredictionState>
@@ -59,9 +59,8 @@ interface MapViewProps {
 
 /** Owns the MapLibre instance imperatively -- trains/routes update via
  * `useEffect` calling into `map/mapController.ts` and `map/trainMarkers.ts`,
- * not JSX diffing (see milestones/03b-web-react-design-system.md decision
- * #1: re-rendering ~200 markers through React state on every SSE delta
- * would undo M4's MapLibre-native-transition design). */
+ * not JSX diffing: re-rendering ~200 markers through React state on every
+ * SSE delta would undo the deliberate MapLibre-native-transition design. */
 export function MapView({
   trains,
   hiddenRouteIds,
@@ -230,7 +229,7 @@ export function MapView({
     controllerRef.current.flyToDefaultView(mapRef.current)
   }, [loaded, recenterRequest])
 
-  // Basemap follows the app's light/dark theme (M4 Stage 5 follow-up,
+  // Basemap follows the app's light/dark theme (a later follow-up,
   // 2026-07-31). setStyle() wipes style-level sources/layers (route
   // lines, station points), so they're re-added once the new style
   // finishes loading -- markers/popups are untouched, they're plain DOM

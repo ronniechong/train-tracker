@@ -149,7 +149,7 @@ def test_ghost_event_reason_column_round_trips(tmp_path):
 
 
 def test_pre_v2_partition_missing_reason_column_compacts_with_null_not_dropped(tmp_path):
-    """A partition written by pre-M11 code has an 11-column `ghost_events`
+    """A partition written by older code has an 11-column `ghost_events`
     table with no `reason` column at all. `archive/run.py` retries a closed
     day's compaction across runs until upload succeeds, so this file can
     genuinely be compacted for the first time by code that has already
@@ -162,7 +162,7 @@ def test_pre_v2_partition_missing_reason_column_compacts_with_null_not_dropped(t
     store.rotate(_at(2026, 8, 1))
     store.close()
 
-    # Recreate the table exactly as pre-M11 code did (no `reason` column),
+    # Recreate the table exactly as older code did (no `reason` column),
     # bypassing HistoryStore's own (already-updated) schema.
     partition_path = store.partition_path(date(2026, 8, 1))
     conn = sqlite3.connect(partition_path)

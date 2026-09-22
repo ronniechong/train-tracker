@@ -23,7 +23,7 @@ interface StationPanelProps {
   schedule: StationScheduleState
 }
 
-/** Station click / search select → persistent sidebar panel (M4 Stage 4
+/** Station click / search select → persistent sidebar panel (added
  * remainder, 2026-07-31). "Nearby trains" is computed client-side (geofence
  * match against live train positions, no API call). "Next trains" (added
  * for the station-schedule feature) is the opposite: server-computed from

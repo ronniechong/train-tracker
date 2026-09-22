@@ -516,7 +516,7 @@ class _StubHeadwayTracker:
 
 
 def test_scheduled_train_surfaces_headway_when_a_tracker_is_configured():
-    # M12 #4: `_scheduled_train` resolves (stop_id, route_id, direction_id)
+    # `_scheduled_train` resolves (stop_id, route_id, direction_id)
     # from the departure and forwards it to `store.headway_for`.
     store = StateStore(
         discrepancy_log=InMemoryEventLog(), ghost_log=InMemoryEventLog(),
@@ -774,7 +774,7 @@ async def test_station_schedule_returns_well_formed_response_for_known_station(
     assert "wheelchair_boarding" in body
     for train in body["departures"]:
         assert "platform_code" in train
-        # M12 #4: no headway_tracker configured on this store -- every
+        # No headway_tracker configured on this store -- every
         # headway field is honestly null/zero/false, never omitted.
         assert train["average_headway_seconds"] is None
         assert train["headway_sample_size"] == 0
@@ -793,7 +793,7 @@ async def test_station_schedule_returns_well_formed_response_for_known_station(
 
 def test_train_reports_next_stop_and_delay_from_live_snapshot():
     # `_train` wires `state/station.py`'s `next_stop_and_delay` + the
-    # caller-supplied stops dict into the public Train shape (M12 #2).
+    # caller-supplied stops dict into the public Train shape.
     from traintracker.gtfs.stops import Stop
 
     now = datetime.fromtimestamp(1050, tz=timezone.utc)
@@ -851,7 +851,7 @@ def test_train_next_stop_is_none_when_stops_dict_not_supplied():
 def test_train_reports_trip_progress_against_the_static_terminus(tmp_path, sample_static_zip_bytes):
     # `_train` wires `state/station.py`'s `current_stop_sequence` +
     # `PinnedScheduleCache.terminus_for` into the public Train shape
-    # (M12 #5). WEEKDAY_TRIP_1 in the shared fixture is a 2-stop trip
+    # WEEKDAY_TRIP_1 in the shared fixture is a 2-stop trip
     # (PLAT_A1 seq 1 -> PLAT_B1 seq 2, terminus sequence 2) -- pinned to a
     # fixed service_date matching the snapshot's own start_date, so this
     # doesn't depend on wall-clock "today" the way `_pinned_schedule_cache`
@@ -884,7 +884,7 @@ def test_train_reports_trip_progress_against_the_static_terminus(tmp_path, sampl
     assert train.progress_stop_sequence == 1
     assert train.progress_total_stops == 2
     # No second comparable trip in the fixture's route+direction+span group
-    # -- an honest "unknown", not a guess (M12 #6).
+    # -- an honest "unknown", not a guess.
     assert train.skipped_stop_count is None
 
 

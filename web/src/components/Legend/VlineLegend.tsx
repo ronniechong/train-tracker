@@ -23,8 +23,7 @@ function corridors(): { name: string; routeIds: string[] }[] {
 
 /** Renders a short line-style preview (solid/dashed/dotted/etc.) instead
  * of a colour swatch -- V/Line's brand has one colour for the whole mode,
- * so corridor identity is carried by line style, not colour (see the
- * Phase C design addendum). */
+ * so corridor identity is carried by line style, not colour. */
 function LineStylePreview({ routeName }: { routeName: string }) {
   const dashArray = LINE_DASH_ARRAY[lineStyleForRouteName(routeName)]
   return (

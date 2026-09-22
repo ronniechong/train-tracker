@@ -1,7 +1,7 @@
 # --- secrets & local-only context (never commit) ---
 .env
 .env.*
-# M7 P3: template files carry no real values, meant to be committed --
+# Template files carry no real values, meant to be committed --
 # `.env.*` above was unintentionally excluding this one too.
 !web/.env.example
 !service/.env.example
@@ -11,7 +11,8 @@ docker-compose.override.yml
 # --- data (stays out of the public repo) ---
 # Scoped to the deploy runtime bind-mount specifically -- a bare `data/`
 # matches at any depth and was silently excluding the *intentionally*
-# committed web/src/data/geometry.json (M4's bundled static geometry file).
+# committed web/src/data/geometry.json (the frontend's bundled static
+# geometry file).
 /deploy/data/
 *.db
 *.db-*

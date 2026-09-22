@@ -52,9 +52,10 @@ python analyze_vline.py \
   --out report.md
 ```
 
-Then write `artifacts/vline-spike-findings.md` (M1 `FINDINGS.md` structure:
-measured numbers -> decision matrix -> planning resolution) and resolve the
-milestone's Phase-A checklist, Gate 3, and the Gate 4 threshold validation.
+Then write `artifacts/vline-spike-findings.md` (same structure as the
+Metro data spike's own findings doc: measured numbers -> decision matrix
+-> planning resolution) and resolve the remaining open checklist items
+(see `analyze_vline.py`'s own docstring for the full numbered list).
 
 ## Teardown
 

@@ -12,14 +12,13 @@ import { vlineStationsById } from '../../vlineGeometry'
 import styles from '../../App.module.css'
 
 /** Separate route, separate component tree, separate `useLiveFeed`
- * connection -- not a toggle/flag inside Metro's `App` state (Phase C
- * design brief: the backend runs V/Line as an isolated process so a fault
- * there can't touch Metro; folding both into one frontend state tree
- * would quietly recouple them on the client side). Trimmed relative to
- * `App.tsx`: no station search, no train tracking, no delay predictions --
- * none of those have a V/Line backend equivalent (see the design brief's
- * out-of-scope list). Station click DOES have full schedule parity with
- * Metro (M15) -- `PinnedScheduleCache` is mode-agnostic. */
+ * connection -- not a toggle/flag inside Metro's `App` state: the backend
+ * runs V/Line as an isolated process so a fault there can't touch Metro;
+ * folding both into one frontend state tree would quietly recouple them
+ * on the client side. Trimmed relative to `App.tsx`: no station search,
+ * no train tracking, no delay predictions -- none of those have a V/Line
+ * backend equivalent. Station click DOES have full schedule parity with
+ * Metro -- `PinnedScheduleCache` is mode-agnostic. */
 export function VlinePage() {
   const routeGate = useVlineRouteGate()
   const liveState = useLiveFeed('/api/vline', routeGate === 'enabled')

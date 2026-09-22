@@ -16,8 +16,8 @@ export interface AlertsState {
 
 // Network-wide (no route_id filter) -- this is a general "what's currently
 // disrupted" surface, not scoped to whatever station happens to be
-// selected. Per-line/per-trip narrowing is 05b's job (the AI layer reads
-// this same local state, more precisely, via its own tools).
+// selected. Per-line/per-trip narrowing is the AI layer's job -- it reads
+// this same local state, more precisely, via its own tools.
 export function useAlerts(): AlertsState {
   const [state, setState] = useState<AlertsState>({ alerts: [], loading: true, error: false })
 

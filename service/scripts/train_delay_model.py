@@ -1,10 +1,10 @@
-"""One-off training script for M5's delay/ETA prediction feature -- NOT
+"""One-off training script for the delay/ETA prediction feature -- NOT
 part of the automated pytest suite (reads real production history data,
 writes a real model file). Fits a plain linear regression, zero new
 dependencies (no numpy/scikit-learn -- `service/pyproject.toml` has none
-today; the milestone's own design note says ship the simplest thing that
-could work, only escalate if this model's real eval error is unacceptably
-high against the naive baseline below).
+today; ship the simplest thing that could work, only escalate if this
+model's real eval error is unacceptably high against the naive baseline
+below).
 
 Target: a trip's final delay at its terminus (`TripCompletionEvent.
 delay_seconds`), predicted from a mid-journey `DelayObservationEvent`

@@ -172,7 +172,7 @@ def next_stop_and_delay(
     snapshot: TrainSnapshot, now: datetime,
 ) -> tuple[str | None, int | None]:
     """(stop_id, delay_seconds) for whichever stop the train is currently
-    heading to or dwelling before departing (M12 #2: per-train "Next:
+    heading to or dwelling before departing (per-train "Next:
     Richmond, 3 min late"). Reuses `_anchors`' rolling-window-aware
     boundaries rather than `derive_station_state`'s at/between distinction
     directly - "next stop" collapses both "not yet departed origin" and
@@ -210,7 +210,7 @@ def next_stop_and_delay(
 
 def current_stop_sequence(snapshot: TrainSnapshot, now: datetime) -> int | None:
     """The `stop_sequence` of the stop the train has most recently reached
-    or departed (M12 #5: "3 of 12 stops done"). `stop_sequence` values are
+    or departed ("3 of 12 stops done"). `stop_sequence` values are
     absolute positions in the trip's FULL static schedule, so unlike
     `stop_id` they stay meaningful even though TU's `stop_time_update` list
     is a rolling window that's already trimmed earlier stops off the front

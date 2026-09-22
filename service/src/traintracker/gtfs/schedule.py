@@ -19,7 +19,7 @@ from .stops import Stop
 
 @dataclass(frozen=True)
 class NextServiceLeg:
-    """One same-line leg of a next-service lookup (M13) -- a same-trip
+    """One same-line leg of a next-service lookup -- a same-trip
     departure/arrival pair, unlike `ScheduledDeparture` which only carries
     a single stop/time (that shape is "what departs here next", this one
     is "does this specific trip also reach my destination, and when")."""
@@ -178,7 +178,7 @@ def next_service_same_line(
     `next_departures`, no calendar filtering here). Returns `None` when no
     such trip exists today after `after` -- ambiguous with "no more
     services today" vs. "this line never connects these two stations";
-    the caller (M13's `find_next_service`) distinguishes those via
+    the caller (`find_next_service`) distinguishes those via
     `lines_no_service_today`/a same-line existence check, not this
     function.
     """

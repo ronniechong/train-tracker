@@ -22,7 +22,7 @@ import json
 from collections import defaultdict
 from datetime import datetime
 
-# Same bbox M1's Q4 used (analyze.py) - loosely drawn around
+# Same bbox the data spike's City Loop question used (analyze.py) - loosely drawn around
 # Flinders St -> Melbourne Central -> Parliament.
 CITY_LOOP_BBOX = {
     "lat_min": -37.815,

@@ -14,10 +14,10 @@ interface TrainListProps {
   onSelectTrain: (tripId: string) => void
 }
 
-/** V/Line-only addition to the reused Metro sidebar shell (see the Phase C
- * design decisions doc) -- closes a real discoverability gap Metro's map
- * doesn't have: on a much larger, pannable regional map, a train can be
- * entirely off-screen with nothing else on screen indicating it exists.
+/** V/Line-only addition to the reused Metro sidebar shell -- closes a
+ * real discoverability gap Metro's map doesn't have: on a much larger,
+ * pannable regional map, a train can be entirely off-screen with nothing
+ * else on screen indicating it exists.
  * Plain bordered rows, no card/carousel treatment, same filtering
  * (`isTrainFilteredOut`) as the map's own markers so the list and the map
  * never disagree about which trains are currently shown. */

@@ -38,13 +38,13 @@ interface VlineSidebarProps {
 }
 
 /** V/Line's sidebar reuses Metro's existing shell rather than inventing a
- * new pattern (Phase C design decision, Session 91) -- Header/StatusPanel
- * as-is, a V/Line-specific line-style Legend, a genuinely new V/Line-only
- * TrainList, and a StationPanel with full schedule parity with Metro's own
- * (M15 -- see VlineStationPanel.tsx). Search/Announcements are omitted
- * entirely rather than shown as broken or empty: neither feature (station
- * search, service alerts, weekly digest) exists for V/Line, so there's
- * nothing for a "not available" state to attach to. */
+ * new pattern -- Header/StatusPanel as-is, a V/Line-specific line-style
+ * Legend, a genuinely new V/Line-only TrainList, and a StationPanel with
+ * full schedule parity with Metro's own (see VlineStationPanel.tsx).
+ * Search/Announcements are omitted entirely rather than shown as broken
+ * or empty: neither feature (station search, service alerts, weekly
+ * digest) exists for V/Line, so there's nothing for a "not available"
+ * state to attach to. */
 export function VlineSidebar({
   liveState,
   hiddenRouteIds,

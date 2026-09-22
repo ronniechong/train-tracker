@@ -148,7 +148,7 @@
       "id": 5,
       "type": "timeseries",
       "title": "Ghost episodes, by City Loop containment",
-      "description": "Decision gate: if ~99% of ghost events are loop_contained=true -> dedicated 'in loop, position unavailable' state (M4).",
+      "description": "Decision gate: if ~99% of ghost events are loop_contained=true -> dedicated 'in loop, position unavailable' state.",
       "gridPos": {
         "x": 0,
         "y": 16,
@@ -224,7 +224,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Not implemented yet.** Computing live coverage-vs-schedule requires loading the pinned static snapshot (2c) inside the running poller to know which trips are scheduled right now -- a new integration surface not wired up by any milestone yet (2c's fetch job itself also has no production entrypoint). Flagged and deferred at 2f's kickoff (2026-07-21) rather than built half-considered. See `milestones/02f-observability-alerting.md`."
+        "content": "**Not implemented yet.** Computing live coverage-vs-schedule requires loading the pinned static snapshot inside the running poller to know which trips are scheduled right now -- a new integration surface not wired up yet (the static-snapshot fetch job itself also has no production entrypoint). Flagged and deferred (2026-07-21) rather than built half-considered."
       }
     },
     {
@@ -448,7 +448,7 @@
       "id": 14,
       "type": "timeseries",
       "title": "HTTP requests/sec, by route + status",
-      "description": "M3, reopened 2026-08-01: per-route request/status visibility that didn't exist before (only 429 rejections were tracked). A route silently 500ing, or getting hammered below the rate-limit threshold, is now visible here.",
+      "description": "Added 2026-08-01: per-route request/status visibility that didn't exist before (only 429 rejections were tracked). A route silently 500ing, or getting hammered below the rate-limit threshold, is now visible here.",
       "gridPos": {
         "x": 0,
         "y": 60,
@@ -615,7 +615,7 @@
       "id": 18,
       "type": "timeseries",
       "title": "Archiver: oldest pending day age",
-      "description": "Age of the oldest currently-unarchived day. Alert threshold: 53 days (RETENTION_DAYS=60 minus the 7-day buffer in run.py's SAFETY_NET_DAYS) -- milestone 09's doc text says '23-day safety net', which is stale, written before retention was extended from 30 to 60 days; this panel and its alert use the real code constant.",
+      "description": "Age of the oldest currently-unarchived day. Alert threshold: 53 days (RETENTION_DAYS=60 minus the 7-day buffer in run.py's SAFETY_NET_DAYS) -- this panel and its alert always use the real code constant, not a design-doc figure that may be stale relative to a later retention change.",
       "gridPos": {
         "x": 12,
         "y": 84,

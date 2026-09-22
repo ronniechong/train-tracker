@@ -18,12 +18,12 @@ export function App() {
   // would each keep their own local state, unaware of the other toggling.
   const [theme, setTheme] = useTheme()
   const [hiddenRouteIds, setHiddenRouteIds] = useState<ReadonlySet<string>>(() => new Set())
-  // On by default (reversed 2026-07-31, Session 26 -- was off/opt-in at
-  // Session 24) -- still a real toggle, not a removal: ghosts stay fully
-  // available and honestly labelled, just not shown until asked for.
+  // On by default (reversed 2026-07-31 -- was off/opt-in before that)
+  // -- still a real toggle, not a removal: ghosts stay fully available
+  // and honestly labelled, just not shown until asked for.
   const [hideGhosts, setHideGhosts] = useState(true)
   // Shared by both station-selection entry points (search + map click) --
-  // see M4 Stage 4 remainder, 2026-07-31.
+  // see App.tsx's station-selection wiring, 2026-07-31.
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null)
   // Lifted here (not called separately in Sidebar/MapView) for the same
   // reason as theme above: StationPanel (sidebar) and the on-map popup
@@ -31,12 +31,12 @@ export function App() {
   const schedule = useStationSchedule(selectedStationId)
   const [flyToRequest, setFlyToRequest] = useState<FlyToRequest | null>(null)
   const [recenterRequest, setRecenterRequest] = useState<number | null>(null)
-  // M4 Stage 5: mobile off-canvas drawer. Harmless to leave true above the
+  // Mobile off-canvas drawer. Harmless to leave true above the
   // breakpoint -- Sidebar.module.css's `.open` rule only exists inside a
   // `max-width: 768px` media query, so this has zero visual effect on
   // desktop regardless of its value.
   const [drawerOpen, setDrawerOpen] = useState(false)
-  // Train tracking (M12 follow-up). trackedTripId survives while the train
+  // Train tracking. trackedTripId survives while the train
   // is live/coasting/ghost -- only cleared when the marker manager reports
   // the trip fully removed (see handleTrainRemoved) or the user explicitly
   // untracks. isFollowing is a separate flag: a manual pan/zoom pauses the
@@ -47,7 +47,7 @@ export function App() {
   const [trackedTripId, setTrackedTripId] = useState<string | null>(null)
   const [isFollowing, setIsFollowing] = useState(false)
   const [clickedTrainId, setClickedTrainId] = useState<string | null>(null)
-  // "Am I late?" (M5 delay/ETA prediction) -- on-demand, per-trip, no
+  // "Am I late?" delay/ETA prediction -- on-demand, per-trip, no
   // polling. See hooks/useDelayPredictions.ts.
   const delayPredictions = useDelayPredictions()
 

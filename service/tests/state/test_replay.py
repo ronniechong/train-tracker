@@ -75,9 +75,9 @@ def test_replay_fixture_reproduces_known_ghost_gaps_and_resolves_station_state()
     total = sum(station_status_counts.values())
     assert station_status_counts["unknown"] / total < 0.05
 
-    # The two known ~45min gaps found when this fixture was cut (see
-    # milestone 2d's log): both must show up as completed ghost episodes,
-    # not still-open (flush would leave reappeared_at=None) or missing.
+    # The two known ~45min gaps found when this fixture was cut must show
+    # up as completed ghost episodes, not still-open (flush would leave
+    # reappeared_at=None) or missing.
     ghost_events_by_trip = {}
     for event in ghost_log.events:
         ghost_events_by_trip.setdefault(event.trip_id, []).append(event)
@@ -89,7 +89,7 @@ def test_replay_fixture_reproduces_known_ghost_gaps_and_resolves_station_state()
         # (~2700-2750s) minus the coasting window before ghosting starts.
         event = max(matching, key=lambda e: e.ghost_duration_s or 0)
         assert 2000 < event.ghost_duration_s < 2800
-        assert event.loop_contained is False  # matches the 2d pre-analysis: ~0% loop-contained
+        assert event.loop_contained is False  # matches the earlier pre-analysis: ~0% loop-contained
 
     # Discrepancy log should be non-empty (feeds do disagree sometimes -
     # confirmed on a single cycle earlier) but bounded, not the majority of

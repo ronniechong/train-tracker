@@ -5,7 +5,7 @@ import type { Alert } from '../../api-types'
 import styles from './AlertsPanel.module.css'
 
 // Effect enum -> short human label. Falls back to the raw value for any
-// effect not seen in the M1/2g soak captures -- an unrecognised enum
+// effect not seen in the data-spike captures -- an unrecognised enum
 // should still show something, not disappear silently.
 const EFFECT_LABEL: Record<string, string> = {
   NO_SERVICE: 'No service',
@@ -40,9 +40,9 @@ function since(alert: Alert): string | null {
 
 /** Network-wide "what's currently disrupted" summary -- deliberately
  * compact (header text + effect only, no per-line filtering yet) since
- * this is the first frontend surface for Service Alerts content at all
- * (05a pass 3): the feed was previously polled but never parsed anywhere
- * in this codebase.
+ * this is the first frontend surface for Service Alerts content at all:
+ * the feed was previously polled but never parsed anywhere in this
+ * codebase.
  *
  * Takes `alerts`/`loading`/`error` as props rather than calling `useAlerts`
  * itself (2026-08-09) -- the Announcements modal's tab label needs the

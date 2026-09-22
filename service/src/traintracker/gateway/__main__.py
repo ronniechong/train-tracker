@@ -1,8 +1,8 @@
 """One-shot auth smoke check: `python -m traintracker.gateway`.
 
-Not the poller loop (that's 2b) — this exists only so 2a's acceptance
-criterion ("docker compose up authenticates against the real live API at
-least once") has something runnable to check against.
+Not the poller loop -- this exists only so the acceptance criterion
+("docker compose up authenticates against the real live API at least
+once") has something runnable to check against.
 """
 
 from __future__ import annotations

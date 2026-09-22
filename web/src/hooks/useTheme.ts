@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 
-// M4 Stage 5: tokens.css's `data-theme` override hook existed since Stage
-// 3b with nothing setting it -- this is that toggle. Persisted explicitly
-// once the user picks one; falls back to system preference on first visit
-// so a first-time viewer isn't forced into light mode against their OS
-// setting.
+// tokens.css's `data-theme` override hook existed before anything set it
+// -- this is that toggle. Persisted explicitly once the user picks one;
+// falls back to system preference on first visit so a first-time viewer
+// isn't forced into light mode against their OS setting.
 const STORAGE_KEY = 'traintracker-theme'
 
 export type Theme = 'light' | 'dark'

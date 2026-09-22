@@ -26,8 +26,8 @@ import pyarrow as pa
 # v2 (2026-08-09): added `ghost_events.reason` -- distinguishes why a ghost
 # episode ended (reappeared/timed_out/flushed/completed/cancelled) instead
 # of purely elapsed time. Rows archived before this ship date have
-# `schema_version=1` and no `reason` (backfilling historical rows is out of
-# scope, see milestone 11 -- gap-honesty over fabricated certainty).
+# `schema_version=1` and no `reason` (backfilling historical rows is out
+# of scope -- gap-honesty over fabricated certainty).
 SCHEMA_VERSION = 2
 
 _UTC_TS = pa.timestamp("us", tz="UTC")

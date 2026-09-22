@@ -20,8 +20,8 @@ interface VlineMapViewProps {
   /** Selected from the train list -- reuses trainMarkers.ts's existing
    * "tracked" ring visual purely for highlighting, and also drives the
    * click info popup (trainPopup.ts, no Track/"Am I late?" buttons -- those
-   * have no V/Line backend equivalent). No camera follow (see the Phase C
-   * design brief's out-of-scope list). */
+   * have no V/Line backend equivalent). No camera follow -- out of scope
+   * for V/Line. */
   highlightedTripId: string | null
   onSelectTrain: (tripId: string) => void
   onStationClick: (stationId: string | null) => void
@@ -29,7 +29,7 @@ interface VlineMapViewProps {
   // Metro's own MapView.tsx.
   recenterRequest: number | null
   /** Drives the on-map station popup, same lockstep-with-the-sidebar
-   * pattern as Metro's MapView.tsx (M15). */
+   * pattern as Metro's MapView.tsx. */
   selectedStationId: string | null
   schedule: StationScheduleState
 }
@@ -39,7 +39,7 @@ interface VlineMapViewProps {
  * modules with V/Line's own geometry/config, but drops what the design
  * brief marks genuinely out of scope for V/Line (search fly-to,
  * camera-follow tracking, delay predictions -- none have a V/Line backend
- * equivalent). Station schedule DOES have full parity with Metro (M15). */
+ * equivalent). Station schedule DOES have full parity with Metro. */
 export function VlineMapView({
   trains,
   hiddenRouteIds,

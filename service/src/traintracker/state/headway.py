@@ -9,7 +9,7 @@ station served by multiple lines (or one line running both directions)
 would otherwise blend unrelated headways into a meaningless average.
 
 Arrival detection reuses station.py's `derive_station_state` (the same
-schedule-derived "at" signal every other M12 feature relies on) rather than
+schedule-derived "at" signal several other features rely on) rather than
 re-deriving "is this train at this stop right now" from raw stop_time
 updates a second time.
 """

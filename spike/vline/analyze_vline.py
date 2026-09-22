@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """V/Line spike analyzer — turns a raw capture + pinned mode-1 static
-snapshot into the numbers Phase A needs, written to a markdown report.
+snapshot into the numbers this data spike needs, written to a markdown
+report.
 
-Answers, in order (see the milestone's Phase A checklist):
+Answers, in order:
 
   1. Field population under sustained capture (does the single-snapshot
      "matches Metro" finding hold?)
@@ -432,7 +433,7 @@ def analyze_coverage(vp_records, tu_records, zf: zipfile.ZipFile, trips) -> dict
 
     # Diagnostic: of the observed trip_ids NOT in `scheduled`, how many are
     # unknown to the static file entirely (real-time-only, e.g. ADDED — not
-    # a join problem, per the M1 precedent) vs. present in trips.txt but
+    # a join problem, per Metro's own spike precedent) vs. present in trips.txt but
     # whose service_id just never resolved active on any captured date
     # (a genuine calendar/window mismatch worth investigating)?
     observed_not_scheduled = seen - scheduled

@@ -638,11 +638,11 @@ _See `spike/probes.md` — run manually, not part of the capture loop._
 
 | Decision | Gate | Threshold (pre-committed) | Measured | Resolution |
 |---|---|---|---|---|
-| Station derivation in M2 | Q1 | `stop_id`+`current_status` >=95% populated -> optional; else mandatory | _tbd_ | _tbd_ |
-| Ghost-train fallback in M4 | Q2 | coverage >=85% all bands -> skip; else build | _tbd_ | _tbd_ |
+| Station derivation | Q1 | `stop_id`+`current_status` >=95% populated -> optional; else mandatory | _tbd_ | _tbd_ |
+| Ghost-train fallback | Q2 | coverage >=85% all bands -> skip; else build | _tbd_ | _tbd_ |
 | Production poll interval | Q3 | set to ~1/3 of measured refresh interval, floor 10s | _tbd_ | _tbd_ |
 | City Loop handling scope | Q4 | anomalies rare/short -> freeze-in-place; frequent/long -> dead-reckoning | _tbd_ | _tbd_ |
-| trip_id reconciliation | Q5 | join >=98% -> direct join; else fuzzy/TU-based reconciliation in M2 | _tbd_ | _tbd_ |
+| trip_id reconciliation | Q5 | join >=98% -> direct join; else fuzzy/TU-based reconciliation later | _tbd_ | _tbd_ |
 | Staleness alert logic | Q6 | shaped entirely by observed overnight behaviour | _tbd_ | _tbd_ |
 | Conditional GET in poller | Q7 | supported -> use; else plain GET + timestamp dedupe only | _tbd_ | _tbd_ |
 
@@ -650,8 +650,8 @@ _See `spike/probes.md` — run manually, not part of the capture loop._
 
 _Fill in by hand after reading sections 1-4:_
 
-- Amendments to M2 scope:
-- Amendments to M4 scope:
+- Amendments to the state-store build's scope:
+- Amendments to the map build's scope:
 - New risks surfaced by the data:
 - Assumptions in the master plan invalidated by this data:
 - Deferred items resolved / re-deferred:

@@ -73,7 +73,7 @@ function buildTrainPopupContent(
     content.append(nextStopRow)
   }
 
-  // "Am I late?" (M5 delay/ETA prediction) result -- placed right under
+  // "Am I late?" delay/ETA prediction result -- placed right under
   // "Next: <station>" rather than after the buttons, grouping it with
   // the other per-trip schedule facts instead of the actions. Long
   // terminus names (e.g. "Cranbourne via Metro Tunnel") need to wrap,

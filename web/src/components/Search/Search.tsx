@@ -16,7 +16,7 @@ interface SearchProps {
   onSelect: (station: Station) => void
 }
 
-/** Typeahead against the bundled station list (M4 Stage 4 remainder,
+/** Typeahead against the bundled station list (added
  * 2026-07-31). Selecting a result flies the map there (App.tsx's
  * flyToRequest) and re-enables any of the station's lines currently hidden
  * in the Legend, so a result on a toggled-off line doesn't land on what

@@ -1,6 +1,6 @@
 // Mirrors service/src/traintracker/api/schemas.py — the public API's
 // response contract. Kept as plain interfaces, not generated, since the
-// shape is small and stable (M3's finding #10: defined once, explicitly).
+// shape is small and stable (defined once, explicitly).
 
 export type TrainStatus = 'live' | 'coasting' | 'ghost'
 
@@ -22,24 +22,24 @@ export interface Train {
   start_time: string | null
   trip_headsign: string | null
   direction_id: number | null
-  // Rolling-window-aware "what's next" (M12 #2) -- all three null together
+  // Rolling-window-aware "what's next" -- all three null together
   // whenever the window hasn't surfaced a next stop yet. delay_seconds is
   // signed: positive late, negative early.
   next_stop_id: string | null
   next_stop_name: string | null
   next_stop_delay_seconds: number | null
-  // Trip progress (M12 #5) -- both null together whenever a total isn't
+  // Trip progress -- both null together whenever a total isn't
   // resolvable (no static row, e.g. a real-time-only ADDED trip, or the
   // window hasn't surfaced any anchor yet).
   progress_stop_sequence: number | null
   progress_total_stops: number | null
   // Stops skipped relative to the most common static pattern among
-  // comparable trips (M12 #6) -- a count, not Metro's own "express"/
+  // comparable trips -- a count, not Metro's own "express"/
   // "limited express" names. Null when no comparable trip group exists.
   skipped_stop_count: number | null
 }
 
-// The "Am I late?" on-demand prediction (M5). `predicted_at` is when this
+// The "Am I late?" on-demand prediction. `predicted_at` is when this
 // specific prediction was computed, not a live value -- the UI labels it
 // "as of <predicted_at>" and the user re-clicks the CTA for a fresh one.
 export interface DelayPredictionResponse {
@@ -96,7 +96,7 @@ export interface ScheduledTrain {
   is_cancelled: boolean
   is_added: boolean
   platform_code: string | null
-  // M12 #4: this platform's own (route, direction) rolling headway from
+  // This platform's own (route, direction) rolling headway from
   // recent arrivals. Null-safe -- no history yet means every field here
   // is null/zero/false, never omitted.
   average_headway_seconds: number | null
@@ -118,7 +118,7 @@ export interface StationScheduleResponse {
   // 2=not accessible. Null when the station's own row doesn't carry it.
   wheelchair_boarding: number | null
   departures: ScheduledTrain[]
-  // M12 #3: lines that normally call here but have zero calendar-active
+  // Lines that normally call here but have zero calendar-active
   // trips today anywhere on the network. Empty, not omitted, when nothing
   // is suspended today.
   lines_no_service_today: LineSummary[]
@@ -184,10 +184,9 @@ export interface WeeklyDigestListResponse {
   digests: WeeklyDigest[]
 }
 
-// M8 Insights (milestones/08-analytics-insights.md). `route_id` is never
-// a `-R` (replacement bus) id here -- see the backend's PTV-methodology
-// correction -- `replacement_bus_count` is the only place that volume
-// shows up, kept separate from on_time/late/cancelled.
+// `route_id` is never a `-R` (replacement bus) id here -- see the
+// backend's PTV-methodology correction -- `replacement_bus_count` is the
+// only place that volume shows up, kept separate from on_time/late/cancelled.
 export interface InsightsLineStat {
   route_id: string
   on_time_count: number
@@ -204,9 +203,9 @@ export interface InsightsHourlyStat {
   completion_count: number
 }
 
-// Chart 3. Buckets diverge from the milestone doc's original
-// on-time/1-5min/5-10min/10+min sketch -- that overlapped the already-
-// locked <=4:59 on-time threshold. Network-wide, matching the KPI row.
+// Chart 3. Buckets diverge from an earlier on-time/1-5min/5-10min/10+min
+// sketch -- that overlapped the already-locked <=4:59 on-time threshold.
+// Network-wide, matching the KPI row.
 export interface InsightsHistogramStat {
   on_time_count: number
   late_5_10_count: number

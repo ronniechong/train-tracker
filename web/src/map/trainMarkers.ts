@@ -73,7 +73,7 @@ export function trainIdentityLabel(train: Train): string | null {
 // reason (GTFS delay can be mildly negative too).
 const ON_TIME_BAND_S = 60
 
-// "Next: Richmond, 3 min late" (M12 #2) -- null whenever the rolling
+// "Next: Richmond, 3 min late" -- null whenever the rolling
 // window hasn't surfaced a next stop yet (see `state/station.py`'s
 // `next_stop_and_delay` docstring), same "omit rather than half-fill"
 // convention as `trainIdentityLabel`.
@@ -88,7 +88,7 @@ export function nextStopLabel(train: Train): string | null {
   return `Next: ${train.next_stop_name}, ${suffix}`
 }
 
-// "3 of 12 stops done" (M12 #5) -- null whenever a total isn't resolvable
+// "3 of 12 stops done" -- null whenever a total isn't resolvable
 // (see `Train.progress_total_stops`'s own null-together contract), same
 // "omit rather than half-fill" convention as the labels above.
 // `progress_stop_sequence` of 0 means "hasn't departed its first stop yet"
@@ -100,7 +100,7 @@ export function progressLabel(train: Train): string | null {
   return `${train.progress_stop_sequence} of ${train.progress_total_stops} stops`
 }
 
-// "Skips 4 stops" (M12 #6) -- a plain count, never Metro's own "express"/
+// "Skips 4 stops" -- a plain count, never Metro's own "express"/
 // "limited express" names (those are applied inconsistently on the real
 // network -- see `gtfs/skip_pattern.py`'s docstring). Null both when the
 // trip matches its comparison group's normal pattern (0 skips isn't worth

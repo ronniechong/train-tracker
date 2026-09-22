@@ -282,7 +282,7 @@ services:
     networks:
       - internal
 
-  # M5's delay/ETA model retrain job. A third dedicated one-shot service,
+  # The delay/ETA model retrain job. A third dedicated one-shot service,
   # same reasoning as `archiver` above: neither `poller` nor `archiver`'s
   # existing volume declarations fit this job. It needs BOTH `/data`
   # writable (writes the trained model to /data/ai/delay_model.json, which

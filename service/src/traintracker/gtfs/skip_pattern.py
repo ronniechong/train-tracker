@@ -1,6 +1,6 @@
 """Derives a "skipped N stops" count per trip by comparing its static stop
 pattern against the most common pattern among trips sharing the same
-route+direction+span (M12 #6). No GTFS field states this directly -- neither
+route+direction+span. No GTFS field states this directly -- neither
 `trips.txt` nor a `trip_short_name` column exists in the real feed -- and
 Metro's own passenger-facing "express"/"limited express" labelling is
 inconsistently applied in practice, so this counts stops only, it never

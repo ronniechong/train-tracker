@@ -64,7 +64,7 @@ DATA_DIR = Path("/data")
 # Read-only mount of the archiver's own persistent state dir (see
 # `deploy/docker-compose.yml`'s `archiver` service and `TT_ARCHIVE_STATE_DIR`)
 # -- added so the API can read `public_status.json`, the one fact from the
-# otherwise fully internal HF archive pipeline (M9) worth showing on the
+# otherwise fully internal HF archive pipeline worth showing on the
 # public site. `poller` never writes here; the archiver container is the
 # only writer, same as `DATA_DIR`'s roles are reversed for that mount.
 ARCHIVE_STATE_DIR = Path("/archive-state")
@@ -99,8 +99,8 @@ SHUTDOWN_CHECK_INTERVAL_S = 1.0
 
 # Periodic summary line for anyone reviewing a burn-in via `docker compose
 # logs` -- counts are read via `HistoryStore.counts()`, i.e. today's
-# service_date partition, not a process-lifetime cumulative total (2b's
-# original stopgap, before 2e's persistence existed, counted from process
+# service_date partition, not a process-lifetime cumulative total (an
+# earlier stopgap, before persistence existed, counted from process
 # start; that in-memory counter is gone now that events survive a restart).
 SUMMARY_INTERVAL_S = 3600.0
 
@@ -263,7 +263,7 @@ async def main() -> int:
 
     # Headway/frequency from history: same in-memory-only, no-new-I/O-path
     # convention as the trackers above -- direction resolution reuses the
-    # same schedule_cache.trip_for() the M12 #1 per-train direction_id
+    # same schedule_cache.trip_for() the per-train direction_id
     # already relies on.
     headway_tracker = HeadwayTracker(_direction_lookup)
     store = StateStore(

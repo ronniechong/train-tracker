@@ -56,8 +56,8 @@ def test_basic_counts_and_on_time_pct():
 
 
 def test_undetermined_gap_events_are_excluded_entirely():
-    # Locked decision (milestone doc, tracking-layer scoping pass): no
-    # visible "N undetermined" count anywhere in a consuming digest.
+    # Locked decision: no visible "N undetermined" count anywhere in a
+    # consuming digest.
     events = [
         _event("t1", status="on_time"),
         _event("t2", status="undetermined_gap"),

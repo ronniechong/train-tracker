@@ -57,7 +57,7 @@ class TripTerminus:
 
 @dataclass(frozen=True)
 class NextServiceResult:
-    """M13's public next-service lookup result. `reason` distinguishes the
+    """The public next-service lookup result. `reason` distinguishes the
     two failure cases that still need the resolved station context
     (`no_service_today`, `no_route_found`) from `unknown_station`, which
     never reaches this type at all -- `find_next_service` returns `None`
@@ -96,11 +96,11 @@ class _ParsedSchedule:
     # intersects against to infer the line.
     stop_routes: dict[str, frozenset[str]]
     # trip_id -> its static TripRecord (headsign, direction_id) -- the
-    # per-train tooltip join (M12), same trip_id-keyed lookup shape as
+    # per-train tooltip join, same trip_id-keyed lookup shape as
     # termini_by_trip above.
     trips_by_id: dict[str, TripRecord]
     # trip_id -> stops skipped relative to the most common pattern among
-    # comparable trips (M12 #6), None when no comparable group exists yet.
+    # comparable trips, None when no comparable group exists yet.
     # Computed once per digest -- same reasoning as termini_by_trip.
     skip_stop_counts: dict[str, int | None]
 
@@ -229,7 +229,7 @@ class PinnedScheduleCache:
     def skip_stop_count_for(self, trip_id: str, service_date: date) -> int | None:
         """Stops this trip skips relative to the most common static
         pattern among trips sharing its route, direction, via-Loop-ness,
-        and start/end stops (M12 #6) -- see `gtfs/skip_pattern.py`. `None`
+        and start/end stops -- see `gtfs/skip_pattern.py`. `None`
         under the same "no pin yet, or real-time-only ADDED trip" cases as
         `terminus_for`/`trip_for`, or when too few comparable trips exist
         to judge a "normal" pattern against."""
@@ -240,7 +240,7 @@ class PinnedScheduleCache:
 
     def stops_for(self, now: datetime) -> dict[str, Stop]:
         """stop_id -> Stop for whichever static snapshot is pinned for
-        "today" - the per-train "next stop" tooltip (M12 #2) resolves a
+        "today" - the per-train "next stop" tooltip resolves a
         `next_stop_id` into a human-readable name via this. Raises
         `NoPinnedSnapshotError` under the same condition as
         `next_departures_for`."""
@@ -299,7 +299,7 @@ class PinnedScheduleCache:
     def lines_no_service_today(self, station_id: str, now: datetime) -> list[Route] | None:
         """Lines that normally call at `station_id` (per this static
         snapshot's own `stop_times.txt`, regardless of calendar) but have
-        ZERO calendar-active trips anywhere today (M12 #3: distinguishes
+        ZERO calendar-active trips anywhere today (distinguishes
         "this line doesn't run today" from `next_departures_for` silently
         returning an empty/short list, which is indistinguishable from
         "no more departures today" or "check back later").
@@ -377,7 +377,7 @@ class PinnedScheduleCache:
     ) -> StationMatch | None:
         """A single unambiguous station match, or `None` -- deliberately
         collapsing "no match" and "still ambiguous after route narrowing"
-        into the same outcome, per M13's resolved Finding 3 (`from`/`to`
+        into the same outcome (`from`/`to`
         "didn't resolve, ambiguous or not found" are one failure case,
         `unknown_station`, not three)."""
         matches = find_stations_by_name(parsed.stops, name)
@@ -448,7 +448,7 @@ class PinnedScheduleCache:
         return NextServiceResult(from_station=from_match, to_station=to_match, reason="no_route_found", legs=[])
 
     def stations_for(self, now: datetime) -> list[StationListing]:
-        """Every station (name + the lines that call there), for M13's
+        """Every station (name + the lines that call there), for the
         `GET /api/stations` -- reference/display use by train-tracker-
         query-web, not required for its own resolution since this project
         resolves names itself (`find_next_service` above)."""

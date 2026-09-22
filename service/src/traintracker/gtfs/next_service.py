@@ -1,4 +1,4 @@
-"""Single-transfer next-service combination logic for M13's public API.
+"""Single-transfer next-service combination logic for the public API.
 
 Kept separate from `schedule.py` (same-line lookup is pure GTFS query
 logic) because this module additionally encodes a POLICY decision: which
@@ -67,8 +67,7 @@ def find_next_service_single_transfer(
 ) -> SingleTransferService | None:
     """Best two-leg combination via the curated interchange list, ranked
     by soonest overall arrival time, ties broken by shortest interchange
-    wait -- the resolved ranking rule from M13's spec-review (Finding 4).
-    No minimum interchange dwell time is enforced beyond the strict
+    wait. No minimum interchange dwell time is enforced beyond the strict
     `departure > arrival` that `next_service_same_line` already applies to
     its own `after` bound -- a real passenger's practical minimum
     connection time is a walking-distance question this milestone's scope

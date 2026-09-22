@@ -337,7 +337,7 @@ groups:
           severity: critical
           project: train-tracker
         annotations:
-          summary: "[{{ $labels.mode }}] A day has gone unarchived past run.py's SAFETY_NET_DAYS (RETENTION_DAYS-7=53) -- real risk of permanent data loss once 60-day retention deletes the local partition before Hugging Face has a copy. Milestone 09's doc text said 23 days -- that was stale, written before retention moved from 30 to 60 days; this alert uses the real code constant."
+          summary: "[{{ $labels.mode }}] A day has gone unarchived past run.py's SAFETY_NET_DAYS (RETENTION_DAYS-7=53) -- real risk of permanent data loss once 60-day retention deletes the local partition before Hugging Face has a copy. This alert always uses the real code constant, not a design-doc figure that may be stale relative to a later retention change."
         data:
           - refId: A
             datasourceUid: prometheus

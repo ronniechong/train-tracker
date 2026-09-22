@@ -1,6 +1,6 @@
 /* Design tokens. Light is the CSS default; dark applies automatically via
    prefers-color-scheme. `data-theme="light"|"dark"` on <html> is a manual
-   override hook for M4 Stage 5's future toggle -- nothing sets it yet. */
+   override hook for a future toggle -- nothing sets it yet. */
 
 :root {
   /* ---- Color: light (default) ---- */

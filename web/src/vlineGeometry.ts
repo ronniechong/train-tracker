@@ -15,7 +15,7 @@ export const vlineRoutesByStationId = vlineIndex.routesByStationId
 // V/Line trains all render in one brand colour (see build_web_geometry.py's
 // VLINE_BRAND_COLOR override) -- individual corridor identity on the map
 // comes from line style instead (PTV's official branding has no per-route
-// colour to show, see the design addendum). Keyed by route NAME, not
+// colour to show). Keyed by route NAME, not
 // route_id, since a corridor generally has 2-3 route_ids sharing one name
 // (branch/direction variants) that should render identically.
 export type LineStyle = 'solid' | 'dashed' | 'dotted' | 'dash-dot' | 'long-dash'

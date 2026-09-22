@@ -294,7 +294,7 @@ def _row_to_delay_observation(row: tuple) -> DelayObservationEvent:
 @dataclass(frozen=True)
 class DelayObservationsWindow:
     """Same shape as `CompletionEventsWindow`, for `delay_observation_events`
-    -- the delay-model training script's read path (M5's delay/ETA
+    -- the delay-model training script's read path (the delay/ETA
     prediction feature)."""
 
     events: tuple[DelayObservationEvent, ...]

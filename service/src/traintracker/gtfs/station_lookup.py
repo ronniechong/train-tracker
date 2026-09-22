@@ -1,8 +1,8 @@
-"""Station NAME -> station_id resolution, for M13's public API. Distinct
+"""Station NAME -> station_id resolution, for the public API. Distinct
 from `schedule.py`'s `platforms_for_station`, which goes the other
 direction (a known station_id -> its platform stop_ids) -- this module is
 the new direction needed once an endpoint accepts free-text names instead
-of ids, per M13's resolved Finding 1.
+of ids.
 """
 
 from __future__ import annotations

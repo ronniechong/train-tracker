@@ -124,9 +124,9 @@ export function Sidebar({
   // since both are still real content, just lower-cadence than the live
   // map/station panels that should own the default view.
   const [announcementsOpen, setAnnouncementsOpen] = useState(false)
-  // M8 Insights nav entry -- gated on the Flagsmith flag `train-insights`.
+  // Insights nav entry -- gated on the Flagsmith flag `train-insights`.
   const insightsFlag = useFlags(['train-insights'])
-  // M10 Phase C -- gated on `train-vline` (off in production, on in dev).
+  // V/Line nav entry -- gated on `train-vline` (off in production, on in dev).
   const vlineEnabled = useVlineFeatureEnabled()
 
   return (

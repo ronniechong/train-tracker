@@ -29,20 +29,20 @@ class Train(BaseModel):
     bearing: float | None
     position_updated_at: datetime | None
     schedule_updated_at: datetime | None
-    # Static-schedule join (M12), resolved from the trip's own service_date
+    # Static-schedule join, resolved from the trip's own service_date
     # -- None whenever no snapshot is pinned yet, or the trip is a
     # real-time-only ADDED trip with no static trips.txt row at all.
     start_time: str | None
     trip_headsign: str | None
     direction_id: int | None
-    # Rolling-window-aware "what's next" (M12 #2) -- all three null
+    # Rolling-window-aware "what's next" -- all three null
     # together whenever the window hasn't surfaced a next stop yet (see
     # `state/station.py`'s `next_stop_and_delay`), never a crash.
     # `next_stop_delay_seconds` is signed: positive late, negative early.
     next_stop_id: str | None
     next_stop_name: str | None
     next_stop_delay_seconds: int | None
-    # Trip progress (M12 #5: "3 of 12 stops done") -- `progress_stop_sequence`
+    # Trip progress ("3 of 12 stops done") -- `progress_stop_sequence`
     # is absolute (see `state/station.py`'s `current_stop_sequence` for why
     # that stays meaningful despite TU's rolling window), `progress_total_stops`
     # is the trip's static terminus stop_sequence. Both null together for a
@@ -51,10 +51,10 @@ class Train(BaseModel):
     progress_stop_sequence: int | None
     progress_total_stops: int | None
     # Stops this trip skips relative to the most common static pattern
-    # among comparable trips (M12 #6, `gtfs/skip_pattern.py`) -- a count,
+    # among comparable trips (see `gtfs/skip_pattern.py`) -- a count,
     # never Metro's own "express"/"limited express" names (those are
     # applied inconsistently in practice). None when no comparable trip
-    # group exists yet, same honesty convention as the other M12 fields.
+    # group exists yet, same honesty convention as the other fields above.
     skipped_stop_count: int | None
     # Distinct from position_updated_at: set for every train regardless of
     # whether it's still present in the live feeds, so a fully-vanished
@@ -65,7 +65,7 @@ class Train(BaseModel):
 
 
 class DelayPredictionResponse(BaseModel):
-    """The "Am I late?" on-demand prediction (M5 delay/ETA feature) --
+    """The "Am I late?" on-demand prediction --
     a plain regression output, math only, no LLM call. `predicted_at`
     is when THIS prediction was computed, not a live value -- the
     frontend labels it "as of <predicted_at>" and the user re-clicks
@@ -137,7 +137,7 @@ class ScheduledTrain(BaseModel):
     is_cancelled: bool
     is_added: bool
     platform_code: str | None
-    # M12 #4: this platform's own (route, direction) rolling headway from
+    # This platform's own (route, direction) rolling headway from
     # recent arrivals -- see `state/headway.py`'s `HeadwayInfo`. Null-safe:
     # no history yet (or no headway_tracker configured) means every field
     # here is null, never omitted.
@@ -161,7 +161,7 @@ class StationScheduleResponse(BaseModel):
     # doesn't carry the field.
     wheelchair_boarding: int | None
     departures: list[ScheduledTrain]
-    # M12 #3: lines that normally call here but have zero calendar-active
+    # Lines that normally call here but have zero calendar-active
     # trips today anywhere on the network -- see
     # `PinnedScheduleCache.lines_no_service_today`'s docstring for why this
     # is system-wide, not station-specific. Empty, not omitted, when
@@ -370,10 +370,10 @@ class NextServiceLegResponse(BaseModel):
 
 
 class NextServiceResponse(BaseModel):
-    """M13's public next-service lookup. `reason` is the three-case
-    failure contract resolved at spec-review (Finding 3): `unknown_station`
-    never reaches this model at all (it's a 404 before resolution even
-    starts, since it's an input error, not a query outcome) -- only
+    """The public next-service lookup. `reason` is the three-case failure
+    contract: `unknown_station` never reaches this model at all (it's a
+    404 before resolution even starts, since it's an input error, not a
+    query outcome) -- only
     `no_service_today` and `no_route_found` land here, alongside the two
     valid stations that DID resolve, so a caller can still show "next
     trains from X" context even when no route was found today.

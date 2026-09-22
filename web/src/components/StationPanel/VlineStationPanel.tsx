@@ -25,8 +25,8 @@ interface VlineStationPanelProps {
 
 /** V/Line's station click panel -- reuses Metro's `StationPanel.module.css`
  * and, via `scheduleView.ts`, the exact same "Next trains" + "nearby
- * trains" rendering logic as `StationPanel.tsx` (M15). Structurally the
- * same component with V/Line's own geometry/schedule wired in, not a
+ * trains" rendering logic as `StationPanel.tsx`. Structurally the same
+ * component with V/Line's own geometry/schedule wired in, not a
  * reimplementation -- the only real difference is the placeholder text
  * (no station search on this page). */
 export function VlineStationPanel({ stationId, trains, hideGhosts, onClear, schedule }: VlineStationPanelProps) {

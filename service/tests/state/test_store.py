@@ -108,7 +108,7 @@ def _terminus_lookup(trip_id: str, service_date: date) -> TripTerminus | None:
 
 
 def test_cancelled_trip_fades_immediately_instead_of_waiting_max_ghost_age():
-    """M11: TripCompletionTracker's independent CANCELED detection must
+    """TripCompletionTracker's independent CANCELED detection must
     reach the ghost tracker the same tick, fading a never-seen-live (TU-only,
     straight-to-ghost) trip well before MAX_GHOST_AGE_S -- not leaving it as
     an unexplained ghost for up to 2 hours."""

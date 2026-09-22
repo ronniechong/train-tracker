@@ -322,7 +322,7 @@ def _scheduled_train(
             elif delay_seconds is not None:
                 predicted_time = dep.scheduled_time + timedelta(seconds=delay_seconds)
 
-    # M12 #4: headway is a property of this exact (platform, route,
+    # Headway is a property of this exact (platform, route,
     # direction), not of the individual trip -- null when this departure's
     # direction_id itself is unknown (can't resolve the group), same
     # honest-null convention as every other field here.
@@ -567,7 +567,7 @@ def create_app(
     # lets tests/dev construct an app without the archiver's read-only
     # mount wired up.
     archive_status_path: Path | None = None,
-    # The "Am I late?" on-demand delay prediction (M5). None by default,
+    # The "Am I late?" on-demand delay prediction. None by default,
     # same "feature not configured" 503 convention as the other optional
     # params above -- lets tests/dev construct an app before
     # `scripts/train_delay_model.py` has ever produced a model file.
@@ -887,7 +887,7 @@ def create_app(
         # Same "reads only the pinned static snapshot" invariant as every
         # other schedule-backed route -- station/route names are resolved
         # entirely against the fixed, in-memory canonical lists (never
-        # interpolated into any query/eval), per M13's security review.
+        # interpolated into any query/eval), per the security review.
         if schedule_cache is None:
             raise HTTPException(status_code=503, detail="schedule feature not configured")
         if after is not None:

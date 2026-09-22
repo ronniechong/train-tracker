@@ -1,6 +1,6 @@
 import { useFlags, useFlagsmithLoading } from '@flagsmith/flagsmith/react'
 
-// Same Flagsmith-gated-feature pattern as `train-insights` (M8) --
+// Same Flagsmith-gated-feature pattern as `train-insights` --
 // disabled in production, enabled in development (configured per-
 // environment in Flagsmith directly, not in code -- see
 // `deploy/.env`/`VITE_FLAGSMITH_ENV_ID` for how prod/dev already point at

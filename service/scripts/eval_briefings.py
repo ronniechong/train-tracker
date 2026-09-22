@@ -1,10 +1,10 @@
-"""One-off eval harness for 05e's on-demand briefing composer -- NOT part
+"""One-off eval harness for the on-demand briefing composer -- NOT part
 of the automated pytest suite (makes real, paid Haiku calls; needs
 ANTHROPIC_API_KEY + a real pinned static snapshot on disk). Run this
 before shipping any change to `ai/briefing.py`'s system prompt or
-`ai/briefing_filter.py`'s gate, to catch a regression the milestone's
-original scope explicitly named: "small eval set: known network states
--> expected briefing content, scored on every prompt change".
+`ai/briefing_filter.py`'s gate, to catch a regression this eval set was
+built specifically to guard: "small eval set: known network states ->
+expected briefing content, scored on every prompt change".
 
 Deliberately NOT LLM-as-judge -- every check here is a simple,
 deterministic keyword/length assertion, keeping this fast, cheap, and

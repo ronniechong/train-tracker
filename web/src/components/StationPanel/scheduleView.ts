@@ -23,7 +23,7 @@ export interface HeadwayCaption {
   gap: boolean
 }
 
-// M12 #4: this platform's own (route, direction) rolling headway --
+// This platform's own (route, direction) rolling headway --
 // `average_headway_seconds` is only set once the buffer has 2+ arrivals,
 // same null-means-no-data convention the rest of this panel already uses
 // (platform_code, wheelchair_boarding): insufficient sample renders
