@@ -31,3 +31,10 @@ export function stationSlug(stationName: string): string {
 export function trackStationSelect(stationName: string, source: 'search' | 'map'): void {
   trackEvent(`select-station/${stationSlug(stationName)}`, `via ${source}`)
 }
+
+/** V/Line-only, own path prefix -- some station names (e.g. Southern
+ * Cross, Footscray) exist in both networks, so reusing trackStationSelect's
+ * shared path would merge two distinct stations' counts. */
+export function trackVlineStationSelect(stationName: string): void {
+  trackEvent(`select-vline-station/${stationSlug(stationName)}`, 'via map')
+}

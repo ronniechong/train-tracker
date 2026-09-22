@@ -6,7 +6,8 @@ import { DrawerToggle } from '../DrawerToggle/DrawerToggle'
 import { useLiveFeed } from '../../hooks/useLiveFeed'
 import { useTheme } from '../../hooks/useTheme'
 import { useVlineRouteGate } from '../../hooks/useVlineFeature'
-import { trackEvent } from '../../lib/analytics'
+import { trackEvent, trackVlineStationSelect } from '../../lib/analytics'
+import { vlineStationsById } from '../../vlineGeometry'
 import styles from '../../App.module.css'
 
 /** Separate route, separate component tree, separate `useLiveFeed`
@@ -51,7 +52,12 @@ export function VlinePage() {
   // Same click-same-station-again / click-elsewhere toggle as Metro's own
   // handleStationClick (App.tsx).
   function handleStationClick(stationId: string | null): void {
-    setSelectedStationId((prev) => (stationId === null || stationId === prev ? null : stationId))
+    setSelectedStationId((prev) => {
+      if (stationId === null || stationId === prev) return null
+      const station = vlineStationsById.get(stationId)
+      if (station) trackVlineStationSelect(station.name)
+      return stationId
+    })
   }
 
   return (
