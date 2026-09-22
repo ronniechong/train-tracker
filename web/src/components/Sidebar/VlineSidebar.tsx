@@ -9,6 +9,7 @@ import { cx } from '../../lib/cx'
 import { trackEvent } from '../../lib/analytics'
 import { METRO_VLINE_NAV_TABS } from '../../lib/vlineNavTabs'
 import type { LiveState } from '../../hooks/useLiveFeed'
+import type { StationScheduleState } from '../../hooks/useStationSchedule'
 import type { Theme } from '../../hooks/useTheme'
 import styles from './Sidebar.module.css'
 
@@ -33,13 +34,14 @@ interface VlineSidebarProps {
   /** Only meaningful below the mobile breakpoint -- see Sidebar.module.css.
    * Ignored (sidebar always visible) above it, same as Metro's Sidebar. */
   open: boolean
+  schedule: StationScheduleState
 }
 
 /** V/Line's sidebar reuses Metro's existing shell rather than inventing a
  * new pattern (Phase C design decision, Session 91) -- Header/StatusPanel
  * as-is, a V/Line-specific line-style Legend, a genuinely new V/Line-only
- * TrainList, and a trimmed StationPanel (nearby-live-trains only, no
- * schedule -- see VlineStationPanel.tsx). Search/Announcements are omitted
+ * TrainList, and a StationPanel with full schedule parity with Metro's own
+ * (M15 -- see VlineStationPanel.tsx). Search/Announcements are omitted
  * entirely rather than shown as broken or empty: neither feature (station
  * search, service alerts, weekly digest) exists for V/Line, so there's
  * nothing for a "not available" state to attach to. */
@@ -57,6 +59,7 @@ export function VlineSidebar({
   theme,
   onThemeChange,
   open,
+  schedule,
 }: VlineSidebarProps) {
   const attribution = useAttribution()
 
@@ -88,6 +91,7 @@ export function VlineSidebar({
         trains={liveState.trains}
         hideGhosts={hideGhosts}
         onClear={onClearStation}
+        schedule={schedule}
       />
       <StatusPanel liveState={liveState} hideGhosts={hideGhosts} onToggleHideGhosts={onToggleHideGhosts} grow />
       <Section as="footer" className={styles.footer}>

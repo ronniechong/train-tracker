@@ -1,8 +1,12 @@
-"""V/Line's own minimal API/SSE surface — state + stream + healthz only.
+"""V/Line's own minimal API/SSE surface — state, stream, healthz, and
+station schedule.
 
 Deliberately not `api.create_app` reused wholesale: that app also serves
 alerts, insights, digests, delay prediction, and next-service, none of
-which apply here. A separate, smaller app keeps this process's serving
+which apply here (no Service Alerts feed, no delay model, no cross-line
+lookup for V/Line). Station schedule, unlike those, has no such blocker
+-- `PinnedScheduleCache`/`_scheduled_train` are already mode-agnostic, so
+it's included here. A separate, smaller app keeps this process's serving
 surface independent of Metro's -- a bug in one can't affect the other.
 
 Generic pieces (rate limiting, connection caps, CORS, the SSE diff loop,
@@ -21,7 +25,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from ..api.app import _client_ip, _cors_origins, _is_current, _train
+from ..api.app import _client_ip, _cors_origins, _is_current, _scheduled_train, _train
 from ..api.http_metrics import HttpMetricsMiddleware
 from ..api.limits import (
     ConnectionLimitExceeded,
@@ -29,7 +33,15 @@ from ..api.limits import (
     RateLimitExceeded,
     RateLimiter,
 )
-from ..api.schemas import DeltaResponse, FeedStatus, HealthResponse, StateResponse, Train
+from ..api.schemas import (
+    DeltaResponse,
+    FeedStatus,
+    HealthResponse,
+    LineSummary,
+    StateResponse,
+    StationScheduleResponse,
+    Train,
+)
 from ..gateway.client import Feed
 from ..gtfs.schedule_cache import NoPinnedSnapshotError, PinnedScheduleCache
 from ..metrics import STALENESS_THRESHOLD_S, Metrics
@@ -185,6 +197,42 @@ def create_vline_app(
         return _current_state(loop, store, schedule_cache)
 
     # No /api/vline/alerts route -- V/Line has no Service Alerts feed.
+
+    @app.get(
+        "/api/vline/stations/{station_id}/schedule",
+        response_model=StationScheduleResponse,
+        dependencies=[Depends(_rate_limit_dependency(rate_limiter, "vline_schedule"))],
+    )
+    async def station_schedule(station_id: str) -> StationScheduleResponse:
+        # Same shape as api.app's own station_schedule route -- kept as its
+        # own copy (not a shared import) only because that route closes
+        # over Metro's `schedule_cache`/`store` module-level names; the
+        # logic itself (and the `_scheduled_train` helper it calls) is
+        # identical and already mode-agnostic.
+        if schedule_cache is None:
+            raise HTTPException(status_code=503, detail="schedule feature not configured")
+        now = datetime.now(timezone.utc)
+        try:
+            departures = schedule_cache.next_departures_for(
+                station_id, now, live_snapshots=store.latest_snapshots
+            )
+        except NoPinnedSnapshotError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        if departures is None:
+            raise HTTPException(status_code=404, detail=f"unknown station_id: {station_id}")
+        no_service_today = schedule_cache.lines_no_service_today(station_id, now) or []
+        stops = schedule_cache.stops_for(now)
+        station_stop = stops.get(station_id)
+        return StationScheduleResponse(
+            station_id=station_id,
+            generated_at=now,
+            wheelchair_boarding=station_stop.wheelchair_boarding if station_stop else None,
+            departures=[_scheduled_train(store, dep, stops, now) for dep in departures],
+            lines_no_service_today=[
+                LineSummary(route_id=r.route_id, short_name=r.short_name, long_name=r.long_name)
+                for r in no_service_today
+            ],
+        )
 
     @app.get("/api/vline/stream")
     async def stream(request: Request):

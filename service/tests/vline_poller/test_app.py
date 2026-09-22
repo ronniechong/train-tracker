@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timezone
 
 import httpx
@@ -5,12 +6,27 @@ import pytest
 from google.transit import gtfs_realtime_pb2
 
 from traintracker.gateway.client import Feed, GatewayClient
+from traintracker.gtfs.gtfstime import service_date_for_instant
+from traintracker.gtfs.pinning import PinManifest
+from traintracker.gtfs.schedule_cache import PinnedScheduleCache
 from traintracker.poller.breaker import CircuitBreaker
 from traintracker.poller.loop import PollerLoop
 from traintracker.state.eventhub import InProcessEventHub
 from traintracker.state.eventlog import InMemoryEventLog
 from traintracker.state.store import StateStore
 from traintracker.vline_poller.app import _event_source, create_vline_app
+
+
+def _pinned_schedule_cache(tmp_path, sample_static_zip_bytes) -> PinnedScheduleCache:
+    """Same fixture-construction pattern as `api/test_app.py`'s own
+    `_pinned_schedule_cache` -- a real cache over the shared static-GTFS
+    sample, pinned to today (the route handler calls `datetime.now()`
+    internally, not injectable)."""
+    digest = hashlib.sha256(sample_static_zip_bytes).hexdigest()
+    (tmp_path / f"{digest}.zip").write_bytes(sample_static_zip_bytes)
+    manifest = PinManifest(tmp_path / "pin_manifest.json")
+    manifest.pin_digest(service_date_for_instant(datetime.now(timezone.utc)), digest)
+    return PinnedScheduleCache(tmp_path, manifest)
 
 
 def _tu_bytes(timestamp: int, trip_id: str = "V1") -> bytes:
@@ -62,8 +78,10 @@ async def _running_vline_loop() -> tuple[PollerLoop, StateStore]:
     return loop, store
 
 
-async def _client_for(loop: PollerLoop, store: StateStore) -> httpx.AsyncClient:
-    app = create_vline_app(loop=loop, store=store, hub=InProcessEventHub())
+async def _client_for(
+    loop: PollerLoop, store: StateStore, schedule_cache: PinnedScheduleCache | None = None
+) -> httpx.AsyncClient:
+    app = create_vline_app(loop=loop, store=store, hub=InProcessEventHub(), schedule_cache=schedule_cache)
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
 
 
@@ -93,6 +111,41 @@ async def test_no_alerts_route_exists():
     async with await _client_for(loop, store) as client:
         response = await client.get("/api/vline/alerts")
     assert response.status_code == 404
+
+
+async def test_station_schedule_returns_503_when_not_configured():
+    loop, store = await _running_vline_loop()
+    async with await _client_for(loop, store) as client:
+        response = await client.get("/api/vline/stations/STATION_A/schedule")
+    assert response.status_code == 503
+
+
+async def test_station_schedule_returns_404_for_unknown_station(tmp_path, sample_static_zip_bytes):
+    loop, store = await _running_vline_loop()
+    schedule_cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+    async with await _client_for(loop, store, schedule_cache=schedule_cache) as client:
+        response = await client.get("/api/vline/stations/NOT_A_REAL_STATION/schedule")
+    assert response.status_code == 404
+
+
+async def test_station_schedule_returns_well_formed_response_for_known_station(
+    tmp_path, sample_static_zip_bytes
+):
+    loop, store = await _running_vline_loop()
+    schedule_cache = _pinned_schedule_cache(tmp_path, sample_static_zip_bytes)
+    async with await _client_for(loop, store, schedule_cache=schedule_cache) as client:
+        response = await client.get("/api/vline/stations/STATION_A/schedule")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["station_id"] == "STATION_A"
+    assert isinstance(body["departures"], list)
+    assert isinstance(body["lines_no_service_today"], list)
+    assert "wheelchair_boarding" in body
+    for train in body["departures"]:
+        assert train["trip_id"]
+        assert train["scheduled_time"]
+        assert "platform_code" in train
 
 
 async def test_event_source_emits_initial_snapshot_then_stops_on_disconnect():

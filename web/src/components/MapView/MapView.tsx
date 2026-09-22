@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type * as maplibregl from 'maplibre-gl'
 import { createMapController } from '../../map/mapController'
 import { METRO_MAP_CONFIG } from '../../map/metroMapConfig'
-import { routesById } from '../../geometry'
+import { routesById, routesByStationId, stationsById } from '../../geometry'
 import { createTrainMarkerManager, type TrainMarkerManager } from '../../map/trainMarkers'
 import { createStationPopupManager, type StationPopupManager } from '../../map/stationPopup'
 import { createTrainPopupManager, type TrainPopupManager } from '../../map/trainPopup'
@@ -130,7 +130,7 @@ export function MapView({
         (tripId) => onTrainClickRef.current(tripId),
         (tripId) => onTrainRemovedRef.current(tripId),
       )
-      popupManagerRef.current = createStationPopupManager(map)
+      popupManagerRef.current = createStationPopupManager(map, stationsById, routesById, routesByStationId)
       trainPopupManagerRef.current = createTrainPopupManager(map, routesById)
       // `dragstart` only ever fires from a real user drag gesture, never
       // programmatically -- safe from the follow-camera `easeTo` below

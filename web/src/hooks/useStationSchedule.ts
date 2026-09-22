@@ -14,7 +14,12 @@ export interface StationScheduleState {
   error: boolean
 }
 
-export function useStationSchedule(stationId: string | null): StationScheduleState {
+/** `basePath` (default `''`, matching Metro's existing unprefixed
+ * `/stations/{id}/schedule` route -- unlike `/api/state`/`/api/stream`,
+ * this route was never given an `/api` prefix) lets V/Line's call site
+ * point at `/api/vline` instead, matching the route registered on
+ * `create_vline_app`. */
+export function useStationSchedule(stationId: string | null, basePath: string = ''): StationScheduleState {
   const [state, setState] = useState<StationScheduleState>({
     data: null,
     loading: false,
@@ -32,7 +37,9 @@ export function useStationSchedule(stationId: string | null): StationScheduleSta
     async function load(): Promise<void> {
       setState((prev) => ({ ...prev, loading: prev.data === null }))
       try {
-        const response = await fetch(`${API_BASE_URL}/stations/${encodeURIComponent(stationId!)}/schedule`)
+        const response = await fetch(
+          `${API_BASE_URL}${basePath}/stations/${encodeURIComponent(stationId!)}/schedule`,
+        )
         if (!response.ok) {
           if (!cancelled) setState({ data: null, loading: false, error: true })
           return
@@ -50,7 +57,7 @@ export function useStationSchedule(stationId: string | null): StationScheduleSta
       cancelled = true
       clearInterval(interval)
     }
-  }, [stationId])
+  }, [stationId, basePath])
 
   return state
 }

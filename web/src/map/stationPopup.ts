@@ -1,6 +1,6 @@
 import * as maplibregl from 'maplibre-gl'
 import './stationPopup.css'
-import { routesById, routesByStationId, stationsById } from '../geometry'
+import type { Route, Station } from '../geometry'
 import { formatTime } from '../lib/formatTime'
 import type { ScheduledTrain, StationScheduleResponse } from '../api-types'
 
@@ -46,10 +46,16 @@ function createSwatch(color: string): SVGSVGElement {
 /** Builds the click-tooltip content for one station: name, one swatch+name
  * row per serving line, then (if loaded) one compact schedule row per
  * direction. Deliberately a flat list of appended rows rather than a fixed
- * template, so a future new field is just another row, not a restructure. */
+ * template, so a future new field is just another row, not a restructure.
+ * `stationsById`/`routesById`/`routesByStationId` are injected (Metro's or
+ * V/Line's) rather than imported at module scope, same reuse-for-either-mode
+ * pattern as trainPopup.ts's `routesById`. */
 function buildStationPopupContent(
   stationId: string,
   schedule: StationScheduleResponse | null,
+  stationsById: ReadonlyMap<string, Station>,
+  routesById: ReadonlyMap<string, Route>,
+  routesByStationId: ReadonlyMap<string, ReadonlySet<string>>,
 ): HTMLElement | null {
   const station = stationsById.get(stationId)
   if (!station) return null
@@ -119,7 +125,12 @@ export interface StationPopupManager {
   destroy(): void
 }
 
-export function createStationPopupManager(map: maplibregl.Map): StationPopupManager {
+export function createStationPopupManager(
+  map: maplibregl.Map,
+  stationsById: ReadonlyMap<string, Station>,
+  routesById: ReadonlyMap<string, Route>,
+  routesByStationId: ReadonlyMap<string, ReadonlySet<string>>,
+): StationPopupManager {
   const popup = new maplibregl.Popup({
     className: 'station-popup',
     closeButton: false,
@@ -134,7 +145,7 @@ export function createStationPopupManager(map: maplibregl.Map): StationPopupMana
         return
       }
       const station = stationsById.get(stationId)
-      const content = buildStationPopupContent(stationId, schedule)
+      const content = buildStationPopupContent(stationId, schedule, stationsById, routesById, routesByStationId)
       if (!station || !content) {
         popup.remove()
         return

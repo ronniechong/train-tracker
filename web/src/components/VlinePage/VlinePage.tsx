@@ -4,6 +4,7 @@ import { VlineSidebar } from '../Sidebar/VlineSidebar'
 import { VlineMapView } from '../MapView/VlineMapView'
 import { DrawerToggle } from '../DrawerToggle/DrawerToggle'
 import { useLiveFeed } from '../../hooks/useLiveFeed'
+import { useStationSchedule } from '../../hooks/useStationSchedule'
 import { useTheme } from '../../hooks/useTheme'
 import { useVlineRouteGate } from '../../hooks/useVlineFeature'
 import { trackEvent, trackVlineStationSelect } from '../../lib/analytics'
@@ -15,9 +16,10 @@ import styles from '../../App.module.css'
  * design brief: the backend runs V/Line as an isolated process so a fault
  * there can't touch Metro; folding both into one frontend state tree
  * would quietly recouple them on the client side). Trimmed relative to
- * `App.tsx`: no station search/click, no train tracking, no delay
- * predictions -- none of those have a V/Line backend equivalent yet (see
- * the design brief's out-of-scope list). */
+ * `App.tsx`: no station search, no train tracking, no delay predictions --
+ * none of those have a V/Line backend equivalent (see the design brief's
+ * out-of-scope list). Station click DOES have full schedule parity with
+ * Metro (M15) -- `PinnedScheduleCache` is mode-agnostic. */
 export function VlinePage() {
   const routeGate = useVlineRouteGate()
   const liveState = useLiveFeed('/api/vline', routeGate === 'enabled')
@@ -28,6 +30,11 @@ export function VlinePage() {
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null)
   const [recenterRequest, setRecenterRequest] = useState<number | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  // Lifted here (not called separately in VlineSidebar/VlineMapView), same
+  // reason as App.tsx's own `schedule` -- the sidebar panel and the on-map
+  // popup both need the SAME schedule data for whichever station is
+  // selected.
+  const schedule = useStationSchedule(selectedStationId, '/api/vline')
 
   // Route-level gate, not just a hidden nav entry -- see useVlineRouteGate.
   if (routeGate === 'loading') return null
@@ -86,6 +93,7 @@ export function VlinePage() {
         theme={theme}
         onThemeChange={setTheme}
         open={drawerOpen}
+        schedule={schedule}
       />
       <VlineMapView
         trains={liveState.trains}
@@ -96,6 +104,8 @@ export function VlinePage() {
         onSelectTrain={handleSelectTrain}
         onStationClick={handleStationClick}
         recenterRequest={recenterRequest}
+        selectedStationId={selectedStationId}
+        schedule={schedule}
       />
     </div>
   )
