@@ -308,6 +308,30 @@ services:
     networks:
       - internal
 
+  # Same job as `delay-model-trainer` above, run against V/Line's own
+  # history/model instead of Metro's -- a second config, not a second
+  # codebase, same precedent as `vline-archiver`. `--metrics-out` points at
+  # a distinctly-named file so it can share the one host directory
+  # node-exporter watches without colliding with Metro's own
+  # `delay_model.prom`, same shadow-mount pattern `vline-archiver` already
+  # uses for its own metrics file.
+  vline-delay-model-trainer:
+    build:
+      context: ../service
+      dockerfile: Dockerfile
+    entrypoint: [
+      "python", "scripts/train_delay_model.py", "--history-dir", "/data/history",
+      "--metrics-out", "/archive-state/metrics/delay_model_vline.prom",
+    ]
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - ${TT_VLINE_DATA_DIR:-./vline-data}:/data
+      - ${TT_ARCHIVE_STATE_DIR:-./archive-state}/metrics:/archive-state/metrics
+    networks:
+      - internal
+
   # Sole reverse-proxy ingress into the FastAPI/SSE app. Joins `ingress` to
   # reach `poller` and `public` for its own outbound route — the latter
   # exists only because the `tailscale` sidecar below shares this

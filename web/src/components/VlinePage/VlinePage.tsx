@@ -5,6 +5,7 @@ import { VlineMapView } from '../MapView/VlineMapView'
 import { DrawerToggle } from '../DrawerToggle/DrawerToggle'
 import { useLiveFeed } from '../../hooks/useLiveFeed'
 import { useStationSchedule } from '../../hooks/useStationSchedule'
+import { useDelayPredictions } from '../../hooks/useDelayPredictions'
 import { useTheme } from '../../hooks/useTheme'
 import { useVlineRouteGate } from '../../hooks/useVlineFeature'
 import { trackEvent, trackVlineStationSelect } from '../../lib/analytics'
@@ -16,9 +17,10 @@ import styles from '../../App.module.css'
  * runs V/Line as an isolated process so a fault there can't touch Metro;
  * folding both into one frontend state tree would quietly recouple them
  * on the client side. Trimmed relative to `App.tsx`: no station search,
- * no train tracking, no delay predictions -- none of those have a V/Line
- * backend equivalent. Station click DOES have full schedule parity with
- * Metro -- `PinnedScheduleCache` is mode-agnostic. */
+ * no train tracking -- neither has a V/Line backend equivalent. Station
+ * click and "Am I late?" delay prediction DO have full parity with
+ * Metro -- `PinnedScheduleCache` and the delay-prediction regression are
+ * both mode-agnostic. */
 export function VlinePage() {
   const routeGate = useVlineRouteGate()
   const liveState = useLiveFeed('/api/vline', routeGate === 'enabled')
@@ -34,6 +36,7 @@ export function VlinePage() {
   // popup both need the SAME schedule data for whichever station is
   // selected.
   const schedule = useStationSchedule(selectedStationId, '/api/vline')
+  const delayPredictions = useDelayPredictions('/api/vline')
 
   // Route-level gate, not just a hidden nav entry -- see useVlineRouteGate.
   if (routeGate === 'loading') return null
@@ -105,6 +108,8 @@ export function VlinePage() {
         recenterRequest={recenterRequest}
         selectedStationId={selectedStationId}
         schedule={schedule}
+        delayPredictions={delayPredictions.byTripId}
+        onRequestDelayPrediction={delayPredictions.request}
       />
     </div>
   )

@@ -27,6 +27,8 @@ from ..poller import healthcheck
 from ..poller.loop import PollerLoop
 from ..redaction import configure_logging
 from ..state.completion import DistanceCategory, TripCompletionTracker
+from ..state.delay_model import load_delay_model
+from ..state.delay_observation import DelayObservationTracker
 from ..state.eventhub import InProcessEventHub
 from ..state.store import StateStore
 from .app import create_vline_app
@@ -88,7 +90,7 @@ async def main() -> int:
         return "long" if any(h in name for h in LONG_DISTANCE_ROUTE_NAME_HINTS) else "short"
 
     history = HistoryStore(history_dir=DATA_DIR / "history", pin_manifest=pin_manifest)
-    discrepancy_log, ghost_log, gap_log, completion_log, _delay_observation_log = metrics.event_logs(
+    discrepancy_log, ghost_log, gap_log, completion_log, delay_observation_log = metrics.event_logs(
         history.discrepancy_log, history.ghost_log, history.gap_log,
         history.completion_log, history.delay_observation_log,
     )
@@ -96,12 +98,24 @@ async def main() -> int:
         completion_log, schedule_cache.terminus_for,
         mode="vline", distance_category_lookup=_distance_category,
     )
+    # Same construction as Metro's poller -- feeds delay_observation_events,
+    # which trains V/Line's own delay-prediction model below. V/Line has no
+    # Service Alerts feed, so `active_alert_flag` stays constant `False` for
+    # every observation (`store.latest_alerts` is never populated here) --
+    # a known, accepted data-quality limit, not a bug.
+    delay_observation_tracker = DelayObservationTracker(delay_observation_log, schedule_cache.terminus_for)
     store = StateStore(
         discrepancy_log=discrepancy_log,
         ghost_log=ghost_log,
         on_tick=metrics.record_tracked_trips,
         completion_tracker=completion_tracker,
+        delay_observation_tracker=delay_observation_tracker,
     )
+
+    # Own model file, own /data mount -- never Metro's. `None` until
+    # scripts/train_delay_model.py has produced one (same "not configured
+    # yet" convention as Metro's own poller).
+    delay_model = load_delay_model(DATA_DIR / "ai" / "delay_model.json")
 
     gateway = GatewayClient(
         base_url_override=os.environ.get(VLINE_BASE_URL_ENV, DEFAULT_VLINE_BASE_URL)
@@ -109,7 +123,10 @@ async def main() -> int:
     loop = PollerLoop(gateway=gateway, store=store, gap_log=gap_log, feeds=VLINE_FEEDS)
 
     hub = InProcessEventHub()
-    api = create_vline_app(loop=loop, store=store, hub=hub, metrics=metrics, schedule_cache=schedule_cache)
+    api = create_vline_app(
+        loop=loop, store=store, hub=hub, metrics=metrics, schedule_cache=schedule_cache,
+        delay_model=delay_model,
+    )
     server = uvicorn.Server(uvicorn.Config(api, host="0.0.0.0", port=API_PORT, log_level="info"))
 
     def handle_signal() -> None:

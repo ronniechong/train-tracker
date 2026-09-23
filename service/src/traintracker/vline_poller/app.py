@@ -1,13 +1,14 @@
-"""V/Line's own minimal API/SSE surface — state, stream, healthz, and
-station schedule.
+"""V/Line's own minimal API/SSE surface — state, stream, healthz, station
+schedule, and delay prediction.
 
 Deliberately not `api.create_app` reused wholesale: that app also serves
-alerts, insights, digests, delay prediction, and next-service, none of
-which apply here (no Service Alerts feed, no delay model, no cross-line
-lookup for V/Line). Station schedule, unlike those, has no such blocker
--- `PinnedScheduleCache`/`_scheduled_train` are already mode-agnostic, so
-it's included here. A separate, smaller app keeps this process's serving
-surface independent of Metro's -- a bug in one can't affect the other.
+alerts, insights, digests, and next-service, none of which apply here (no
+Service Alerts feed, no cross-line lookup for V/Line). Station schedule and
+delay prediction, unlike those, have no such blocker --
+`PinnedScheduleCache`/`_scheduled_train`/`compute_delay_features`/
+`predict_delay_seconds` are already mode-agnostic, so both are included
+here. A separate, smaller app keeps this process's serving surface
+independent of Metro's -- a bug in one can't affect the other.
 
 Generic pieces (rate limiting, connection caps, CORS, the SSE diff loop,
 train/state shaping) are imported directly from `api.app`/`api.limits`
@@ -18,14 +19,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import AsyncIterator, Awaitable, Callable
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from ..api.app import _client_ip, _cors_origins, _is_current, _scheduled_train, _train
+from ..api.app import _client_ip, _cors_origins, _is_current, _resolve_service_date, _scheduled_train, _train
 from ..api.http_metrics import HttpMetricsMiddleware
 from ..api.limits import (
     ConnectionLimitExceeded,
@@ -34,6 +35,7 @@ from ..api.limits import (
     RateLimiter,
 )
 from ..api.schemas import (
+    DelayPredictionResponse,
     DeltaResponse,
     FeedStatus,
     HealthResponse,
@@ -46,6 +48,8 @@ from ..gateway.client import Feed
 from ..gtfs.schedule_cache import NoPinnedSnapshotError, PinnedScheduleCache
 from ..metrics import STALENESS_THRESHOLD_S, Metrics
 from ..poller.loop import PollerLoop
+from ..state.delay_model import DelayModel, predict_delay_seconds
+from ..state.delay_observation import DelayFeatures, compute_delay_features
 from ..state.eventhub import EventHub
 from ..state.store import StateStore
 
@@ -55,6 +59,10 @@ SSE_HEARTBEAT_INTERVAL_S = 20.0
 
 # No Service Alerts feed for V/Line.
 VLINE_FEEDS: tuple[Feed, ...] = (Feed.TRIP_UPDATES, Feed.VEHICLE_POSITIONS)
+
+# Same value and purpose as api.app's own -- smooths a single-cycle TU
+# miss rather than serving a hard error for a momentary feed gap.
+_DELAY_FEATURES_CACHE_MAX_AGE = timedelta(seconds=60)
 
 
 def _feed_status(loop: PollerLoop, feed: Feed, now: datetime) -> FeedStatus:
@@ -155,6 +163,7 @@ def create_vline_app(
     heartbeat_interval_s: float = SSE_HEARTBEAT_INTERVAL_S,
     schedule_cache: PinnedScheduleCache | None = None,
     metrics: Metrics | None = None,
+    delay_model: DelayModel | None = None,
 ) -> FastAPI:
     connections = connections or ConnectionTracker()
     rate_limiter = rate_limiter or RateLimiter()
@@ -232,6 +241,59 @@ def create_vline_app(
                 LineSummary(route_id=r.route_id, short_name=r.short_name, long_name=r.long_name)
                 for r in no_service_today
             ],
+        )
+
+    # Same last-known-good smoothing convention as api.app's own route --
+    # see its comment for why this is trip-scoped, not a shared feature.
+    _last_good_features: dict[str, tuple[datetime, DelayFeatures]] = {}
+
+    @app.get(
+        "/api/vline/trains/{trip_id}/delay-prediction",
+        response_model=DelayPredictionResponse,
+        dependencies=[Depends(_rate_limit_dependency(rate_limiter, "vline_delay_prediction"))],
+    )
+    async def delay_prediction(trip_id: str) -> DelayPredictionResponse:
+        # Same shape as api.app's own delay_prediction route -- kept as its
+        # own copy (not a shared import) for the same reason
+        # station_schedule above is: that route closes over Metro's
+        # module-level state. The logic (compute_delay_features,
+        # predict_delay_seconds) is identical and already mode-agnostic.
+        if delay_model is None:
+            raise HTTPException(status_code=503, detail="delay prediction feature not configured")
+        if schedule_cache is None:
+            raise HTTPException(status_code=503, detail="schedule feature not configured")
+        snapshot = store.latest_snapshots.get(trip_id)
+        if snapshot is None:
+            raise HTTPException(status_code=404, detail=f"unknown or untracked trip_id: {trip_id}")
+        now = datetime.now(timezone.utc)
+        service_date = _resolve_service_date(snapshot.start_date, now)
+        terminus = schedule_cache.terminus_for(trip_id, service_date)
+        if terminus is None:
+            raise HTTPException(
+                status_code=422, detail="no static schedule available for this trip"
+            )
+        features = compute_delay_features(snapshot, terminus, now, store.latest_alerts)
+        stale = False
+        if features is not None:
+            _last_good_features[trip_id] = (now, features)
+        else:
+            cached = _last_good_features.get(trip_id)
+            if cached is not None and (now - cached[0]) <= _DELAY_FEATURES_CACHE_MAX_AGE:
+                _, features = cached
+                stale = True
+        if features is None:
+            raise HTTPException(
+                status_code=422, detail="not enough live data to predict this trip right now"
+            )
+        predicted = predict_delay_seconds(delay_model, features)
+        return DelayPredictionResponse(
+            trip_id=trip_id,
+            predicted_delay_seconds=round(predicted),
+            current_delay_s=features.current_delay_s,
+            stops_remaining=features.stops_remaining,
+            active_alert_flag=features.active_alert_flag,
+            predicted_at=now,
+            stale=stale,
         )
 
     @app.get("/api/vline/stream")

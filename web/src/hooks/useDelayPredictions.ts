@@ -20,13 +20,19 @@ export interface DelayPredictions {
 // backend side either (plain regression against already-tracked live
 // state), so repeated clicks carry no per-request cost beyond ordinary
 // rate limiting.
-export function useDelayPredictions(): DelayPredictions {
+//
+// `basePath` (default `''`, matching Metro's existing unprefixed
+// `/trains/{id}/delay-prediction` route -- same convention
+// useStationSchedule's own `basePath` follows) lets V/Line's call site
+// point at `/api/vline` instead, matching the route registered on
+// `create_vline_app`.
+export function useDelayPredictions(basePath: string = ''): DelayPredictions {
   const [byTripId, setByTripId] = useState<Map<string, DelayPredictionState>>(() => new Map())
 
   const request = useCallback((tripId: string) => {
     setByTripId((prev) => new Map(prev).set(tripId, { status: 'loading' }))
 
-    fetch(`${API_BASE_URL}/trains/${encodeURIComponent(tripId)}/delay-prediction`)
+    fetch(`${API_BASE_URL}${basePath}/trains/${encodeURIComponent(tripId)}/delay-prediction`)
       .then(async (response) => {
         if (!response.ok) throw new Error('prediction request failed')
         const data: DelayPredictionResponse = await response.json()
@@ -40,7 +46,7 @@ export function useDelayPredictions(): DelayPredictions {
       .catch(() => {
         setByTripId((prev) => new Map(prev).set(tripId, { status: 'error' }))
       })
-  }, [])
+  }, [basePath])
 
   return { byTripId, request }
 }

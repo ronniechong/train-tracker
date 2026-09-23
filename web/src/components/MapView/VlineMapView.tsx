@@ -9,6 +9,7 @@ import { createStationPopupManager, type StationPopupManager } from '../../map/s
 import { LoadingOverlay } from '../LoadingOverlay'
 import type { Train } from '../../api-types'
 import type { StationScheduleState } from '../../hooks/useStationSchedule'
+import type { DelayPredictionState } from '../../hooks/useDelayPredictions'
 import type { Theme } from '../../hooks/useTheme'
 import styles from './MapView.module.css'
 
@@ -19,9 +20,9 @@ interface VlineMapViewProps {
   theme: Theme
   /** Selected from the train list -- reuses trainMarkers.ts's existing
    * "tracked" ring visual purely for highlighting, and also drives the
-   * click info popup (trainPopup.ts, no Track/"Am I late?" buttons -- those
-   * have no V/Line backend equivalent). No camera follow -- out of scope
-   * for V/Line. */
+   * click info popup (trainPopup.ts, no Track button -- train tracking has
+   * no V/Line backend equivalent). No camera follow -- out of scope for
+   * V/Line. */
   highlightedTripId: string | null
   onSelectTrain: (tripId: string) => void
   onStationClick: (stationId: string | null) => void
@@ -32,14 +33,18 @@ interface VlineMapViewProps {
    * pattern as Metro's MapView.tsx. */
   selectedStationId: string | null
   schedule: StationScheduleState
+  // "Am I late?": same shape as Metro's MapView.tsx props.
+  delayPredictions: ReadonlyMap<string, DelayPredictionState>
+  onRequestDelayPrediction: (tripId: string) => void
 }
 
 /** A leaner sibling of `MapView.tsx`, not a copy of it -- reuses the same
  * generalized `mapController`/`trainMarkers`/`trainPopup`/`stationPopup`
  * modules with V/Line's own geometry/config, but drops what the design
  * brief marks genuinely out of scope for V/Line (search fly-to,
- * camera-follow tracking, delay predictions -- none have a V/Line backend
- * equivalent). Station schedule DOES have full parity with Metro. */
+ * camera-follow tracking -- train tracking has no V/Line backend
+ * equivalent). Station schedule and delay prediction DO have full parity
+ * with Metro. */
 export function VlineMapView({
   trains,
   hiddenRouteIds,
@@ -51,6 +56,8 @@ export function VlineMapView({
   recenterRequest,
   selectedStationId,
   schedule,
+  delayPredictions,
+  onRequestDelayPrediction,
 }: VlineMapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
@@ -119,12 +126,20 @@ export function VlineMapView({
   // Click info popup -- driven by highlightedTripId (set by either a map
   // marker click or a train-list row click, see VlinePage's shared
   // onSelectTrain), same open/close-in-lockstep pattern as Metro's own
-  // clickedTrainId-driven popup, minus the Track/"Am I late?" actions.
+  // clickedTrainId-driven popup, minus the Track action (no V/Line
+  // backend equivalent). Also re-syncs on delayPredictions changing, same
+  // reason as Metro's MapView.tsx.
   useEffect(() => {
     if (!loaded) return
     const train = highlightedTripId ? (trains.get(highlightedTripId) ?? null) : null
-    trainPopupManagerRef.current?.sync(highlightedTripId, train, false, undefined, undefined, undefined)
-  }, [loaded, highlightedTripId, trains])
+    trainPopupManagerRef.current?.sync(
+      highlightedTripId, train, false, undefined,
+      () => {
+        if (highlightedTripId) onRequestDelayPrediction(highlightedTripId)
+      },
+      highlightedTripId ? delayPredictions.get(highlightedTripId) : undefined,
+    )
+  }, [loaded, highlightedTripId, trains, onRequestDelayPrediction, delayPredictions])
 
   // Popup opens/closes in lockstep with selectedStationId, same pattern as
   // Metro's MapView.tsx -- see stationPopup.ts's sync() doc comment.
