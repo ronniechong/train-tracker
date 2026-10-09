@@ -73,10 +73,18 @@ Nothing else is exposed to the model.
   keyword/length checks — deliberately not LLM-as-judge, to avoid one
   model's non-determinism grading another's.
 - Run manually, not on every commit — each run spends real money.
-- The planned delay-prediction model will be evaluated against a naive
-  baseline ("assume the current delay doesn't change") before being trusted,
-  with train/test split by service day so the same trip never leaks across
-  both sides.
+- The "Am I late?" delay prediction (Metro and V/Line, each with its own
+  model trained on its own history) is plain linear regression, no LLM. It
+  must beat a naive baseline ("assume the current delay doesn't change") on
+  held-out service days or no model file is written; train/test is split by
+  service day so the same trip never leaks across both sides, and the gate
+  scores through the same prediction function the endpoint serves.
+- Coefficients are fitted per line, shrunk toward a network-wide fit in
+  proportion to how much data each line has, because lines differ in
+  whether trains tend to lose or recover time. A line whose own fit does
+  worse than "delay holds" on its training data falls back to that
+  baseline. The shrinkage strength was chosen by cross-validation across
+  rolling day windows on both networks, not tuned on the test window.
 
 ## Labelling discipline: prediction vs. fact
 
@@ -90,9 +98,10 @@ labelled by the evidence behind it, never asserted as plain ground truth.
 - Ghost/coasting trips carry how long they've been ungrounded, so a
   narrated position can be qualified ("last confirmed 4 minutes ago")
   instead of stated flatly as current.
-- The planned delay prediction will carry the same discipline: presented as
-  a prediction with its evidence cited (current delay, stops remaining,
-  active alerts), never phrased as an arrival time.
+- The delay prediction carries the same discipline: presented as a
+  prediction with its evidence cited (current delay, stops remaining,
+  active alerts), never phrased as an arrival time, and flagged `stale`
+  when served from briefly cached features.
 - Numbers — on-time percentages, delay counts, per-line rankings — are
   always computed by plain, auditable code and only ever narrated by the
   LLM. The model is never the source of a number, only its explainer.
