@@ -20,6 +20,7 @@ from prometheus_client import start_http_server
 
 from ..gateway.client import API_KEY_ENV, Feed, GatewayClient
 from ..gtfs.pinning import PinManifest
+from ..gtfs.repin import SnapshotSelector
 from ..gtfs.schedule_cache import PinnedScheduleCache
 from ..history.store import HistoryStore
 from ..metrics import Metrics
@@ -81,6 +82,7 @@ async def main() -> int:
     gtfs_dir = DATA_DIR / "gtfs"
     pin_manifest = PinManifest(gtfs_dir / "pin_manifest.json")
     schedule_cache = PinnedScheduleCache(gtfs_dir, pin_manifest)
+    snapshot_selector = SnapshotSelector(gtfs_dir, pin_manifest)
 
     def _distance_category(trip_id: str, service_date: date) -> DistanceCategory | None:
         route = schedule_cache.route_for(trip_id, service_date)
@@ -148,6 +150,13 @@ async def main() -> int:
             result = await loop.run_cycle(cycle_start)
             metrics.record_cycle(result, loop.breaker)
             metrics.record_feed_ages(VLINE_FEEDS, loop.last_changed_at)
+            try:
+                join_check = snapshot_selector.maybe_check(store.latest_snapshots, cycle_start)
+            except Exception:
+                logger.exception("static join check failed")
+                join_check = None
+            if join_check is not None:
+                metrics.record_join_check(join_check)
             hub.publish(cycle_start)
             if result.ok:
                 await healthcheck.ping(healthcheck_client, os.environ.get(VLINE_PING_URL_ENV))

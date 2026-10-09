@@ -23,7 +23,9 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 import os
+import time
 import zipfile
 from dataclasses import asdict, dataclass
 from datetime import date
@@ -33,6 +35,8 @@ import httpx
 
 from .pinning import PinManifest, PinResult
 from .snapshot import StaticSnapshot
+
+logger = logging.getLogger(__name__)
 
 GTFS_STATIC_URL_ENV = "TT_GTFS_STATIC_URL"
 
@@ -53,21 +57,37 @@ def static_gtfs_url() -> str:
     return os.environ.get(GTFS_STATIC_URL_ENV, DEFAULT_GTFS_STATIC_URL)
 
 
+# The portal has returned 500s for a whole night at a time; a few spaced
+# retries cover the short blips, and the next scheduled run covers the rest.
+RETRY_DELAYS_S = (30.0, 120.0)
+
+
+def _with_retries(request, url: str, timeout: float) -> httpx.Response:
+    for delay in (*RETRY_DELAYS_S, None):
+        try:
+            response = request(url, timeout=timeout, follow_redirects=True)
+            response.raise_for_status()
+            return response
+        except (httpx.TransportError, httpx.HTTPStatusError) as exc:
+            retryable = not isinstance(exc, httpx.HTTPStatusError) or exc.response.status_code >= 500
+            if delay is None or not retryable:
+                raise
+            logger.warning("static gtfs request failed (%s), retrying in %.0fs", type(exc).__name__, delay)
+            time.sleep(delay)
+    raise AssertionError("unreachable")
+
+
 def download_static_zip(url: str, timeout: float = 120.0) -> bytes:
     """~270MB multi-modal outer zip — give it a real timeout, not the 30s
     default that's fine for the small per-mode inner zip."""
-    response = httpx.get(url, timeout=timeout, follow_redirects=True)
-    response.raise_for_status()
-    return response.content
+    return _with_retries(httpx.get, url, timeout).content
 
 
 def fetch_etag(url: str, timeout: float = 15.0) -> str | None:
     """Cheap HEAD request to check whether the remote content has changed,
     without pulling the 270MB body. Returns None if the server doesn't send
     an ETag at all (in which case the caller can't skip and must download)."""
-    response = httpx.head(url, timeout=timeout, follow_redirects=True)
-    response.raise_for_status()
-    return response.headers.get("etag")
+    return _with_retries(httpx.head, url, timeout).headers.get("etag")
 
 
 def extract_mode_zip(outer_zip_bytes: bytes, mode: str = METRO_TRAIN_MODE) -> bytes:

@@ -8,6 +8,7 @@ import pytest
 from traintracker.gtfs.fetch import (
     DEFAULT_GTFS_STATIC_URL,
     extract_mode_zip,
+    fetch_etag,
     refresh_and_pin,
     static_gtfs_url,
 )
@@ -175,3 +176,43 @@ def test_refresh_and_pin_is_idempotent_for_the_same_service_date(
     assert second.pin_result.was_new is False
     assert second.snapshot_digest == first.snapshot_digest
     assert len(list(store_dir.glob("*.zip"))) == 1
+
+
+class _FlakyHead:
+    def __init__(self, statuses):
+        self.statuses = list(statuses)
+        self.calls = 0
+
+    def __call__(self, url, timeout=15.0, follow_redirects=True):
+        self.calls += 1
+        status = self.statuses.pop(0)
+        return httpx.Response(status, headers={"etag": '"v1"'}, request=httpx.Request("HEAD", url))
+
+
+def test_fetch_etag_retries_server_errors(monkeypatch):
+    flaky = _FlakyHead([500, 503, 200])
+    monkeypatch.setattr(httpx, "head", flaky)
+    monkeypatch.setattr("traintracker.gtfs.fetch.time.sleep", lambda s: None)
+
+    assert fetch_etag("https://example.invalid/gtfs.zip") == '"v1"'
+    assert flaky.calls == 3
+
+
+def test_fetch_etag_gives_up_after_the_last_retry(monkeypatch):
+    flaky = _FlakyHead([500, 500, 500])
+    monkeypatch.setattr(httpx, "head", flaky)
+    monkeypatch.setattr("traintracker.gtfs.fetch.time.sleep", lambda s: None)
+
+    with pytest.raises(httpx.HTTPStatusError):
+        fetch_etag("https://example.invalid/gtfs.zip")
+    assert flaky.calls == 3
+
+
+def test_fetch_etag_does_not_retry_client_errors(monkeypatch):
+    flaky = _FlakyHead([404])
+    monkeypatch.setattr(httpx, "head", flaky)
+    monkeypatch.setattr("traintracker.gtfs.fetch.time.sleep", lambda s: None)
+
+    with pytest.raises(httpx.HTTPStatusError):
+        fetch_etag("https://example.invalid/gtfs.zip")
+    assert flaky.calls == 1

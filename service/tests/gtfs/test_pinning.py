@@ -37,6 +37,17 @@ def test_pin_persists_across_manifest_instances(tmp_path, sample_snapshot):
     assert existing.digest == sample_snapshot.digest
 
 
+def test_repin_overrides_and_records_the_replaced_digest(tmp_path, sample_snapshot):
+    path = tmp_path / "pins.json"
+    PinManifest(path).pin(date(2026, 7, 20), sample_snapshot)
+
+    PinManifest(path).repin(date(2026, 7, 20), "better-matching-digest")
+
+    pin = PinManifest(path).get(date(2026, 7, 20))
+    assert pin.digest == "better-matching-digest"
+    assert pin.replaced_digest == sample_snapshot.digest
+
+
 def test_pin_get_returns_none_when_unpinned(tmp_path):
     manifest = PinManifest(tmp_path / "pins.json")
     assert manifest.get(date(2026, 7, 20)) is None

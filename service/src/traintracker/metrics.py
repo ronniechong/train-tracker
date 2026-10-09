@@ -18,6 +18,7 @@ from typing import Callable
 from prometheus_client import REGISTRY, CollectorRegistry, Counter, Gauge, Histogram
 
 from .gateway.client import Feed
+from .gtfs.repin import JoinCheck
 from .poller.breaker import CircuitBreaker
 from .poller.loop import CycleResult
 from .state.ghost import Status, TrackedTrainView
@@ -139,6 +140,18 @@ class Metrics:
             "from trip_completions_total's once-per-trip terminus outcome",
             registry=registry,
         )
+        self.static_join_pct = Gauge(
+            "traintracker_static_join_pct",
+            "Share of today's scheduled live trip_ids found in the pinned "
+            "static snapshot, as of the last join check",
+            registry=registry,
+        )
+        self.static_repins_total = Counter(
+            "traintracker_static_repins_total",
+            "Times the current service_date was repinned to a better-"
+            "matching stored snapshot",
+            registry=registry,
+        )
         self.http_requests_total = Counter(
             "traintracker_http_requests_total",
             "HTTP requests by route template, method, and status code -- "
@@ -193,6 +206,13 @@ class Metrics:
             changed_at = last_changed_at(feed)
             if changed_at is not None:
                 self.feed_last_changed_timestamp.labels(feed=feed.value).set(changed_at.timestamp())
+
+    def record_join_check(self, check: JoinCheck) -> None:
+        if check.repinned_to is not None:
+            self.static_repins_total.inc()
+            self.static_join_pct.set(check.repinned_join_pct)
+        else:
+            self.static_join_pct.set(check.join_pct)
 
     def record_briefing_sent(self) -> None:
         self.briefings_sent_total.inc()

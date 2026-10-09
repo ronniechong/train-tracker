@@ -39,6 +39,7 @@ from ..api.app import BRIEFING_TOKEN_ENV, create_app
 from ..digests.store import LineStat, WeeklyDigestRecord, WeeklyDigestStore
 from ..gateway.client import API_KEY_ENV, GatewayClient
 from ..gtfs.pinning import PinManifest
+from ..gtfs.repin import SnapshotSelector
 from ..gtfs.schedule_cache import NoPinnedSnapshotError, PinnedScheduleCache
 from ..history.store import HistoryStore
 from ..insights.store import InsightsStore
@@ -236,6 +237,7 @@ async def main() -> int:
     # file -- cheap and stateless (loads/saves the whole JSON per call), so
     # a second instance is simpler than threading HistoryStore's through.
     schedule_cache = PinnedScheduleCache(gtfs_dir, PinManifest(gtfs_dir / "pin_manifest.json"))
+    snapshot_selector = SnapshotSelector(gtfs_dir, PinManifest(gtfs_dir / "pin_manifest.json"))
 
     # Wrap the persisting EventLogs with counting, a composable pattern --
     # each `.record(event)` call now both increments a Prometheus counter
@@ -363,6 +365,13 @@ async def main() -> int:
             result = await loop.run_cycle(cycle_start)
             metrics.record_cycle(result, loop.breaker)
             metrics.record_feed_ages(ALL_FEEDS, loop.last_changed_at)
+            try:
+                join_check = snapshot_selector.maybe_check(store.latest_snapshots, cycle_start)
+            except Exception:
+                logger.exception("static join check failed")
+                join_check = None
+            if join_check is not None:
+                metrics.record_join_check(join_check)
             # One tick per completed cycle, whatever the current cadence
             # actually is (10s or the overnight 30-60s) -- SSE consumers
             # see reality, not an invented fixed cadence. The value itself

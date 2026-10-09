@@ -57,7 +57,7 @@ gaps are recorded, staleness is displayed, inferences are labelled as inferences
 | Station state | Derived: geofence vs stops.txt + TU cross-check | Feed starts populating stop fields |
 | Missing trains | live → coasting → ghost state machine, reason codes attached | Loop-gap metric ≥99% → dedicated in-loop state |
 | City Loop | Freeze-in-place + max-freeze timeout + teleport smoothing | Long-tail anomalies become common |
-| trip_id join | Direct join against per-service-day pinned static snapshot | Join rate <98% |
+| trip_id join | Direct join against per-service-day pinned static snapshot; the poller repins today to the best-matching stored snapshot when the live join drops below 90% (audited via `replaced_digest`) | Join rate <98% |
 | Staleness | Feed header age (>3–5min), NEVER entity count | — |
 | Storage | Day-partitioned SQLite keyed by SERVICE day; retention by file deletion | — |
 | Time | UTC stored everywhere; `service_date` from GTFS calendar; 24:xx parsed per spec; DST fixtures required | — |

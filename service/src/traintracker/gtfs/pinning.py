@@ -6,6 +6,11 @@ publish-timing races (the portal republishing before/after/twice around the
 nightly run). The manifest here is a simple JSON sidecar; the pinning
 *logic* — idempotent, first-write-wins per service_date — is what matters
 if the storage backend ever changes.
+
+The one sanctioned override is `repin`, used only when the live feed's
+trip_ids demonstrably don't join against the pinned snapshot (see
+`gtfs/repin.py`). It records the digest it replaced, so the override is
+never silent.
 """
 
 from __future__ import annotations
@@ -23,6 +28,7 @@ class Pin:
     service_date: str  # ISO date, JSON-friendly
     digest: str
     pinned_at: str  # ISO datetime, JSON-friendly
+    replaced_digest: str | None = None
 
 
 @dataclass(frozen=True)
@@ -46,10 +52,14 @@ class PinManifest:
         return {k: Pin(**v) for k, v in raw.items()}
 
     def _save(self, pins: dict[str, Pin]) -> None:
+        # Atomic replace: the running poller reads this file on every
+        # schedule lookup, so it must never see a half-written one.
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        self._path.write_text(
+        tmp = self._path.with_name(self._path.name + ".tmp")
+        tmp.write_text(
             json.dumps({k: asdict(v) for k, v in pins.items()}, indent=2, sort_keys=True)
         )
+        tmp.replace(self._path)
 
     def get(self, service_date: date) -> Pin | None:
         return self._load().get(service_date.isoformat())
@@ -75,6 +85,22 @@ class PinManifest:
         pins[key] = new_pin
         self._save(pins)
         return PinResult(pin=new_pin, was_new=True)
+
+    def repin(self, service_date: date, digest: str) -> Pin:
+        """Overwrite `service_date`'s pin (or create it if absent),
+        recording the previous digest in `replaced_digest`."""
+        pins = self._load()
+        key = service_date.isoformat()
+        existing = pins.get(key)
+        new_pin = Pin(
+            service_date=key,
+            digest=digest,
+            pinned_at=datetime.now(timezone.utc).isoformat(),
+            replaced_digest=existing.digest if existing is not None else None,
+        )
+        pins[key] = new_pin
+        self._save(pins)
+        return new_pin
 
 
 @dataclass(frozen=True)
