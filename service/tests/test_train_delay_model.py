@@ -200,6 +200,65 @@ def test_evaluate_reports_model_and_baseline_mae_separately():
         )
     ]
 
-    model_mae, baseline_mae = train_delay_model.evaluate(coefficients, test)
+    model_mae, baseline_mae = train_delay_model.evaluate(train_delay_model.to_model(coefficients), test)
 
     assert model_mae < baseline_mae
+
+
+def _route_examples(route_id, n, slope, service_date="2026-08-01"):
+    examples = []
+    for i in range(n):
+        d = (i % 10) * 30
+        obs = DelayObservationEvent(
+            trip_id=f"{route_id}-{i}", route_id=route_id, service_date=service_date,
+            observed_at=datetime(2026, 8, 1, 8, 0, tzinfo=timezone.utc),
+            current_delay_s=d, stops_remaining=3, active_alert_flag=False,
+        )
+        examples.append(train_delay_model.LabelledObservation(observation=obs, final_delay_s=round(slope * d)))
+    return examples
+
+
+def test_fit_per_route_leaves_thin_routes_on_the_network_wide_fit():
+    examples = _route_examples("BIG", train_delay_model.PER_ROUTE_MIN_EXAMPLES, 2.0) + _route_examples("SMALL", 10, 2.0)
+    global_coefficients = train_delay_model.fit_least_absolute_deviation(examples)
+
+    per_route = train_delay_model.fit_per_route(examples, global_coefficients)
+
+    assert set(per_route) == {"BIG"}
+
+
+def test_fit_per_route_falls_back_to_delay_holds_where_that_does_better():
+    # Thin route that always finishes exactly as late as it currently is,
+    # on a network that otherwise doubles its delay.
+    examples = _route_examples("NET", train_delay_model.PER_ROUTE_MIN_EXAMPLES * 2, 2.0) + _route_examples("EXACT", 100, 1.0)
+    global_coefficients = train_delay_model.fit_least_absolute_deviation(examples)
+
+    per_route = train_delay_model.fit_per_route(examples, global_coefficients)
+
+    assert per_route["EXACT"] == train_delay_model.BASELINE_COEFFICIENTS
+
+
+def test_fit_per_route_shrinks_toward_the_network_wide_fit():
+    n = train_delay_model.PER_ROUTE_MIN_EXAMPLES
+    examples = _route_examples("A", n, 2.0) + _route_examples("B", n * 4, 1.0)
+    global_coefficients = train_delay_model.fit_least_absolute_deviation(examples)
+
+    per_route = train_delay_model.fit_per_route(examples, global_coefficients)
+
+    # Route A's own slope is 2.0; shrinkage lands it between that and the
+    # network-wide slope, closer to the network-wide one at this sample size.
+    w = n / (n + train_delay_model.PER_ROUTE_SHRINKAGE)
+    expected = w * 2.0 + (1 - w) * global_coefficients[1]
+    assert abs(per_route["A"][1] - expected) < 0.01
+    assert global_coefficients[1] < per_route["A"][1] < 2.0
+
+
+def test_evaluate_scores_each_observation_with_its_routes_coefficients():
+    test = _route_examples("A", 20, 2.0, service_date="2026-08-02")
+    global_only = train_delay_model.to_model([0.0, 1.0, 0.0, 0.0])
+    with_route = train_delay_model.to_model([0.0, 1.0, 0.0, 0.0], {"A": [0.0, 2.0, 0.0, 0.0]})
+
+    global_mae, _ = train_delay_model.evaluate(global_only, test)
+    route_mae, _ = train_delay_model.evaluate(with_route, test)
+
+    assert route_mae == 0.0 < global_mae

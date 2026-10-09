@@ -1042,6 +1042,20 @@ async def test_delay_prediction_returns_a_predicted_delay_for_a_live_trip(tmp_pa
     assert "predicted_at" in body
 
 
+async def test_delay_prediction_uses_the_trips_route_coefficients(tmp_path):
+    loop, store = await _running_loop()
+    schedule_cache = _delay_prediction_schedule_cache(tmp_path)
+    model = DelayModel(
+        intercept=10.0, weights=(0.5, 1.0, -5.0), trained_at="",
+        per_route={"2-PKM": (100.0, (1.0, 0.0, 0.0))},
+    )
+    store.latest_snapshots["WEEKDAY_TRIP_1"] = _delay_prediction_snapshot(arrival_delay=90)
+    async with await _client_for(loop, store, schedule_cache=schedule_cache, delay_model=model) as client:
+        response = await client.get("/trains/WEEKDAY_TRIP_1/delay-prediction")
+
+    assert response.json()["predicted_delay_seconds"] == 190
+
+
 async def test_delay_prediction_reflects_an_active_alert(tmp_path):
     loop, store = await _running_loop()
     schedule_cache = _delay_prediction_schedule_cache(tmp_path)

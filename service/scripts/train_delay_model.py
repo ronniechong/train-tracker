@@ -12,7 +12,13 @@ delay_seconds`), predicted from a mid-journey `DelayObservationEvent`
 trip). Joined by (trip_id, service_date) -- `cancelled`/
 `undetermined_gap` completions are excluded (can't label a trip that
 never really completed, same reliability/punctuality exclusion applied
-elsewhere in this milestone).
+elsewhere).
+
+Per-route coefficients: lines differ in whether trains tend to lose or
+recover time, which a single network-wide fit averages away. Each route
+with enough examples gets its own fit, shrunk toward the network-wide one
+in proportion to its sample size so thinly-observed routes can't swing
+wildly; routes without enough data fall back to the network-wide fit.
 
 Split by service_date, NOT a random row split -- a random split would
 leak multiple observations of the SAME trip across train and test,
@@ -34,6 +40,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -59,6 +66,11 @@ EXCLUDED_STATUSES = {"cancelled", "undetermined_gap"}
 # variation in one feature) without meaningfully biasing a well-
 # conditioned fit.
 RIDGE_EPSILON = 1e-6
+PER_ROUTE_MIN_EXAMPLES = 500
+PER_ROUTE_SHRINKAGE = 5000.0
+BASELINE_FALLBACK_MIN_EXAMPLES = 50
+# intercept, current_delay_s, stops_remaining, active_alert_flag
+BASELINE_COEFFICIENTS = [0.0, 1.0, 0.0, 0.0]
 
 
 @dataclass(frozen=True)
@@ -166,6 +178,45 @@ def fit_least_absolute_deviation(
     return coefficients
 
 
+def fit_per_route(
+    examples: list[LabelledObservation], global_coefficients: list[float]
+) -> dict[str, list[float]]:
+    by_route: dict[str, list[LabelledObservation]] = defaultdict(list)
+    for e in examples:
+        if e.observation.route_id is not None:
+            by_route[e.observation.route_id].append(e)
+    per_route = {}
+    for route_id, route_examples in by_route.items():
+        n = len(route_examples)
+        coefficients = global_coefficients
+        if n >= PER_ROUTE_MIN_EXAMPLES:
+            fitted = fit_least_absolute_deviation(route_examples)
+            w = n / (n + PER_ROUTE_SHRINKAGE)
+            coefficients = [w * a + (1 - w) * g for a, g in zip(fitted, global_coefficients)]
+        # Some routes run so close to timetable that "delay holds" is
+        # near-perfect and any fitted drift only adds error.
+        if n >= BASELINE_FALLBACK_MIN_EXAMPLES:
+            actuals = [float(e.final_delay_s) for e in route_examples]
+            fitted_mae = mean_absolute_error(actuals, [predict(coefficients, e.observation) for e in route_examples])
+            baseline_mae = mean_absolute_error(actuals, [baseline_prediction(e.observation) for e in route_examples])
+            if baseline_mae < fitted_mae:
+                coefficients = BASELINE_COEFFICIENTS
+        if coefficients is not global_coefficients:
+            per_route[route_id] = list(coefficients)
+    return per_route
+
+
+def to_model(
+    coefficients: list[float], per_route: dict[str, list[float]] | None = None
+) -> DelayModel:
+    return DelayModel(
+        intercept=coefficients[0],
+        weights=tuple(coefficients[1:]),
+        trained_at="",
+        per_route={r: (c[0], tuple(c[1:])) for r, c in (per_route or {}).items()},
+    )
+
+
 def _solve_linear_system(matrix: list[list[float]], vector: list[float]) -> list[float]:
     n = len(vector)
     augmented = [row[:] + [vector[i]] for i, row in enumerate(matrix)]
@@ -204,11 +255,14 @@ def baseline_prediction(observation: DelayObservationEvent) -> float:
     return float(observation.current_delay_s)
 
 
-def evaluate(
-    coefficients: list[float], test: list[LabelledObservation]
-) -> tuple[float, float]:
+def evaluate(model: DelayModel, test: list[LabelledObservation]) -> tuple[float, float]:
+    """Scores through `predict_delay_seconds` with each observation's
+    route_id -- the exact call the serving endpoint makes."""
     actuals = [float(e.final_delay_s) for e in test]
-    model_predictions = [predict(coefficients, e.observation) for e in test]
+    model_predictions = [
+        predict_delay_seconds(model, _as_features(e.observation), e.observation.route_id)
+        for e in test
+    ]
     baseline_predictions = [baseline_prediction(e.observation) for e in test]
     return mean_absolute_error(actuals, model_predictions), mean_absolute_error(
         actuals, baseline_predictions
@@ -252,8 +306,11 @@ def main() -> int:
         return 1
 
     coefficients = fit_least_absolute_deviation(train)
-    model_mae, baseline_mae = evaluate(coefficients, test)
+    per_route = fit_per_route(train, coefficients)
+    global_mae, _ = evaluate(to_model(coefficients), test)
+    model_mae, baseline_mae = evaluate(to_model(coefficients, per_route), test)
     passed = model_mae < baseline_mae
+    print(f"Per-route fits: {len(per_route)} (network-wide only MAE={global_mae:.1f}s)")
     print(
         f"[{'PASS' if passed else 'FAIL'}] model MAE={model_mae:.1f}s "
         f"baseline MAE={baseline_mae:.1f}s"
@@ -281,6 +338,10 @@ def main() -> int:
                 "feature_names": list(FEATURE_NAMES),
                 "intercept": coefficients[0],
                 "weights": coefficients[1:],
+                "per_route": {
+                    route_id: {"intercept": c[0], "weights": c[1:]}
+                    for route_id, c in sorted(per_route.items())
+                },
                 "train_examples": len(train),
                 "test_examples": len(test),
                 "test_mae_seconds": model_mae,

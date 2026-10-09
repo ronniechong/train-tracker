@@ -42,3 +42,29 @@ def test_predict_delay_seconds_applies_the_active_alert_weight_when_flagged():
     predicted = predict_delay_seconds(model, features)
 
     assert predicted == 10.0 + 0.5 * 60 + 1.0 * 4 + (-5.0) * 1.0
+
+
+def test_load_delay_model_reads_per_route_coefficients(tmp_path):
+    path = tmp_path / "delay_model.json"
+    path.write_text(json.dumps({
+        "trained_at": "2026-10-10T00:00:00+00:00",
+        "intercept": 10.0,
+        "weights": [0.5, 1.0, -5.0],
+        "per_route": {"R2": {"intercept": 40.0, "weights": [1.0, 2.0, 0.0]}},
+    }))
+
+    model = load_delay_model(path)
+
+    assert model.per_route == {"R2": (40.0, (1.0, 2.0, 0.0))}
+
+
+def test_predict_delay_seconds_uses_the_routes_own_coefficients():
+    model = DelayModel(
+        intercept=10.0, weights=(0.5, 1.0, -5.0), trained_at="",
+        per_route={"R2": (40.0, (1.0, 2.0, 0.0))},
+    )
+    features = DelayFeatures(current_delay_s=60, stops_remaining=4, active_alert_flag=False)
+
+    assert predict_delay_seconds(model, features, "R2") == 40.0 + 60 + 8
+    assert predict_delay_seconds(model, features, "R_UNSEEN") == 10.0 + 30 + 4
+    assert predict_delay_seconds(model, features) == 10.0 + 30 + 4

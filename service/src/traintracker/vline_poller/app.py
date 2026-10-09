@@ -285,7 +285,7 @@ def create_vline_app(
             raise HTTPException(
                 status_code=422, detail="not enough live data to predict this trip right now"
             )
-        predicted = predict_delay_seconds(delay_model, features)
+        predicted = predict_delay_seconds(delay_model, features, snapshot.route_id)
         return DelayPredictionResponse(
             trip_id=trip_id,
             predicted_delay_seconds=round(predicted),
